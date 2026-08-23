@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>残差连接 · 一个加号救了深度学习</title>
+<style>
+:root{
+  --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B; --line:#16130F;
+  --fwd:#E4572E; --bwd:#2E6FB7; --upd:#1E9E62; --pur:#7B4FBF; --yel:#F2B705;
+  --card:#FFFFFF;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(#00000010 1px, transparent 1px);
+  background-size:28px 28px;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:0 24px 140px}
+
+/* ---------- hero ---------- */
+.hero{padding:110px 0 70px; text-align:center}
+.kicker{display:inline-block; font-size:14px; letter-spacing:.22em; font-weight:700;
+  border:2px solid var(--ink); padding:7px 16px; border-radius:100px; background:var(--yel)}
+h1{font-size:clamp(40px,7.5vw,86px); line-height:1.02; font-weight:900; letter-spacing:-.03em; margin:26px 0 0}
+h1 em{font-style:normal; color:var(--fwd)}
+.sub{font-size:clamp(17px,2.4vw,23px); color:var(--muted); margin-top:22px; font-weight:500}
+.eqbox{margin:48px auto 0; max-width:860px; background:var(--card); border:3px solid var(--ink);
+  border-radius:22px; box-shadow:8px 8px 0 var(--ink); padding:34px 26px}
+.eqrow{display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; font-weight:800; font-size:clamp(15px,2.2vw,21px)}
+.eqrow + .eqrow{margin-top:20px; padding-top:20px; border-top:2px dashed #00000022}
+.tag{padding:8px 14px; border-radius:12px; border:2px solid var(--ink); background:#fff; white-space:nowrap}
+.tag.f{background:var(--fwd); color:#fff}
+.tag.b{background:var(--bwd); color:#fff}
+.tag.u{background:var(--upd); color:#fff}
+.tag.ghost{border-style:dashed; color:var(--muted); background:#F3F0EA}
+.eqlabel{width:104px; text-align:right; font-size:14px; color:var(--muted); font-weight:700; flex:0 0 104px}
+@media(max-width:640px){.eqlabel{width:auto; flex:none; text-align:left}}
+.formula{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:clamp(24px,5vw,46px);
+  font-weight:900; letter-spacing:-.02em}
+.formula b{color:var(--fwd)}
+
+/* ---------- sections ---------- */
+section{margin-top:104px}
+.num{display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px;
+  border-radius:50%; background:var(--ink); color:var(--bg); font-weight:900; font-size:20px; flex:0 0 46px}
+.head{display:flex; gap:18px; align-items:center; margin-bottom:10px}
+h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; line-height:1.15}
+.lede{font-size:clamp(16px,2vw,19px); color:var(--muted); max-width:780px; margin-left:64px; font-weight:500}
+@media(max-width:640px){.lede{margin-left:0}}
+
+.card{background:var(--card); border:3px solid var(--ink); border-radius:22px;
+  box-shadow:8px 8px 0 var(--ink); padding:30px; margin-top:30px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.big{font-size:clamp(30px,5vw,52px); font-weight:900; line-height:1; letter-spacing:-.03em}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.note{font-size:15px; color:var(--muted); margin-top:10px}
+.pill{display:inline-block; font-size:13px; font-weight:800; padding:4px 11px; border-radius:100px; border:2px solid var(--ink); background:var(--yel)}
+
+/* panels */
+.panel{border:3px solid var(--ink); border-radius:18px; padding:22px; background:#fff}
+.panel h4{font-size:20px; font-weight:900; margin-bottom:6px; display:flex; align-items:center; gap:9px}
+.panel h4 .dot{width:13px; height:13px; border-radius:50%; border:2px solid var(--ink)}
+.panel p{font-size:15px; color:var(--muted)}
+.panel .cost{margin-top:14px; font-size:13px; font-weight:800; padding:7px 11px; border-radius:9px;
+  background:#F3F0EA; border:2px solid var(--ink); display:inline-block}
+
+/* labelled rows inside a panel */
+.rows{margin-top:16px}
+.rows > div{display:grid; grid-template-columns:92px 1fr; gap:12px; padding:11px 0;
+  border-top:2px dashed #00000018; font-size:15.5px; font-weight:600; color:var(--ink)}
+.rows > div:first-child{border-top:none; padding-top:4px}
+.rows b{font-size:11.5px; font-weight:900; letter-spacing:.12em; color:var(--muted); padding-top:4px}
+
+/* ---------- telephone chain ---------- */
+.chain{margin-top:16px}
+.msg{border:2px solid var(--ink); border-radius:12px; padding:11px 14px; font-weight:800; font-size:15.5px;
+  background:#fff; position:relative}
+.msg small{display:block; font-size:11px; font-weight:900; letter-spacing:.14em; color:var(--muted); margin-bottom:3px}
+.arrowdown{text-align:center; font-weight:900; color:var(--muted); font-size:17px; line-height:1; margin:7px 0}
+.fade1{background:#FDEDE7} .fade2{background:#FBDFD5} .fade3{background:#F7CFC1}
+.fade4{background:#F2BDAB; color:#5d3a2c} .fade5{background:#E9A992; color:#5d3a2c}
+.trunk{border:3px solid var(--ink); border-radius:12px; padding:13px 14px; font-weight:900; font-size:15.5px;
+  background:var(--yel)}
+.stickies{margin-top:12px; display:flex; flex-direction:column; gap:8px}
+.sticky{border:2px solid var(--ink); border-radius:10px; padding:8px 12px; font-size:14.5px; font-weight:700;
+  background:#E6F6EE; display:flex; gap:9px; align-items:baseline}
+.sticky b{flex:0 0 auto; font-size:12px; letter-spacing:.1em; color:var(--upd)}
+.readout{margin-top:14px; font-size:14px; font-weight:800; background:var(--ink); color:var(--bg);
+  padding:10px 14px; border-radius:100px; text-align:center}
+
+/* ---------- gradient bars ---------- */
+.gb{display:grid; grid-template-columns:78px 1fr 132px; gap:12px; align-items:center; margin:11px 0; font-weight:800}
+.gb .bar{height:28px; border:2px solid var(--ink); border-radius:6px; background:#F1EDE6; overflow:hidden}
+.gb .bar i{display:block; height:100%; background:var(--bwd); transition:width .3s ease}
+.gb.res .bar i{background:var(--upd)}
+.gb .v{font-size:13.5px; color:var(--muted); font-family:ui-monospace,Menlo,monospace; text-align:right}
+.slider{width:100%; margin-top:6px; accent-color:var(--fwd); height:26px}
+.sliderrow{display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:22px}
+.sliderrow label{font-weight:900; font-size:16px; white-space:nowrap}
+.sliderrow .depth{font-family:ui-monospace,Menlo,monospace; font-weight:900; font-size:26px;
+  background:var(--ink); color:var(--bg); padding:3px 14px; border-radius:10px}
+
+/* ---------- svg ---------- */
+.svgbox{background:#fff; border:3px solid var(--ink); border-radius:22px; box-shadow:8px 8px 0 var(--ink);
+  padding:26px; margin-top:30px}
+.svgbox svg{width:100%; height:auto; display:block}
+.stroke{stroke:#16130F; stroke-width:3; fill:none}
+.stroke.thick{stroke-width:11; stroke-linecap:round}
+.lbl{font:700 15px -apple-system,"PingFang SC",system-ui; fill:#16130F}
+.lbl.sm{font-size:13px; fill:#6E655B; font-weight:700}
+.lbl.bold{font-weight:900; font-size:17px}
+.boxf{fill:#fff; stroke:#16130F; stroke-width:3}
+
+/* ---------- code ---------- */
+pre{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:clamp(13px,1.9vw,17px);
+  line-height:1.9; overflow-x:auto; font-weight:600}
+pre .c{color:var(--muted)}
+pre .k{color:var(--fwd); font-weight:900}
+pre .g{color:var(--upd); font-weight:900}
+
+/* ---------- table ---------- */
+.tbl{width:100%; border-collapse:collapse; font-size:15.5px}
+.tbl th{background:var(--ink); color:var(--bg); padding:14px; text-align:left; font-weight:800; font-size:14px; letter-spacing:.04em}
+.tbl td{padding:13px 14px; border-bottom:2px solid #00000012; vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td:first-child{font-weight:800; width:34%}
+.tbl td:last-child{color:var(--muted)}
+.tblwrap{overflow-x:auto; border:3px solid var(--ink); border-radius:20px; box-shadow:8px 8px 0 var(--ink); margin-top:30px; background:#fff}
+
+.punch{margin-top:100px; background:var(--ink); color:var(--bg); border-radius:26px; padding:52px 34px; text-align:center;
+  box-shadow:10px 10px 0 var(--fwd)}
+.punch .big{font-size:clamp(26px,4.6vw,46px)}
+.punch p{color:#C9C2B8; margin-top:20px; font-size:17px; max-width:660px; margin-left:auto; margin-right:auto}
+
+.reveal{opacity:0; transform:translateY(22px); transition:opacity .55s ease, transform .55s ease}
+.reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <span class="kicker">残差连接 · RESIDUAL</span>
+  <h1>别重写，<br><em>只贴便签</em></h1>
+  <p class="sub">深网络原来是「传话游戏」，传到第 90 层，原话早没了。<br>残差连接做的事，只有一件：<b>把原话留着。</b></p>
+
+  <div class="eqbox">
+    <div class="eqrow">
+      <span class="eqlabel">没有残差</span>
+      <span class="tag">原话 x</span> → <span class="tag f">这一层</span> → <span class="tag ghost">全新的话，原话没了</span>
+    </div>
+    <div class="eqrow">
+      <span class="eqlabel">有残差</span>
+      <span class="tag">原话 x</span> → <span class="tag f">这一层</span> → <span class="tag u">原话 + 便签</span>
+    </div>
+    <div class="eqrow">
+      <span class="formula">out = <b>x +</b> f(x)</span>
+    </div>
+    <p class="note" style="text-align:center">全部数学就这么多。一个加号。没有参数，没有算力开销。</p>
+  </div>
+</div>
+
+<!-- ================= 1 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">1</span><h2>问题：传话游戏</h2></div>
+  <p class="lede">神经网络是一层传给下一层。层数一多，每层都想「改写」上一层的话，改到最后就是耳语传话——面目全非。</p>
+
+  <div class="card grid2">
+    <div class="panel" style="border-color:var(--fwd)">
+      <h4><span class="dot" style="background:var(--fwd)"></span>没有残差：每层重写</h4>
+      <div class="chain">
+        <div class="msg"><small>输入</small>小明昨天在北京买了一辆红色的车</div>
+        <div class="arrowdown">↓ 第 1 层重写</div>
+        <div class="msg fade1">小明昨天在北京买了红车</div>
+        <div class="arrowdown">↓ 第 2 层重写</div>
+        <div class="msg fade2">小明买了红车</div>
+        <div class="arrowdown">↓ 第 3 层重写</div>
+        <div class="msg fade3">有人买了车</div>
+        <div class="arrowdown">↓ 第 4 层重写</div>
+        <div class="msg fade4">买东西</div>
+        <div class="arrowdown">↓ 第 5 层重写</div>
+        <div class="msg fade5">……？</div>
+      </div>
+      <div class="cost" style="background:#FDEDE7">原话已经找不回来了</div>
+    </div>
+
+    <div class="panel" style="border-color:var(--upd)">
+      <h4><span class="dot" style="background:var(--upd)"></span>有残差：原话不动，只加便签</h4>
+      <div class="chain">
+        <div class="trunk">小明昨天在北京买了一辆红色的车<br><span style="font-size:12px;font-weight:800;letter-spacing:.1em">↑ 这一行从头到尾都在</span></div>
+        <div class="stickies">
+          <div class="sticky"><b>层1 +</b><span>「小明」是人名</span></div>
+          <div class="sticky"><b>层2 +</b><span>「北京」是地点</span></div>
+          <div class="sticky"><b>层3 +</b><span>「红色」修饰的是车</span></div>
+          <div class="sticky"><b>层4 +</b><span>「买」= 交易动作，过去时</span></div>
+          <div class="sticky"><b>层5 +</b><span>整句是陈述、已完成</span></div>
+        </div>
+      </div>
+      <div class="readout">最后读到的 = 原话 + 全部便签</div>
+    </div>
+  </div>
+
+  <div class="card" style="background:#E8F1FA">
+    <div class="big" style="font-size:clamp(20px,3vw,30px)">这不是「跳过某一层」</div>
+    <p class="note" style="font-size:16px">常见误解。每一层照样算，只是它的输出被 <b class="mono">加</b> 回主干，而不是 <b class="mono">替换</b> 主干。<br>层的职责从「产出新的一切」降级成「产出一点增量」——这就是名字里「残差 / residual」的意思：<b>差值</b>。</p>
+    <p class="note" style="font-size:15px;margin-top:14px;padding-top:14px;border-top:2px dashed #00000022">
+      前 3 节的「层」请先当成一个<b>黑盒</b> —— 它可以是卷积、可以是 attention、可以是任何东西，残差不在乎。<b>第 4 节把盒子打开。</b></p>
+  </div>
+</section>
+
+<!-- ================= 2 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">2</span><h2>真正致命的是反向：信号被乘到 0</h2></div>
+  <p class="lede">训练要从最后一层往回传「你该往哪改」的信号。每穿过一层，这个信号就被乘一个数。乘 90 次，猜猜剩多少。</p>
+
+  <div class="card">
+    <div class="sliderrow">
+      <label>网络深度</label>
+      <span class="depth" id="dv">96</span>
+      <label style="color:var(--muted);font-weight:700;font-size:14px">层（假设每层把信号乘 0.8）</label>
+    </div>
+    <input class="slider" id="sl" type="range" min="1" max="120" value="96">
+
+    <div style="margin-top:30px">
+      <div class="gb">
+        <span style="font-size:14px">没有残差</span>
+        <span class="bar"><i id="b1" style="width:0%"></i></span>
+        <span class="v" id="v1">—</span>
+      </div>
+      <div class="gb res">
+        <span style="font-size:14px">有残差</span>
+        <span class="bar"><i id="b2" style="width:100%"></i></span>
+        <span class="v" id="v2">100%</span>
+      </div>
+    </div>
+    <p class="note" id="hint" style="font-size:16px;font-weight:700"></p>
+  </div>
+
+  <div class="card grid2" style="margin-top:24px">
+    <div class="panel">
+      <h4><span class="dot" style="background:var(--bwd)"></span>没有残差</h4>
+      <p style="font-size:17px" class="mono">0.8 × 0.8 × 0.8 × … （96 次）</p>
+      <p style="margin-top:10px">= <b class="mono">0.00000005%</b><br>信号到不了底层。底层的参数<b>几乎不更新</b>，等于白搭了 90 层。这叫<b>梯度消失</b>。</p>
+      <div class="cost">乘数稍大于 1 也一样糟：1.1<sup>96</sup> ≈ 8600，直接炸成 NaN</div>
+    </div>
+    <div class="panel">
+      <h4><span class="dot" style="background:var(--upd)"></span>有残差</h4>
+      <p style="font-size:17px" class="mono">d(x + f(x)) / dx = <b style="color:var(--upd)">1</b> + f′(x)</p>
+      <p style="margin-top:10px">那个 <b>1</b> 是一条<b>直通电梯</b>：<br><span class="mono">1 × 1 × 1 × … = 1</span><br>不管多少层，永远有一条不衰减的路把信号送到底。</p>
+      <div class="cost" style="background:#E6F6EE">这才是「能训 100 层」的原因</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">3</span><h2>顺带解决：加层不该让模型变差</h2></div>
+  <p class="lede">2015 年发现一件反常识的事：56 层的网络，训练误差比 20 层的<b>还高</b>。不是过拟合——它连训练集都学不好。深度本身成了负担。</p>
+
+  <div class="card grid2">
+    <div class="panel" style="background:#FDEDE7">
+      <h4>要一层「什么都别做」</h4>
+      <p style="font-size:16px">没有残差：它得<b>学会照抄</b>——把输入一字不差地复现出来。看着简单，对一堆随机初始化的矩阵来说非常难。</p>
+      <div class="cost">类比：让编辑「原文抄一遍，不许出错」</div>
+    </div>
+    <div class="panel" style="background:#E6F6EE">
+      <h4>有残差：只要不写字</h4>
+      <p style="font-size:16px">out = x + f(x)，想不做事只需 <b class="mono">f(x) → 0</b>。把权重压到 0 是优化器最容易做到的事之一。</p>
+      <div class="cost" style="background:#fff">类比：让编辑「这页不用改，空着」</div>
+    </div>
+  </div>
+
+  <div class="card" style="background:var(--ink);color:var(--bg);border-color:var(--ink);box-shadow:8px 8px 0 var(--upd)">
+    <div class="big" style="font-size:clamp(22px,3.4vw,34px)">于是深网络最差也能<span style="color:var(--yel)">退化成浅网络</span></div>
+    <p style="color:#C9C2B8;margin-top:14px;font-size:16.5px">多出来的层用不上就自己「空着」。加层从此只有上限收益、没有下限风险。<br>ResNet 靠这一招，把图像网络从 20 层推到 152 层。同一招原封不动搬进了 Transformer。</p>
+  </div>
+</section>
+
+<!-- ================= 4 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">4</span><h2>插播：残差 ≠ Attention</h2></div>
+  <p class="lede">最容易混的一件事。这两个词根本不在同一个层面上——<b>一个是管道，一个是水。</b></p>
+
+  <div class="card grid2">
+    <div class="panel" style="background:#FFF6DE">
+      <h4>残差连接 = 管道怎么接</h4>
+      <p style="font-size:16px">规定「子层算完的东西怎么并回主干」：<b class="mono">加</b>，而不是<b class="mono">替换</b>。<br>它<b>不关心子层里算的是什么</b>。</p>
+      <div class="cost" style="background:#fff">0 个参数</div>
+    </div>
+    <div class="panel" style="background:#E8F1FA">
+      <h4>Attention = 管道里跑什么水</h4>
+      <p style="font-size:16px">一种具体算子，负责「这个词该去看句子里的哪些词」。<br>它<b>不关心自己是怎么被接进去的</b>。</p>
+      <div class="cost" style="background:#fff">一大堆参数</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="big" style="font-size:clamp(20px,3.2vw,30px)">而且「一层」里不止一个东西</div>
+    <p class="note" style="font-size:16px;margin-bottom:6px">口语里的「一层」= 一个 Transformer block = <b>两个子层，两个残差加号</b>：</p>
+<pre>x = <span class="k">x +</span> Attention(norm(x))   <span class="c">← 子层 1：去别人那儿看看</span>
+x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2：自己再想想</span>
+</pre>
+    <p class="note" style="font-size:16px">所以 GPT-3 的「96 层」= 96 个 block = <b>192 个残差加号</b>。<br>
+    Attention 只是这两个子层里的<b>一半</b>。</p>
+  </div>
+
+  <div class="card grid2">
+    <div class="panel" style="border-color:var(--bwd)">
+      <h4><span class="dot" style="background:var(--bwd)"></span>Attention 子层</h4>
+      <div class="rows">
+        <div><b>干什么</b><span>跨 token 看别人</span></div>
+        <div><b>看得到别的词吗</b><span>能 —— 而且是全模型<b>唯一</b>能让词之间通信的地方</span></div>
+        <div><b>白板比喻</b><span>抄一眼旁边人的白板，再写便签</span></div>
+        <div><b>参数量</b><span>约 <b>1/3</b>（4d²）</span></div>
+      </div>
+    </div>
+    <div class="panel" style="border-color:var(--upd)">
+      <h4><span class="dot" style="background:var(--upd)"></span>FFN 子层</h4>
+      <div class="rows">
+        <div><b>干什么</b><span>每个 token 自己想</span></div>
+        <div><b>看得到别的词吗</b><span>看不到 —— 逐位置独立处理，互不通气</span></div>
+        <div><b>白板比喻</b><span>只看自己白板，加工一下再写便签</span></div>
+        <div><b>参数量</b><span>约 <b>2/3</b>（8d²）</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note" style="font-size:15.5px;margin-top:20px;margin-left:4px">
+    顺带一提，Norm 也是逐 token 的（它在特征维度上归一化，不跨词）。所以<b>信息在句子里流动，全靠 attention 那一个子层</b>。</p>
+
+  <div class="card" style="background:var(--ink);color:var(--bg);border-color:var(--ink);box-shadow:8px 8px 0 var(--pur)">
+    <div class="big" style="font-size:clamp(22px,3.4vw,34px)">一句话验证它们真的无关</div>
+    <p style="color:#C9C2B8;margin-top:14px;font-size:16.5px">
+      把 attention 换成卷积（ResNet）、换成 SSM（Mamba），<b style="color:#fff">残差原封不动照旧</b>。<br>
+      <b style="color:var(--yel)">Mamba 里一个 attention 都没有，但残差一个不少。</b><br><br>
+      反过来，把残差拆掉，attention 照样能算 —— 只是网络一深就训不动了（第 2 节）。<br>
+      两者可以任意组合，说明它们是<b style="color:#fff">正交</b>的两件事。</p>
+  </div>
+</section>
+
+<!-- ================= 5 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">5</span><h2>在 LLM 里长什么样</h2></div>
+  <p class="lede">把上面那两行代码画出来，就是这张图。一个 block 里<b>两条</b>残差：一条包住 Attention，一条包住 FFN。左边那根黄色竖线是主干，它从不被改写，只被加。</p>
+
+  <div class="svgbox">
+    <svg viewBox="0 0 500 610" role="img" aria-label="Transformer block 的两条残差连接">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#16130F"/>
+        </marker>
+      </defs>
+
+      <!-- main residual line -->
+      <path class="stroke thick" style="stroke:#F2B705" d="M 70 570 L 70 45"/>
+      <path class="stroke" d="M 70 570 L 70 45" marker-end="url(#ah)"/>
+
+      <text class="lbl bold" x="70" y="598" text-anchor="middle">输入 x</text>
+      <text class="lbl bold" x="70" y="28" text-anchor="middle">→ 下一层</text>
+
+      <!-- branch 1: attention -->
+      <circle cx="70" cy="500" r="6" fill="#16130F"/>
+      <path class="stroke" d="M 70 500 L 300 500 L 300 472" marker-end="url(#ah)"/>
+      <rect class="boxf" x="180" y="430" width="240" height="42" rx="11"/>
+      <text class="lbl" x="300" y="457" text-anchor="middle">RMSNorm（归一化）</text>
+      <path class="stroke" d="M 300 430 L 300 402" marker-end="url(#ah)"/>
+      <rect class="boxf" x="180" y="338" width="240" height="64" rx="11" style="fill:#E8F1FA"/>
+      <text class="lbl bold" x="300" y="365" text-anchor="middle">Attention</text>
+      <text class="lbl sm" x="300" y="386" text-anchor="middle">「去别的 token 那儿看看」</text>
+      <path class="stroke" d="M 300 338 L 300 310 L 92 310" marker-end="url(#ah)"/>
+      <circle cx="70" cy="310" r="19" fill="#fff" stroke="#16130F" stroke-width="3"/>
+      <text class="lbl bold" x="70" y="317" text-anchor="middle">+</text>
+
+      <!-- branch 2: ffn -->
+      <circle cx="70" cy="270" r="6" fill="#16130F"/>
+      <path class="stroke" d="M 70 270 L 300 270 L 300 242" marker-end="url(#ah)"/>
+      <rect class="boxf" x="180" y="200" width="240" height="42" rx="11"/>
+      <text class="lbl" x="300" y="227" text-anchor="middle">RMSNorm（归一化）</text>
+      <path class="stroke" d="M 300 200 L 300 172" marker-end="url(#ah)"/>
+      <rect class="boxf" x="180" y="108" width="240" height="64" rx="11" style="fill:#E6F6EE"/>
+      <text class="lbl bold" x="300" y="135" text-anchor="middle">FFN</text>
+      <text class="lbl sm" x="300" y="156" text-anchor="middle">「自己想一想」</text>
+      <path class="stroke" d="M 300 108 L 300 80 L 92 80" marker-end="url(#ah)"/>
+      <circle cx="70" cy="80" r="19" fill="#fff" stroke="#16130F" stroke-width="3"/>
+      <text class="lbl bold" x="70" y="87" text-anchor="middle">+</text>
+
+      <text class="lbl sm" x="440" y="500">读副本</text>
+      <text class="lbl sm" x="440" y="270">读副本</text>
+    </svg>
+    <p class="note" style="font-size:15.5px;margin-top:18px">
+      黄色主干 = 残差流。子层只<b>读一份副本</b>去算，算完把结果<b>加</b>回主干。主干本身永远没被谁改写过。
+    </p>
+  </div>
+
+  <div class="card grid3">
+    <div style="padding:4px">
+      <div class="big" style="font-size:40px">2</div>
+      <p class="note" style="font-size:15px">每个 block 两个加号：Attention 一个，FFN 一个</p>
+    </div>
+    <div style="padding:4px">
+      <div class="big" style="font-size:40px">192</div>
+      <p class="note" style="font-size:15px">GPT-3 有 96 层 → 一共 192 个残差加法</p>
+    </div>
+    <div style="padding:4px">
+      <div class="big" style="font-size:40px">0</div>
+      <p class="note" style="font-size:15px">这 192 个加法带来的新参数个数</p>
+    </div>
+  </div>
+
+  <div class="card" style="background:#FFF6DE">
+    <span class="pill">小历史</span>
+    <p class="note" style="font-size:16px;margin-top:12px">
+      2017 年原版 Transformer 是 <b>Post-LN</b>：<span class="mono">x = Norm(x + f(x))</span> —— 归一化压在主干上，训练很挑，必须小心 warmup。<br>
+      GPT-2 之后大家都改成 <b>Pre-LN</b>：<span class="mono">x = x + f(Norm(x))</span> —— 归一化挪进支路，<b>主干保持干净</b>，那条「1」的直通电梯完全不被打扰。现在的 LLM 基本都是这个写法。
+    </p>
+  </div>
+</section>
+
+<!-- ================= 6 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">6</span><h2>换个视角：它其实是一块公用白板</h2></div>
+  <p class="lede">「残差流（residual stream）」这个叫法更传神。别把它想成「捷径」，想成一块从第一层传到最后一层的<b>白板</b>：每层过来看一眼，写点东西，传给下一层。</p>
+
+  <div class="svgbox">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="残差流像一块公用白板">
+      <defs>
+        <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#16130F"/>
+        </marker>
+        <marker id="ahb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#2E6FB7"/>
+        </marker>
+        <marker id="ahg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#1E9E62"/>
+        </marker>
+      </defs>
+
+      <!-- the whiteboard -->
+      <rect x="30" y="42" width="900" height="52" rx="16" fill="#F2B705" stroke="#16130F" stroke-width="3"/>
+      <text class="lbl bold" x="480" y="75" text-anchor="middle">残 差 流 ── 同一块白板，从头到尾维度不变（d_model）</text>
+      <path class="stroke" d="M 930 68 L 968 68" marker-end="url(#ah2)"/>
+      <text class="lbl sm" x="905" y="118" text-anchor="middle">最后读白板 → 出 token</text>
+      <text class="lbl sm" x="72" y="30">词嵌入写下第一笔</text>
+
+      <!-- layers -->
+      <g>
+        <rect class="boxf" x="70" y="180" width="140" height="58" rx="12"/>
+        <text class="lbl bold" x="140" y="207" text-anchor="middle">第 1 层</text>
+        <text class="lbl sm" x="140" y="226" text-anchor="middle">这是什么词</text>
+        <path d="M 110 180 L 110 100" stroke="#2E6FB7" stroke-width="3" fill="none" marker-end="url(#ahb)" transform="rotate(180 110 140)"/>
+        <path d="M 170 180 L 170 100" stroke="#1E9E62" stroke-width="3" fill="none" marker-end="url(#ahg)"/>
+      </g>
+      <g>
+        <rect class="boxf" x="250" y="180" width="140" height="58" rx="12"/>
+        <text class="lbl bold" x="320" y="207" text-anchor="middle">第 2 层</text>
+        <text class="lbl sm" x="320" y="226" text-anchor="middle">谁修饰谁</text>
+        <path d="M 290 180 L 290 100" stroke="#2E6FB7" stroke-width="3" fill="none" marker-end="url(#ahb)" transform="rotate(180 290 140)"/>
+        <path d="M 350 180 L 350 100" stroke="#1E9E62" stroke-width="3" fill="none" marker-end="url(#ahg)"/>
+      </g>
+      <g>
+        <rect class="boxf" x="430" y="180" width="140" height="58" rx="12"/>
+        <text class="lbl bold" x="500" y="207" text-anchor="middle">第 3 层</text>
+        <text class="lbl sm" x="500" y="226" text-anchor="middle">整句在说啥</text>
+        <path d="M 470 180 L 470 100" stroke="#2E6FB7" stroke-width="3" fill="none" marker-end="url(#ahb)" transform="rotate(180 470 140)"/>
+        <path d="M 530 180 L 530 100" stroke="#1E9E62" stroke-width="3" fill="none" marker-end="url(#ahg)"/>
+      </g>
+      <g>
+        <rect class="boxf" x="610" y="180" width="140" height="58" rx="12"/>
+        <text class="lbl bold" x="680" y="207" text-anchor="middle">…</text>
+        <text class="lbl sm" x="680" y="226" text-anchor="middle">还有 90 多层</text>
+        <path d="M 650 180 L 650 100" stroke="#2E6FB7" stroke-width="3" fill="none" marker-end="url(#ahb)" transform="rotate(180 650 140)"/>
+        <path d="M 710 180 L 710 100" stroke="#1E9E62" stroke-width="3" fill="none" marker-end="url(#ahg)"/>
+      </g>
+      <g>
+        <rect class="boxf" x="790" y="180" width="140" height="58" rx="12"/>
+        <text class="lbl bold" x="860" y="207" text-anchor="middle">最后一层</text>
+        <text class="lbl sm" x="860" y="226" text-anchor="middle">下个词是啥</text>
+        <path d="M 830 180 L 830 100" stroke="#2E6FB7" stroke-width="3" fill="none" marker-end="url(#ahb)" transform="rotate(180 830 140)"/>
+        <path d="M 890 180 L 890 100" stroke="#1E9E62" stroke-width="3" fill="none" marker-end="url(#ahg)"/>
+      </g>
+
+      <rect x="70" y="266" width="16" height="16" rx="4" fill="#2E6FB7" stroke="#16130F" stroke-width="2"/>
+      <text class="lbl sm" x="94" y="279">读白板</text>
+      <rect x="180" y="266" width="16" height="16" rx="4" fill="#1E9E62" stroke="#16130F" stroke-width="2"/>
+      <text class="lbl sm" x="204" y="279">把增量加回白板</text>
+    </svg>
+    <p class="note" style="font-size:15.5px;margin-top:18px">
+      图里每个「第 N 层」方块，里面都是 <b>Attention + FFN 两个子层</b>（第 4 节）—— 也就是<b>读两次、写两次</b>白板。这里画成一个方块只是为了看清白板本身。
+    </p>
+  </div>
+
+  <div class="card grid2">
+    <div class="panel">
+      <h4>为什么这个视角有用</h4>
+      <p style="font-size:15.5px">因为它解释了为什么<b>浅层的信息能直接被深层用到</b>——白板上一直在。不需要中间每层都「转述」一遍。</p>
+    </div>
+    <div class="panel">
+      <h4>可解释性也靠它</h4>
+      <p style="font-size:15.5px">研究者把残差流当模型的<b>工作内存</b>：某一层往里写了什么向量、后面哪一层读走了它，是可以逐层量出来的。这是「电路分析」类工作的基础。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 7 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">7</span><h2>代价：白板会越写越挤</h2></div>
+  <p class="lede">一直往上加，数值就一直变大。所以残差从来不单独出现，总带着两个配套。</p>
+
+  <div class="card grid3">
+    <div class="panel" style="background:#FDEDE7">
+      <h4>① 归一化</h4>
+      <p style="font-size:15px">每次读白板之前先 RMSNorm / LayerNorm 缩回合适量级，再交给子层算。<b>只归一化副本，不动主干。</b></p>
+    </div>
+    <div class="panel" style="background:#FFF6DE">
+      <h4>② 收尾再归一化</h4>
+      <p style="font-size:15px">出模型前有一个 final norm，把攒了几十层的白板整理一次，才交给输出层。</p>
+    </div>
+    <div class="panel" style="background:#E8F1FA">
+      <h4>③ 开局让 f(x)≈0</h4>
+      <p style="font-size:15px">初始化时把子层最后一层权重压得很小，整个网络开局近似「什么都不做」，从最稳的状态开始学。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="big" style="font-size:clamp(20px,3vw,28px)">显存上的一点代价</div>
+    <p class="note" style="font-size:16px">加号本身不要参数、不要算力。但反向传播需要主干上的 <span class="mono">x</span>，所以每个残差点的<b>激活值得留着</b>。这就是训练比推理吃显存的原因之一——不是残差的锅，但残差点是这些激活的落脚处。</p>
+  </div>
+</section>
+
+<!-- ================= 8 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">8</span><h2>代码上就差一个 <span class="mono">x +</span></h2></div>
+
+  <div class="card">
+<pre><span class="c"># 没有残差：每层重写主干（深了就训不动）</span>
+x = attn(norm(x))
+x = ffn(norm(x))
+
+<span class="c"># 有残差：现代 LLM 每个 block 的全部内容</span>
+x = <span class="k">x +</span> attn(norm(x))   <span class="c"># ← 加号在这</span>
+x = <span class="k">x +</span> ffn(norm(x))    <span class="c"># ← 加号在这</span>
+</pre>
+    <p class="note" style="font-size:16.5px;font-weight:700;margin-top:20px">两个字符。深度学习能从 20 层做到 100+ 层，一半功劳在这两个字符上。</p>
+  </div>
+</section>
+
+<!-- ================= 9 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">9</span><h2>名词对照</h2></div>
+  <p class="lede">同一件事有很多叫法，看到别慌，都是那个加号。</p>
+
+  <div class="tblwrap">
+    <table class="tbl">
+      <tr><th>你会看到的词</th><th>意思</th></tr>
+      <tr><td>残差连接 / Residual connection</td><td>本页主角。<span class="mono">out = x + f(x)</span></td></tr>
+      <tr><td>Skip connection / Shortcut</td><td>同一个东西的别名，强调「有条路绕过了子层」</td></tr>
+      <tr><td>恒等映射 / Identity mapping</td><td>指那条什么都不做的主干路径本身</td></tr>
+      <tr><td>残差流 / Residual stream</td><td>把整条主干看成一块贯穿全模型的白板（第 6 节）</td></tr>
+      <tr><td>残差块 / Residual block</td><td>「子层 + 一个加号」打包成的最小单元</td></tr>
+      <tr><td>子层 / Sub-layer</td><td>被一个残差包住的那个算子本身。Transformer 里就两种：<b>Attention</b> 和 <b>FFN</b></td></tr>
+      <tr><td>层 / Layer / Block</td><td>口语里的「一层」= 两个子层 + 两个加号。GPT-3 的 96 层 = 192 个加号（第 4 节）</td></tr>
+      <tr><td>Pre-LN / Post-LN</td><td>归一化放在支路里（现代）还是压在主干上（2017 原版）</td></tr>
+      <tr><td>ResNet</td><td>2015 年把这招做火的图像模型，152 层。Transformer 直接继承</td></tr>
+      <tr><td>Highway network</td><td>更早的近亲，用一个「闸门」控制放多少原话过去。残差是它的极简版：闸门恒开</td></tr>
+      <tr><td>梯度消失 / 爆炸</td><td>残差要治的病：反传信号被连乘成 0 或炸上天（第 2 节）</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ================= PUNCH ================= -->
+<div class="punch reveal">
+  <div class="big">层不是流水线上的工人，<br>是围着<span style="color:var(--yel)">同一块白板</span>贴便签的人。</div>
+  <p>加号让「原话」永远不丢 —— 这是<b style="color:#fff">前向</b>。<br>
+  加号让「该怎么改」的信号永远不消失 —— 这是<b style="color:#fff">反向</b>。<br><br>
+  一个不占参数、不占算力的加号，同时解决了这两件事。<br>
+  所以它出现在你见过的每一个 Transformer 里，一个都没落下。</p>
+</div>
+
+</div>
+
+<script>
+const io = new IntersectionObserver((es)=>{
+  es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:0.08});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+const sl=document.getElementById('sl'), dv=document.getElementById('dv');
+const b1=document.getElementById('b1'), v1=document.getElementById('v1'), hint=document.getElementById('hint');
+function fmt(p){
+  if(p>=0.01) return (p*100).toFixed(1)+'%';
+  if(p>=1e-7) return (p*100).toFixed(9).replace(/0+$/,'')+'%';
+  return (p*100).toExponential(1)+' %';
+}
+function render(){
+  const n=+sl.value, p=Math.pow(0.8,n);
+  dv.textContent=n;
+  b1.style.width=Math.max(0.4,(1+Math.log10(p)/12)*100)+'%';
+  v1.textContent=fmt(p);
+  hint.textContent = n<=8  ? '浅网络：没残差也还能训，这就是 2012 年前后的世界。'
+                   : n<=25 ? '开始吃力：底层收到的信号已经不到千分之一。'
+                   : n<=60 ? '基本废了：底层参数几乎不动，加层等于白加。'
+                           : '完全断了：这个深度上，没有残差就没有现代 LLM。';
+}
+sl.addEventListener('input',render); render();
+</script>
+</body>
+</html>

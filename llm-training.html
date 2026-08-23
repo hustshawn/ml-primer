@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM 训练 · 给懂推理的人</title>
+<style>
+:root{
+  --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B; --line:#16130F;
+  --fwd:#E4572E; --bwd:#2E6FB7; --upd:#1E9E62; --pur:#7B4FBF; --yel:#F2B705;
+  --card:#FFFFFF;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(#00000010 1px, transparent 1px);
+  background-size:28px 28px;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:0 24px 140px}
+
+/* ---------- hero ---------- */
+.hero{padding:110px 0 70px; text-align:center}
+.kicker{display:inline-block; font-size:14px; letter-spacing:.22em; font-weight:700;
+  border:2px solid var(--ink); padding:7px 16px; border-radius:100px; background:var(--yel)}
+h1{font-size:clamp(40px,7.5vw,86px); line-height:1.02; font-weight:900; letter-spacing:-.03em; margin:26px 0 0}
+h1 em{font-style:normal; color:var(--fwd)}
+.sub{font-size:clamp(17px,2.4vw,23px); color:var(--muted); margin-top:22px; font-weight:500}
+.eqbox{margin:48px auto 0; max-width:820px; background:var(--card); border:3px solid var(--ink);
+  border-radius:22px; box-shadow:8px 8px 0 var(--ink); padding:34px 26px}
+.eqrow{display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; font-weight:800; font-size:clamp(15px,2.2vw,21px)}
+.eqrow + .eqrow{margin-top:20px; padding-top:20px; border-top:2px dashed #00000022}
+.tag{padding:8px 14px; border-radius:12px; border:2px solid var(--ink); background:#fff; white-space:nowrap}
+.tag.f{background:var(--fwd); color:#fff}
+.tag.b{background:var(--bwd); color:#fff}
+.tag.u{background:var(--upd); color:#fff}
+.tag.ghost{border-style:dashed; color:var(--muted); background:#F3F0EA}
+.eqlabel{width:104px; text-align:right; font-size:14px; color:var(--muted); font-weight:700; flex:0 0 104px}
+@media(max-width:640px){.eqlabel{width:auto; flex:none; text-align:left}}
+
+/* ---------- sections ---------- */
+section{margin-top:104px}
+.num{display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px;
+  border-radius:50%; background:var(--ink); color:var(--bg); font-weight:900; font-size:20px; flex:0 0 46px}
+.head{display:flex; gap:18px; align-items:center; margin-bottom:10px}
+h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; line-height:1.15}
+.lede{font-size:clamp(16px,2vw,19px); color:var(--muted); max-width:760px; margin-left:64px; font-weight:500}
+@media(max-width:640px){.lede{margin-left:0}}
+
+.card{background:var(--card); border:3px solid var(--ink); border-radius:22px;
+  box-shadow:8px 8px 0 var(--ink); padding:30px; margin-top:30px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+.grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:18px}
+@media(max-width:820px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+
+.big{font-size:clamp(30px,5vw,52px); font-weight:900; line-height:1; letter-spacing:-.03em}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.note{font-size:15px; color:var(--muted); margin-top:10px}
+.pill{display:inline-block; font-size:13px; font-weight:800; padding:4px 11px; border-radius:100px; border:2px solid var(--ink); background:var(--yel)}
+
+/* loop */
+.loop{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; align-items:stretch}
+@media(max-width:820px){.loop{grid-template-columns:1fr}}
+.step{border:3px solid var(--ink); border-radius:18px; padding:20px; position:relative; background:#fff}
+.step .n{font-size:12px; font-weight:900; letter-spacing:.16em; color:var(--muted)}
+.step h4{font-size:21px; font-weight:900; margin:6px 0 8px}
+.step p{font-size:14.5px; color:var(--muted)}
+.step.s1{background:#FDEDE7} .step.s2{background:#FFF6DE}
+.step.s3{background:#E8F1FA} .step.s4{background:#E6F6EE}
+.loopnote{margin-top:18px; text-align:center; font-weight:800; font-size:15px;
+  background:var(--ink); color:var(--bg); padding:12px; border-radius:100px}
+
+/* prob bars */
+.pb{display:grid; grid-template-columns:88px 1fr 74px; gap:12px; align-items:center; margin:9px 0; font-weight:700}
+.pb .bar{height:26px; border:2px solid var(--ink); border-radius:6px; background:#F1EDE6; overflow:hidden}
+.pb .bar i{display:block; height:100%; background:var(--fwd)}
+.pb.hit .bar i{background:var(--upd)}
+.pb .v{font-size:14px; color:var(--muted); font-family:ui-monospace,Menlo,monospace}
+
+/* memory bars */
+.mem{margin-top:8px}
+.membar{display:flex; height:56px; border:3px solid var(--ink); border-radius:12px; overflow:hidden; background:#F1EDE6}
+.membar span{display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#fff;
+  border-right:2px solid var(--ink); overflow:hidden; white-space:nowrap}
+.membar span:last-child{border-right:none}
+.memlab{display:flex; justify-content:space-between; align-items:baseline; margin:22px 0 8px; font-weight:900}
+.memlab b{font-size:19px} .memlab i{font-style:normal; font-family:ui-monospace,Menlo,monospace; font-size:16px; color:var(--muted)}
+.legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:16px; font-size:13.5px; font-weight:700; color:var(--muted)}
+.legend i{display:inline-block; width:14px; height:14px; border:2px solid var(--ink); border-radius:3px; margin-right:6px; vertical-align:-2px}
+
+/* split panels */
+.panel{border:3px solid var(--ink); border-radius:18px; padding:22px; background:#fff}
+.panel h4{font-size:20px; font-weight:900; margin-bottom:6px; display:flex; align-items:center; gap:9px}
+.panel h4 .dot{width:13px; height:13px; border-radius:50%; border:2px solid var(--ink)}
+.panel p{font-size:15px; color:var(--muted)}
+.panel ul{margin:10px 0 0 18px; font-size:15px; color:var(--muted)}
+.panel li{margin:5px 0}
+.panel .cost{margin-top:14px; font-size:13px; font-weight:800; padding:7px 11px; border-radius:9px;
+  background:#F3F0EA; border:2px solid var(--ink); display:inline-block}
+
+/* gpu grid viz */
+.gpus{display:flex; gap:6px; margin:14px 0 4px; flex-wrap:wrap}
+.gpu{width:44px; height:52px; border:2px solid var(--ink); border-radius:7px; background:#fff;
+  display:flex; flex-direction:column; overflow:hidden; font-size:9px; font-weight:900}
+.gpu div{flex:1; display:flex; align-items:center; justify-content:center; color:#fff}
+
+/* pipeline stages */
+.stage{border:3px solid var(--ink); border-left-width:12px; border-radius:16px; padding:20px 22px; background:#fff; margin-top:16px}
+.stage h4{font-size:21px; font-weight:900; display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
+.stage h4 small{font-size:13px; font-weight:700; color:var(--muted)}
+.stage p{font-size:15.5px; color:var(--muted); margin-top:8px}
+.stage .out{margin-top:12px; font-size:14px; font-weight:800; background:var(--yel); border:2px solid var(--ink);
+  padding:7px 12px; border-radius:100px; display:inline-block}
+
+/* table */
+.tbl{width:100%; border-collapse:collapse; font-size:15.5px}
+.tbl th{background:var(--ink); color:var(--bg); padding:14px; text-align:left; font-weight:800; font-size:14px; letter-spacing:.04em}
+.tbl td{padding:13px 14px; border-bottom:2px solid #00000012; vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td:first-child{font-weight:800; width:38%}
+.tbl td:last-child{color:var(--muted)}
+.tblwrap{overflow-x:auto; border:3px solid var(--ink); border-radius:20px; box-shadow:8px 8px 0 var(--ink); margin-top:30px; background:#fff}
+
+/* roadmap */
+.road{counter-reset:r}
+.rstep{display:flex; gap:18px; align-items:flex-start; padding:18px 0; border-bottom:2px dashed #00000020}
+.rstep:last-child{border-bottom:none}
+.rstep .rn{counter-increment:r; flex:0 0 40px; height:40px; border-radius:11px; background:var(--ink); color:var(--bg);
+  display:flex; align-items:center; justify-content:center; font-weight:900; font-size:18px}
+.rstep .rn::before{content:counter(r)}
+.rstep h4{font-size:19px; font-weight:900}
+.rstep p{font-size:15px; color:var(--muted); margin-top:4px}
+
+.punch{margin-top:100px; background:var(--ink); color:var(--bg); border-radius:26px; padding:52px 34px; text-align:center;
+  box-shadow:10px 10px 0 var(--fwd)}
+.punch .big{font-size:clamp(26px,4.6vw,46px)}
+.punch p{color:#C9C2B8; margin-top:20px; font-size:17px; max-width:640px; margin-left:auto; margin-right:auto}
+
+.reveal{opacity:0; transform:translateY(22px); transition:opacity .55s ease, transform .55s ease}
+.reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <span class="kicker">给已经懂推理的你</span>
+  <h1>训练 = 推理<br><em>+ 两步</em></h1>
+  <p class="sub">你熟悉的前向传播，就是训练的第一步。<br>剩下要补的，只有「算错多少」和「怎么改」。</p>
+
+  <div class="eqbox">
+    <div class="eqrow">
+      <span class="eqlabel">推理</span>
+      <span class="tag f">前向</span> → <span class="tag">出 token</span> → <span class="tag ghost">中间结果丢掉</span>
+    </div>
+    <div class="eqrow">
+      <span class="eqlabel">训练</span>
+      <span class="tag f">前向</span> → <span class="tag" style="background:var(--yel)">算 loss</span> →
+      <span class="tag b">反向</span> → <span class="tag u">改权重</span>
+      <span class="tag ghost">中间结果全留着</span>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 1 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">1</span><h2>一圈四步，重复一百万次</h2></div>
+  <p class="lede">整个训练就是这四步循环。别的全是「怎么把这四步塞进显卡」的工程问题。</p>
+
+  <div class="card">
+    <div class="loop">
+      <div class="step s1"><div class="n">STEP 1 · FORWARD</div><h4>猜</h4>
+        <p>「今天天气真 ___」<br>模型输出一整个概率分布。<br><b>这一步你已经会了。</b></p></div>
+      <div class="step s2"><div class="n">STEP 2 · LOSS</div><h4>对答案</h4>
+        <p>真答案是「好」。<br>模型给「好」的概率越低，loss 越大。<br>loss = 惊讶程度。</p></div>
+      <div class="step s3"><div class="n">STEP 3 · BACKWARD</div><h4>追责</h4>
+        <p>从输出往回问每个权重：<br>「这次错，你占多少责任？」<br>答案叫<b>梯度</b>。</p></div>
+      <div class="step s4"><div class="n">STEP 4 · UPDATE</div><h4>拧旋钮</h4>
+        <p>优化器让每个权重<br>沿梯度反方向挪一小步<br>（步长 = learning rate）。</p></div>
+    </div>
+    <div class="loopnote">没人教它语法、事实、推理 —— 只压「猜下一个词」这一件事，能力是副产品</div>
+  </div>
+</section>
+
+<!-- ================= 2 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">2</span><h2>Loss 就是「有多意外」</h2></div>
+  <p class="lede">唯一要记的公式：loss = −log(正确答案的概率)。猜中了≈0，猜歪了→很大。</p>
+
+  <div class="card grid2">
+    <div>
+      <div class="pill">模型输出的概率分布</div>
+      <div style="margin-top:16px">
+        <div class="pb hit"><span>好 ✅</span><div class="bar"><i style="width:40%"></i></div><span class="v">0.40</span></div>
+        <div class="pb"><span>热</span><div class="bar"><i style="width:30%"></i></div><span class="v">0.30</span></div>
+        <div class="pb"><span>冷</span><div class="bar"><i style="width:12%"></i></div><span class="v">0.12</span></div>
+        <div class="pb"><span>香蕉</span><div class="bar"><i style="width:1%"></i></div><span class="v">0.001</span></div>
+      </div>
+      <p class="note">推理时你在这里做采样（temperature / top-p）。<br>训练时你在这里<b>算账</b>。</p>
+    </div>
+    <div>
+      <div class="pill" style="background:#E8F1FA">−log 曲线：越不确定，罚得越狠</div>
+      <svg viewBox="0 0 300 190" style="width:100%;margin-top:14px">
+        <line x1="34" y1="160" x2="290" y2="160" stroke="#16130F" stroke-width="3"/>
+        <line x1="34" y1="14" x2="34" y2="160" stroke="#16130F" stroke-width="3"/>
+        <path d="M40 12 C70 90 110 128 160 143 C210 155 250 158 288 159" fill="none" stroke="#2E6FB7" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="136" cy="139" r="7" fill="#1E9E62" stroke="#16130F" stroke-width="3"/>
+        <text x="146" y="132" font-size="13" font-weight="800" fill="#16130F">p=0.4 → loss 0.92</text>
+        <circle cx="45" cy="28" r="7" fill="#E4572E" stroke="#16130F" stroke-width="3"/>
+        <text x="56" y="26" font-size="13" font-weight="800" fill="#16130F">p=0.001 → loss 6.9</text>
+        <text x="150" y="182" font-size="12" font-weight="700" fill="#6E655B">正确答案的概率 →</text>
+      </svg>
+      <p class="note">训练前期 loss 从 ~10 掉到 ~2 就是模型「学会说人话」的过程。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">3</span><h2>显存账本：训练 ≈ 推理的 8 倍</h2></div>
+  <p class="lede">这是从推理跨到训练最该先看的一页。同一个 7B 模型，bf16：</p>
+
+  <div class="card mem">
+    <div class="memlab"><b>推理</b><i>14 GB　·　2 字节/参数</i></div>
+    <div class="membar">
+      <span style="width:12.5%;background:var(--fwd)">权重 14</span>
+      <span style="width:87.5%;background:#F1EDE6;color:var(--muted);border-left:2px dashed #16130F">空 ＋ KV cache 随并发涨</span>
+    </div>
+
+    <div class="memlab"><b>训练</b><i>112 GB　·　16 字节/参数</i></div>
+    <div class="membar">
+      <span style="width:12.5%;background:var(--fwd)">权重 14</span>
+      <span style="width:12.5%;background:var(--bwd)">梯度 14</span>
+      <span style="width:25%;background:var(--upd)">fp32 主权重 28</span>
+      <span style="width:25%;background:var(--pur)">动量 m 28</span>
+      <span style="width:25%;background:#B0453B">方差 v 28</span>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--fwd)"></i>前向要的（推理也有）</span>
+      <span><i style="background:var(--bwd)"></i>反向产生的</span>
+      <span><i style="background:var(--upd)"></i><i style="background:var(--pur)"></i><i style="background:#B0453B"></i>AdamW 的三份状态</span>
+    </div>
+    <p class="note" style="margin-top:18px"><b>而且这还没算激活值。</b>AdamW 给每个参数额外记两个数（动量、方差），再加一份 fp32 主权重防止小梯度被 bf16 吃掉 —— 这就是 2+2+4+4+4 = 16 字节的来历。</p>
+  </div>
+</section>
+
+<!-- ================= 4 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">4</span><h2>第五个吃显存的：激活值</h2></div>
+  <p class="lede">反向传播要用到前向的每一个中间结果，所以前向算出来的东西<b>不能扔</b>。这是你在推理端从没遇到的开销。</p>
+
+  <div class="grid2">
+    <div class="card" style="margin-top:24px">
+      <h4 style="font-size:21px;font-weight:900">它随什么涨？</h4>
+      <p class="note" style="font-size:16px;margin-top:10px">
+        激活值 ∝ <b>batch × 序列长度 × 层数</b><br><br>
+        把 batch 或 context 翻倍，它就翻倍。长上下文训练之所以贵，主要贵在这里，不在权重。
+      </p>
+      <span class="cost" style="margin-top:16px;display:inline-block">实践里：OOM 第一反应就是砍 batch</span>
+    </div>
+    <div class="card" style="margin-top:24px;background:#E8F1FA">
+      <h4 style="font-size:21px;font-weight:900">Gradient Checkpointing</h4>
+      <p class="note" style="font-size:16px;margin-top:10px">
+        只存每层入口，中间的<b>反向时重算一遍</b>。<br>
+        显存大降，算力多花约 30%。
+      </p>
+      <p style="margin-top:16px;font-weight:800;font-size:16px;border-top:2px dashed #16130F;padding-top:14px">
+        📌 和你熟的方向正好相反：<br>
+        推理：<span class="mono">用显存换算力</span>（KV cache）<br>
+        训练：<span class="mono">用算力换显存</span>（重算）
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">5</span><h2>一张卡装不下 → 四种切法</h2></div>
+  <p class="lede">你在推理端只需要 TP。训练要把下面几种叠着用（业内叫 3D / 4D 并行）。</p>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="panel">
+      <h4><span class="dot" style="background:var(--fwd)"></span>DP · 数据并行</h4>
+      <p>每张卡放<b>一整份</b>模型，喂不同数据；每步把梯度 all-reduce 求平均。</p>
+      <div class="gpus">
+        <div class="gpu"><div style="background:var(--fwd)">全</div></div>
+        <div class="gpu"><div style="background:var(--fwd)">全</div></div>
+        <div class="gpu"><div style="background:var(--fwd)">全</div></div>
+        <div class="gpu"><div style="background:var(--fwd)">全</div></div>
+      </div>
+      <span class="cost">最简单 · 但每卡仍要 112GB</span>
+    </div>
+
+    <div class="panel">
+      <h4><span class="dot" style="background:var(--upd)"></span>ZeRO / FSDP · 切状态</h4>
+      <p>把权重、梯度、优化器状态<b>拆开分给各卡</b>，用到时临时聚回来。显存 ÷ N。</p>
+      <div class="gpus">
+        <div class="gpu"><div style="background:var(--upd)">¼</div></div>
+        <div class="gpu"><div style="background:var(--upd)">¼</div></div>
+        <div class="gpu"><div style="background:var(--upd)">¼</div></div>
+        <div class="gpu"><div style="background:var(--upd)">¼</div></div>
+      </div>
+      <span class="cost">拿通信换显存 · 微调最常用</span>
+    </div>
+
+    <div class="panel">
+      <h4><span class="dot" style="background:var(--bwd)"></span>TP · 张量并行</h4>
+      <p>把每个大矩阵横竖切开，<b>一层内部</b>就要通信。你在推理端已经熟这个。</p>
+      <div class="gpus">
+        <div class="gpu"><div style="background:var(--bwd)">左</div></div>
+        <div class="gpu"><div style="background:var(--bwd)">右</div></div>
+      </div>
+      <span class="cost">必须同机 NVLink，跨机会被网络掐死</span>
+    </div>
+
+    <div class="panel">
+      <h4><span class="dot" style="background:var(--pur)"></span>PP · 流水线并行</h4>
+      <p>按层切：卡1 跑 0–7 层，卡2 跑 8–15 层。会有<b>气泡</b>（卡在等前一段），用 micro-batch 填。</p>
+      <div class="gpus">
+        <div class="gpu"><div style="background:var(--pur);font-size:8px">L0-7</div></div>
+        <div class="gpu"><div style="background:var(--pur);font-size:8px">L8-15</div></div>
+        <div class="gpu"><div style="background:var(--pur);font-size:8px">L16-23</div></div>
+        <div class="gpu"><div style="background:var(--pur);font-size:8px">L24-31</div></div>
+      </div>
+      <span class="cost">跨机友好 · 但要调度</span>
+    </div>
+  </div>
+
+  <div class="card" style="background:var(--ink);color:var(--bg);border-color:var(--ink);box-shadow:8px 8px 0 var(--bwd)">
+    <div class="big" style="font-size:clamp(22px,3.4vw,34px)">每一步都要全集群同步一次梯度。</div>
+    <p style="color:#C9C2B8;margin-top:14px;font-size:16.5px">
+      所以训练里<b style="color:#fff">网络是一等公民</b>（NVLink / EFA / InfiniBand）。<br>
+      推理只在 TP 组内通信，训练是几百上千张卡每步握一次手 —— 一张慢卡拖垮全队。
+    </p>
+  </div>
+</section>
+
+<!-- ================= 6 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">6</span><h2>精度：训练不能像推理那样狂量化</h2></div>
+  <p class="lede">你习惯 int8 / fp4 越小越好。训练不行 —— 梯度是很小的数，低精度会直接把它抹成 0。</p>
+
+  <div class="grid3">
+    <div class="card" style="margin-top:24px">
+      <div class="pill" style="background:#F1EDE6">算的时候</div>
+      <div class="big" style="margin-top:12px">bf16</div>
+      <p class="note">动态范围大，不用 loss scaling。今天的默认。<br>（fp16 范围窄，需要 loss scaling 兜着，容易 NaN。）</p>
+    </div>
+    <div class="card" style="margin-top:24px">
+      <div class="pill" style="background:#E6F6EE">存的时候</div>
+      <div class="big" style="margin-top:12px">fp32</div>
+      <p class="note">主权重和优化器状态用 fp32。<br>否则一次 1e-7 的更新加到 bf16 权重上 = 什么都没发生。</p>
+    </div>
+    <div class="card" style="margin-top:24px">
+      <div class="pill" style="background:#FDEDE7">前沿</div>
+      <div class="big" style="margin-top:12px">fp8</div>
+      <p class="note">H100 / B200 上已实用，能省一大截，但要选择性使用、盯着数值稳定性。</p>
+    </div>
+  </div>
+  <p class="note" style="margin-top:20px;font-size:17px;text-align:center;font-weight:800;color:var(--ink)">
+    一句话记：<span style="background:var(--yel);padding:3px 8px;border-radius:6px">训练要动态范围，推理只要够用的分辨率。</span>
+  </p>
+</section>
+
+<!-- ================= 7 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">7</span><h2>四段流水线 —— 和你在推理端见过的模型对上号</h2></div>
+  <p class="lede">同一家的 base / instruct / reasoning 三种权重，就是这条流水线上的三个出口。</p>
+
+  <div class="stage" style="border-left-color:var(--fwd)">
+    <h4>① 预训练 Pretraining <small>万亿 token · 千卡 · 数周 · 千万美元级</small></h4>
+    <p>只做一件事：猜下一个词。喂全互联网。这一步造出所有的知识和语言能力。</p>
+    <div class="out">出 base model：只会续写，不会听指令</div>
+  </div>
+
+  <div class="stage" style="border-left-color:var(--yel)">
+    <h4>② 继续预训练 <small>百亿 token 级 · 几十卡 · 几天</small></h4>
+    <p>灌行业语料、新语言、或者把上下文从 8K 扩到 128K。<b>真正要「教新知识」时做这一步</b>，不是 LoRA。</p>
+    <div class="out">出 领域 base model</div>
+  </div>
+
+  <div class="stage" style="border-left-color:var(--bwd)">
+    <h4>③ SFT 指令微调 <small>几千 ~ 几十万条（问，答）对 · 单机 · 几小时</small></h4>
+    <p>给它示范怎么对话。技术要点：<b>只在「答」的部分算 loss</b>，把 prompt 部分 mask 掉。</p>
+    <div class="out">出 instruct model：你平时调 API 用的就是它</div>
+  </div>
+
+  <div class="stage" style="border-left-color:var(--upd)">
+    <h4>④ 偏好对齐 / RL <small>让它答得「好」，而不只是「像」</small></h4>
+    <p style="margin-bottom:12px">SFT 只会模仿；这一步告诉它什么答案更受欢迎、什么是对的。</p>
+    <ul style="margin-left:18px;font-size:15.5px;color:var(--muted)">
+      <li><b>RLHF（PPO）</b>：人标 A/B 偏好 → 训一个打分模型 → 强化学习。最强也最难，显存里要同时放 4 个模型。</li>
+      <li><b>DPO</b>：直接拿偏好对训，不要打分模型。简单稳定，入门首选。</li>
+      <li><b>GRPO / RLVR</b>：答案能自动判对错（数学、代码）→ 让模型自己一题采样几十个答案，对的加分。<b>这就是 reasoning model 的来源</b> —— 也是你在推理端看到 output token 暴涨、TPOT 变成主要成本的原因。</li>
+    </ul>
+    <div class="out">出 chat / reasoning model</div>
+  </div>
+
+  <div class="stage" style="border-left-color:var(--pur)">
+    <h4>＋ 蒸馏 Distillation</h4>
+    <p>大模型生成答案，小模型学着答。你在生产上部署的那些便宜小模型，多半是这么来的。</p>
+  </div>
+</section>
+
+<!-- ================= 8 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">8</span><h2>LoRA：你 90% 的场合只需要这个</h2></div>
+  <p class="lede">冻住原权重，旁边挂两个「瘦矩阵」，只训它们。参数量降到 0.1%~1%。</p>
+
+  <div class="card grid2">
+    <div>
+      <svg viewBox="0 0 320 210" style="width:100%">
+        <rect x="20" y="20" width="120" height="120" rx="8" fill="#F1EDE6" stroke="#16130F" stroke-width="3"/>
+        <text x="80" y="72" text-anchor="middle" font-size="15" font-weight="900" fill="#6E655B">原权重 W</text>
+        <text x="80" y="94" text-anchor="middle" font-size="13" font-weight="800" fill="#6E655B">🔒 冻住</text>
+        <text x="80" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#9A9188">d × d</text>
+
+        <text x="158" y="86" font-size="26" font-weight="900" fill="#16130F">+</text>
+
+        <rect x="185" y="20" width="26" height="120" rx="5" fill="#E4572E" stroke="#16130F" stroke-width="3"/>
+        <text x="198" y="86" text-anchor="middle" font-size="13" font-weight="900" fill="#fff" transform="rotate(-90 198 86)">A (d×r)</text>
+        <rect x="222" y="20" width="88" height="26" rx="5" fill="#2E6FB7" stroke="#16130F" stroke-width="3"/>
+        <text x="266" y="38" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">B (r×d)</text>
+        <text x="266" y="86" text-anchor="middle" font-size="13" font-weight="800" fill="#16130F">只训这两个</text>
+        <text x="266" y="106" text-anchor="middle" font-size="12" font-weight="700" fill="#6E655B">r = 8 ~ 64</text>
+
+        <line x1="20" y1="170" x2="310" y2="170" stroke="#16130F" stroke-width="2" stroke-dasharray="6 5"/>
+        <text x="165" y="194" text-anchor="middle" font-size="14" font-weight="800" fill="#16130F">可训练参数：从 70 亿 → 几百万</text>
+      </svg>
+    </div>
+    <div>
+      <div class="memlab" style="margin-top:0"><b>全量微调 7B</b><i>112 GB+</i></div>
+      <div class="membar" style="height:34px"><span style="width:100%;background:#B0453B">多卡起步</span></div>
+      <div class="memlab"><b>LoRA</b><i>≈ 20 GB</i></div>
+      <div class="membar" style="height:34px"><span style="width:18%;background:var(--fwd)">A100 单卡</span><span style="width:82%;background:#F1EDE6"></span></div>
+      <div class="memlab"><b>QLoRA</b><i>≈ 10 GB</i></div>
+      <div class="membar" style="height:34px"><span style="width:9%;background:var(--upd)"></span><span style="width:91%;background:#F1EDE6;color:var(--muted)">4bit 底座 · 游戏卡能跑</span></div>
+      <p class="note" style="margin-top:20px">
+        <b>能干什么：</b>风格、格式、口吻、领域术语、输出结构。<br>
+        <b>干不了什么：</b>灌大量新知识 —— 那要继续预训练，或者干脆用 RAG。<br><br>
+        <b>推理端：</b>可以 merge 回权重（零额外开销），也可以一个 base 挂多个 LoRA 动态切换。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 9 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">9</span><h2>真正的主角是数据</h2></div>
+  <p class="lede">架构决定上限，数据决定你实际拿到什么。微调阶段尤其如此。</p>
+
+  <div class="grid4">
+    <div class="card" style="margin-top:24px;padding:22px"><div class="big" style="font-size:34px">去重</div>
+      <p class="note">重复的样本会被死记硬背，还浪费算力。</p></div>
+    <div class="card" style="margin-top:24px;padding:22px"><div class="big" style="font-size:34px">配比</div>
+      <p class="note">代码 / 数学 / 多语言占比，直接决定模型有没有那项能力。</p></div>
+    <div class="card" style="margin-top:24px;padding:22px"><div class="big" style="font-size:34px">Packing</div>
+      <p class="note">多条短样本拼满一个 context，别让 padding 白烧 GPU。<br><i>≈ 推理端的连续批处理</i></p></div>
+    <div class="card" style="margin-top:24px;padding:22px"><div class="big" style="font-size:34px">1000&gt;10万</div>
+      <p class="note">1000 条精挑的样本，往往打败 10 万条脏数据。</p></div>
+  </div>
+
+  <div class="card" style="background:#FDEDE7">
+    <h4 style="font-size:21px;font-weight:900">⚠️ 灾难性遗忘</h4>
+    <p class="note" style="font-size:16px;margin-top:8px">只喂你的领域数据，模型的通用能力会明显退化（会说行话了，但不会聊天了）。
+    标准做法：<b>掺 5%~20% 的通用数据</b>，并且用低学习率、少 epoch。</p>
+  </div>
+</section>
+
+<!-- ================= 10 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">10</span><h2>算力：两个公式就能估成本</h2></div>
+  <p class="lede">你已经会算推理吞吐了，训练也一样简单。</p>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="panel" style="background:#E8F1FA">
+      <div class="pill" style="background:#fff">训练</div>
+      <div class="big mono" style="margin-top:14px">6 × N × D</div>
+      <p style="margin-top:10px">N = 参数量，D = 总 token 数。<br>（前向 2NP，反向再 4NP）</p>
+    </div>
+    <div class="panel" style="background:#FDEDE7">
+      <div class="pill" style="background:#fff">推理</div>
+      <div class="big mono" style="margin-top:14px">2 × N</div>
+      <p style="margin-top:10px">每生成一个 token 的 FLOPs。<br>你早就知道这个。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="pill">算一遍：7B 模型训 1T token</div>
+    <p class="mono" style="margin-top:14px;font-size:16px;line-height:2">
+      6 × 7e9 × 1e12 = <b>4.2e22 FLOPs</b><br>
+      H100 bf16 峰值 ≈ 990 TFLOPS，实际 MFU 取 40% → ≈ 400 TFLOPS/卡<br>
+      4.2e22 ÷ 4e14 ≈ 1.05e8 卡·秒 ≈ <b>1200 卡·天</b><br>
+      → 256 张 H100 跑 <b>≈ 5 天</b>
+    </p>
+    <div class="grid2" style="margin-top:22px">
+      <div>
+        <h4 style="font-size:19px;font-weight:900">MFU</h4>
+        <p class="note">实际 FLOPs ÷ 峰值 FLOPs。大规模训练能到 <b>35%~55% 就算不错</b>。<br>这就是训练端的「吞吐指标」，对应你熟的 tokens/s。</p>
+      </div>
+      <div>
+        <h4 style="font-size:19px;font-weight:900">Chinchilla 20:1</h4>
+        <p class="note">给定算力，最优的 token 数 ≈ 20 × 参数量。<br>但今天大家为了<b>推理便宜</b>，故意把小模型训到 100~1000 倍 token（超训）。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 11 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">11</span><h2>盯仪表盘：三种 loss 曲线</h2></div>
+  <p class="lede">训练时你 80% 的时间在看这一张图。</p>
+
+  <div class="grid3">
+    <div class="card" style="margin-top:24px">
+      <svg viewBox="0 0 220 130" style="width:100%">
+        <line x1="24" y1="110" x2="212" y2="110" stroke="#16130F" stroke-width="3"/>
+        <line x1="24" y1="10" x2="24" y2="110" stroke="#16130F" stroke-width="3"/>
+        <path d="M28 18 C70 60 110 88 210 100" fill="none" stroke="#1E9E62" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+      <h4 style="font-size:19px;font-weight:900;margin-top:8px">✅ 健康</h4>
+      <p class="note">前期陡降，后期缓慢下行。就这样。</p>
+    </div>
+    <div class="card" style="margin-top:24px">
+      <svg viewBox="0 0 220 130" style="width:100%">
+        <line x1="24" y1="110" x2="212" y2="110" stroke="#16130F" stroke-width="3"/>
+        <line x1="24" y1="10" x2="24" y2="110" stroke="#16130F" stroke-width="3"/>
+        <path d="M28 18 C60 55 80 70 110 72 L210 71" fill="none" stroke="#2E6FB7" stroke-width="5" stroke-linecap="round"/>
+        <path d="M110 72 C140 78 170 92 210 104" fill="none" stroke="#E4572E" stroke-width="4" stroke-dasharray="7 5" stroke-linecap="round"/>
+      </svg>
+      <h4 style="font-size:19px;font-weight:900;margin-top:8px">⚠️ 卡住 / 过拟合</h4>
+      <p class="note">train loss 还在降但 eval loss 抬头 = 过拟合，该停了。平了不动 = lr 太小或数据太少。</p>
+    </div>
+    <div class="card" style="margin-top:24px">
+      <svg viewBox="0 0 220 130" style="width:100%">
+        <line x1="24" y1="110" x2="212" y2="110" stroke="#16130F" stroke-width="3"/>
+        <line x1="24" y1="10" x2="24" y2="110" stroke="#16130F" stroke-width="3"/>
+        <path d="M28 30 C60 65 90 82 120 84 L135 84 L142 14 L150 60 C170 70 190 74 210 76" fill="none" stroke="#B0453B" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+      <h4 style="font-size:19px;font-weight:900;margin-top:8px">💥 Loss Spike</h4>
+      <p class="note">lr 太大、坏数据、数值溢出。做法：回滚到上个 checkpoint，跳过那批数据。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="pill" style="background:#FDEDE7">会坏的地方（按出现频率排）</div>
+    <p class="note" style="font-size:16px;margin-top:14px;line-height:2">
+      <b>1. OOM</b> —— 永远第一名。砍 batch → 开 gradient checkpointing → 上 ZeRO/FSDP。<br>
+      <b>2. NaN</b> —— 查 lr、精度、有没有脏样本。<br>
+      <b>3. dataloader 喂不上</b> —— GPU 在等 CPU，MFU 莫名很低。<br>
+      <b>4. 千卡里挂了一张卡</b> —— 整个 step 挂掉。<b>checkpoint 频率 = 你能承受亏几小时</b>。<br>
+      <b>5. straggler</b> —— 一张慢卡决定整个集群的 step time。
+    </p>
+  </div>
+</section>
+
+<!-- ================= 12 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">12</span><h2>翻译表：你熟的 ⇄ 训练里的</h2></div>
+  <p class="lede">直接把已有的直觉搬过去。</p>
+
+  <div class="tblwrap">
+  <table class="tbl">
+    <tr><th>你在推理端熟悉的</th><th>训练里对应的东西</th></tr>
+    <tr><td>前向传播</td><td>一模一样 —— 但中间结果必须留着给反向用</td></tr>
+    <tr><td>KV cache 吃显存</td><td>激活值吃显存（∝ batch × seq_len × 层数）</td></tr>
+    <tr><td>用显存换算力（cache 复用）</td><td>反过来：gradient checkpointing 用算力换显存</td></tr>
+    <tr><td>tokens/s 吞吐</td><td>MFU（35%~55% 算好）</td></tr>
+    <tr><td>TTFT / TPOT</td><td>step time（每步几百 ms ~ 几秒）+ 总步数</td></tr>
+    <tr><td>int8 / fp4 量化</td><td>混合精度：bf16 计算 + fp32 主权重</td></tr>
+    <tr><td>TP 切模型上多卡</td><td>DP + ZeRO/FSDP + TP + PP 叠着用</td></tr>
+    <tr><td>连续批处理，别让 GPU 空转</td><td>序列 packing，别让 padding 白烧</td></tr>
+    <tr><td>temperature / top-p 采样</td><td>RL 阶段真的要采样：GRPO 一道题采 8~64 个答案</td></tr>
+    <tr><td>base / instruct / reasoning 三种权重</td><td>分别是 预训练 / SFT / RL 三个阶段的出口</td></tr>
+    <tr><td>多 LoRA 共享一个 base 服务</td><td>那些 adapter 就是 LoRA 微调训出来的</td></tr>
+    <tr><td>NVLink / EFA 只在 TP 组内忙</td><td>每一步全集群 all-reduce 梯度 —— 网络是一等公民</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ================= 13 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">13</span><h2>动手顺序（照这个来最快）</h2></div>
+  <p class="lede">你已经有推理的底子，前三步会比一般人快得多。</p>
+
+  <div class="card road">
+    <div class="rstep"><div class="rn"></div><div>
+      <h4>手推一遍反向传播</h4>
+      <p>Karpathy 的 <span class="mono">micrograd</span>，两小时。看懂梯度是怎么一层层传回去的 —— 这是唯一必须亲手过一遍的东西。</p></div></div>
+    <div class="rstep"><div class="rn"></div><div>
+      <h4>跑通 nanoGPT</h4>
+      <p>在莎士比亚文本上训 10 分钟，亲眼看 loss 从 4 掉到 1.5，输出从乱码变成像样的句子。四步循环从此不再抽象。</p></div></div>
+    <div class="rstep"><div class="rn"></div><div>
+      <h4>用 HF TRL + LoRA 微调一个 7B</h4>
+      <p>单卡。重点不是效果，是<b>亲手撞一次 OOM</b>，然后靠调 batch / checkpointing / QLoRA 把它压进去。第 3、4 节的账本会瞬间变具体。</p></div></div>
+    <div class="rstep"><div class="rn"></div><div>
+      <h4>多卡：读 ZeRO 论文，跑 FSDP 或 DeepSpeed</h4>
+      <p>这是你和纯推理背景的人拉开差距的地方 —— 你本来就懂通信和拓扑。</p></div></div>
+    <div class="rstep"><div class="rn"></div><div>
+      <h4>做一次 DPO</h4>
+      <p>拿同一批 prompt 对比 SFT 前 / SFT 后 / DPO 后的输出。你会第一次真切感到「对齐」是什么意思。</p></div></div>
+    <div class="rstep"><div class="rn"></div><div>
+      <h4>读真实技术报告</h4>
+      <p>Chinchilla（配比）、Llama 3（工程细节、故障率）、DeepSeek-V3（MoE + fp8 + 并行策略）。这些比教科书有用得多。</p></div></div>
+  </div>
+</section>
+
+<!-- ================= PUNCH ================= -->
+<div class="punch reveal">
+  <div class="big">先问一句：<br>这事真的需要训练吗？</div>
+  <p>按这个顺序试，能停在哪就停在哪：<br>
+  <b style="color:#fff">Prompt → RAG → LoRA → 继续预训练 → 全量训练</b><br><br>
+  实际工作里，八成的「我要微调」用前两步就解决了。<br>
+  训练是最后手段，不是第一反应。</p>
+</div>
+
+</div>
+
+<script>
+const io = new IntersectionObserver((es)=>{
+  es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:0.08});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM 训练方式全景 · 四段人生</title>
+<style>
+:root{
+  --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B; --line:#16130F;
+  --s1:#E4572E; --s2:#F2B705; --s3:#2E6FB7; --s4:#7B4FBF;
+  --ok:#1E9E62; --card:#FFFFFF;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(#00000010 1px, transparent 1px);
+  background-size:28px 28px;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:0 24px 140px}
+
+/* ---------- hero ---------- */
+.hero{padding:110px 0 40px; text-align:center}
+.kicker{display:inline-block; font-size:14px; letter-spacing:.22em; font-weight:700;
+  border:2px solid var(--ink); padding:7px 16px; border-radius:100px; background:var(--s2)}
+h1{font-size:clamp(40px,7.5vw,86px); line-height:1.02; font-weight:900; letter-spacing:-.03em; margin:26px 0 0}
+h1 em{font-style:normal; color:var(--s1)}
+.sub{font-size:clamp(17px,2.4vw,23px); color:var(--muted); margin-top:22px; font-weight:500}
+
+/* ---------- big flow ---------- */
+.flow{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:52px; text-align:left}
+@media(max-width:900px){.flow{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.flow{grid-template-columns:1fr}}
+.fx{border:3px solid var(--ink); border-radius:20px; background:#fff; padding:22px 18px; position:relative;
+  box-shadow:6px 6px 0 var(--ink)}
+.fx .idx{font-size:12px; font-weight:900; letter-spacing:.16em; color:var(--muted)}
+.fx h3{font-size:clamp(20px,2.6vw,25px); font-weight:900; margin:6px 0 2px; letter-spacing:-.02em}
+.fx .en{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.04em}
+.fx .meta{margin-top:14px; font-size:14px; font-weight:700; color:var(--muted)}
+.fx .meta b{color:var(--ink)}
+.fx .out{margin-top:14px; font-size:13px; font-weight:900; border:2px solid var(--ink); border-radius:100px;
+  padding:6px 11px; display:inline-block}
+.fx .cap{position:absolute; top:-15px; left:18px; font-size:12px; font-weight:900; color:#fff;
+  border:2px solid var(--ink); border-radius:100px; padding:3px 12px}
+.fx.a{background:#FDEDE7} .fx.a .cap,.fx.a .out{background:var(--s1); color:#fff}
+.fx.b{background:#FFF6DE} .fx.b .cap,.fx.b .out{background:var(--s2); color:var(--ink)}
+.fx.c{background:#E8F1FA} .fx.c .cap,.fx.c .out{background:var(--s3); color:#fff}
+.fx.d{background:#F1E9FB} .fx.d .cap,.fx.d .out{background:var(--s4); color:#fff}
+.flownote{margin-top:26px; font-weight:800; font-size:15px; background:var(--ink); color:var(--bg);
+  padding:13px 20px; border-radius:100px; display:inline-block}
+
+/* ---------- sections ---------- */
+section{margin-top:104px}
+.num{display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px;
+  border-radius:50%; background:var(--ink); color:var(--bg); font-weight:900; font-size:20px; flex:0 0 46px}
+.head{display:flex; gap:18px; align-items:center; margin-bottom:10px}
+h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; line-height:1.15}
+.lede{font-size:clamp(16px,2vw,19px); color:var(--muted); max-width:800px; margin-left:64px; font-weight:500}
+@media(max-width:640px){.lede{margin-left:0}}
+
+.card{background:var(--card); border:3px solid var(--ink); border-radius:22px;
+  box-shadow:8px 8px 0 var(--ink); padding:30px; margin-top:30px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+.big{font-size:clamp(30px,5vw,52px); font-weight:900; line-height:1; letter-spacing:-.03em}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.note{font-size:15px; color:var(--muted); margin-top:12px}
+.pill{display:inline-block; font-size:13px; font-weight:800; padding:4px 11px; border-radius:100px; border:2px solid var(--ink); background:var(--s2)}
+
+/* ---------- 打分的人 ---------- */
+.who{display:grid; grid-template-columns:repeat(4,1fr); gap:16px}
+@media(max-width:820px){.who{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.who{grid-template-columns:1fr}}
+.wcell{border:3px solid var(--ink); border-radius:18px; padding:18px; background:#fff; text-align:center}
+.wcell .face{font-size:44px; line-height:1}
+.wcell h4{font-size:18px; font-weight:900; margin:10px 0 4px}
+.wcell p{font-size:13.5px; color:var(--muted); font-weight:600}
+.wcell .tagx{margin-top:12px; font-size:11.5px; font-weight:900; letter-spacing:.1em; border-radius:100px;
+  border:2px solid var(--ink); padding:4px 10px; display:inline-block}
+
+/* ---------- cost bar ---------- */
+.bar1{display:flex; height:62px; border:3px solid var(--ink); border-radius:14px; overflow:hidden; background:#F1EDE6; margin-top:16px}
+.bar1 span{display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:#fff;
+  white-space:nowrap; overflow:hidden; border-right:2px solid var(--ink)}
+.bar1 span:last-child{border-right:none}
+.barlab{display:flex; justify-content:space-between; align-items:baseline; margin:24px 0 4px; font-weight:900}
+.barlab b{font-size:18px} .barlab i{font-style:normal; font-size:14px; color:var(--muted); font-family:ui-monospace,Menlo,monospace}
+
+/* prob bars */
+.pb{display:grid; grid-template-columns:96px 1fr 70px; gap:12px; align-items:center; margin:9px 0; font-weight:700}
+.pb .bar{height:24px; border:2px solid var(--ink); border-radius:6px; background:#F1EDE6; overflow:hidden}
+.pb .bar i{display:block; height:100%; background:var(--s1)}
+.pb.hit .bar i{background:var(--ok)}
+.pb .v{font-size:13px; color:var(--muted); font-family:ui-monospace,Menlo,monospace}
+
+/* ---------- stage block ---------- */
+.stage{border:3px solid var(--ink); border-left-width:14px; border-radius:18px; padding:26px; background:#fff;
+  margin-top:30px; box-shadow:8px 8px 0 var(--ink)}
+.stage>h3{font-size:clamp(23px,3.4vw,32px); font-weight:900; letter-spacing:-.02em; display:flex; gap:12px; align-items:baseline; flex-wrap:wrap}
+.stage>h3 small{font-size:13px; font-weight:800; color:var(--muted); letter-spacing:.06em}
+.stage .oneline{font-size:clamp(17px,2.2vw,21px); font-weight:800; margin-top:12px}
+.kv{display:grid; grid-template-columns:repeat(4,1fr); gap:0; border:3px solid var(--ink); border-radius:14px;
+  overflow:hidden; margin-top:22px}
+@media(max-width:820px){.kv{grid-template-columns:1fr 1fr}}
+.kv div{padding:14px 16px; border-right:2px solid var(--ink); background:#F9F6F0}
+.kv div:last-child{border-right:none}
+@media(max-width:820px){.kv div{border-bottom:2px solid var(--ink)}}
+.kv b{display:block; font-size:11.5px; font-weight:900; letter-spacing:.14em; color:var(--muted); margin-bottom:6px}
+.kv span{font-size:15px; font-weight:800; line-height:1.35}
+
+.demo{margin-top:22px; border:3px dashed #00000030; border-radius:16px; padding:20px; background:#FCFAF6}
+.demo .lbl{font-size:11.5px; font-weight:900; letter-spacing:.14em; color:var(--muted)}
+
+/* variants */
+.vars{margin-top:24px}
+.vars>.lbl{font-size:12px; font-weight:900; letter-spacing:.16em; color:var(--muted)}
+.vrow{display:flex; gap:14px; align-items:flex-start; padding:14px 0; border-bottom:2px dashed #00000018}
+.vrow:last-child{border-bottom:none}
+.vrow .vn{flex:0 0 auto; font-size:13.5px; font-weight:900; border:2px solid var(--ink); border-radius:9px;
+  padding:5px 10px; background:#fff; white-space:nowrap}
+.vrow p{font-size:15px; color:var(--muted); font-weight:600; padding-top:4px}
+.vrow p b{color:var(--ink)}
+
+/* ---------- AB compare ---------- */
+.ab{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:6px}
+@media(max-width:560px){.ab{grid-template-columns:1fr}}
+.abx{border:3px solid var(--ink); border-radius:14px; padding:16px; background:#fff; font-size:15px; font-weight:600; color:var(--muted)}
+.abx .t{font-size:12px; font-weight:900; letter-spacing:.14em; color:var(--muted); margin-bottom:8px}
+.abx.win{background:#E6F6EE; box-shadow:5px 5px 0 var(--ok)}
+.abx.win .t{color:var(--ok)}
+
+/* ---------- rl loop ---------- */
+.rl{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:6px}
+@media(max-width:820px){.rl{grid-template-columns:1fr 1fr}}
+.rlx{border:3px solid var(--ink); border-radius:16px; padding:16px; background:#F1E9FB}
+.rlx .n{font-size:11.5px; font-weight:900; letter-spacing:.14em; color:var(--muted)}
+.rlx h5{font-size:17px; font-weight:900; margin:6px 0 6px}
+.rlx p{font-size:13.5px; color:var(--muted); font-weight:600}
+.loopback{margin-top:14px; text-align:center; font-weight:900; font-size:14px; background:var(--s4); color:#fff;
+  border:2px solid var(--ink); padding:10px; border-radius:100px}
+
+/* ---------- tree ---------- */
+.tree{margin-top:30px}
+.branch{border:3px solid var(--ink); border-radius:20px; background:#fff; margin-top:20px; overflow:hidden; box-shadow:8px 8px 0 var(--ink)}
+.branch>.bh{padding:16px 22px; font-weight:900; font-size:19px; color:#fff; display:flex; gap:12px; align-items:baseline; flex-wrap:wrap}
+.branch>.bh small{font-size:12px; font-weight:800; opacity:.85; letter-spacing:.06em}
+.branch.a>.bh{background:var(--s1)} .branch.b>.bh{background:var(--s2); color:var(--ink)}
+.branch.c>.bh{background:var(--s3)} .branch.d>.bh{background:var(--s4)}
+.branch.e>.bh{background:var(--ink)}
+.leaf{display:flex; gap:14px; padding:13px 22px; border-top:2px solid #00000012; align-items:flex-start}
+.leaf .ln{flex:0 0 190px; font-size:14.5px; font-weight:900; line-height:1.3}
+.leaf .ln small{display:block; font-size:11.5px; font-weight:800; color:var(--muted); letter-spacing:.03em}
+.leaf p{font-size:14.5px; color:var(--muted); font-weight:600}
+.leaf p b{color:var(--ink)}
+@media(max-width:640px){.leaf{flex-direction:column; gap:5px} .leaf .ln{flex:none}}
+.sublbl{padding:10px 22px; background:#F3F0EA; font-size:11.5px; font-weight:900; letter-spacing:.14em; color:var(--muted); border-top:2px solid #00000012}
+
+/* ---------- table ---------- */
+.tbl{width:100%; border-collapse:collapse; font-size:15px; min-width:760px}
+.tbl th{background:var(--ink); color:var(--bg); padding:14px; text-align:left; font-weight:800; font-size:13.5px; letter-spacing:.04em}
+.tbl td{padding:14px; border-bottom:2px solid #00000012; vertical-align:top; color:var(--muted); font-weight:600}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td:first-child{font-weight:900; color:var(--ink); width:20%}
+.tblwrap{overflow-x:auto; border:3px solid var(--ink); border-radius:20px; box-shadow:8px 8px 0 var(--ink); margin-top:30px; background:#fff}
+
+/* ---------- not training ---------- */
+.no{display:grid; grid-template-columns:repeat(2,1fr); gap:18px; margin-top:8px}
+@media(max-width:700px){.no{grid-template-columns:1fr}}
+.nox{border:3px solid var(--ink); border-radius:16px; padding:18px; background:#F9F6F0}
+.nox h5{font-size:18px; font-weight:900; display:flex; gap:9px; align-items:center}
+.nox p{font-size:14.5px; color:var(--muted); font-weight:600; margin-top:6px}
+.xmark{width:26px; height:26px; border-radius:50%; border:2px solid var(--ink); background:#fff;
+  display:inline-flex; align-items:center; justify-content:center; font-size:14px; font-weight:900; flex:0 0 26px}
+
+.punch{margin-top:100px; background:var(--ink); color:var(--bg); border-radius:26px; padding:52px 34px; text-align:center;
+  box-shadow:10px 10px 0 var(--s1)}
+.punch .big{font-size:clamp(24px,4.2vw,42px)}
+.punch p{color:#C9C2B8; margin-top:22px; font-size:17px; max-width:680px; margin-left:auto; margin-right:auto}
+.punch b{color:#fff}
+
+.reveal{opacity:0; transform:translateY(22px); transition:opacity .55s ease, transform .55s ease}
+.reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <span class="kicker">训练方式 · 全景图</span>
+  <h1>一个模型的<br><em>四段人生</em></h1>
+  <p class="sub">读书 → 学做事 → 学做人 → 学思考。<br>你听过的所有名词，都落在这四段里的某一格。</p>
+
+  <div class="flow">
+    <div class="fx a">
+      <span class="cap">第一段</span>
+      <div class="idx">占算力 ≈ 99%</div>
+      <h3>预训练</h3>
+      <div class="en">PRE-TRAINING</div>
+      <div class="meta">读完整个互联网<br><b>猜下一个字</b></div>
+      <div class="out">得到：会续写的大脑</div>
+    </div>
+    <div class="fx b">
+      <span class="cap">第二段</span>
+      <div class="idx">占算力 &lt; 1%</div>
+      <h3>监督微调</h3>
+      <div class="en">SFT</div>
+      <div class="meta">抄几万篇范文<br><b>照着标准答案学</b></div>
+      <div class="out">得到：会聊天的助手</div>
+    </div>
+    <div class="fx c">
+      <span class="cap">第三段</span>
+      <div class="idx">占算力 &lt; 1%</div>
+      <h3>偏好对齐</h3>
+      <div class="en">ALIGNMENT</div>
+      <div class="meta">两个答案二选一<br><b>学人类的口味</b></div>
+      <div class="out">得到：好用又安全</div>
+    </div>
+    <div class="fx d">
+      <span class="cap">第四段</span>
+      <div class="idx">算力占比在涨</div>
+      <h3>推理强化</h3>
+      <div class="en">REASONING RL</div>
+      <div class="meta">自己做题、自己对答案<br><b>只奖励做对的</b></div>
+      <div class="out">得到：会长时间思考</div>
+    </div>
+  </div>
+
+  <div class="flownote">第 2、3、4 段统称「后训练 Post-training」——它不是一种方法，是一个筐</div>
+</div>
+
+<!-- ================= 1 · 打分的人 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">1</span><h2>四段的区别，只在于「谁打分」</h2></div>
+  <p class="lede">别背名词。每一种训练方式，你只要问一句：<b>这次是谁在告诉模型对不对？</b> 答案不同，方法就不同。</p>
+
+  <div class="card">
+    <div class="who">
+      <div class="wcell" style="background:#FDEDE7">
+        <div class="face">📚</div>
+        <h4>没人打分</h4>
+        <p>下一个字本来是什么<br>文本自己就是答案</p>
+        <div class="tagx" style="background:var(--s1);color:#fff">预训练</div>
+      </div>
+      <div class="wcell" style="background:#FFF6DE">
+        <div class="face">✍️</div>
+        <h4>人写答案</h4>
+        <p>标注员亲手写下<br>「应该这么回」</p>
+        <div class="tagx" style="background:var(--s2)">SFT</div>
+      </div>
+      <div class="wcell" style="background:#E8F1FA">
+        <div class="face">👉</div>
+        <h4>人挑好坏</h4>
+        <p>写不出标准答案<br>但能选出更好的那个</p>
+        <div class="tagx" style="background:var(--s3);color:#fff">偏好对齐</div>
+      </div>
+      <div class="wcell" style="background:#F1E9FB">
+        <div class="face">🤖</div>
+        <h4>机器判对错</h4>
+        <p>答案等于 42 吗？<br>单元测试过了吗？</p>
+        <div class="tagx" style="background:var(--s4);color:#fff">推理 RL</div>
+      </div>
+    </div>
+    <p class="note" style="font-size:16px"><b>为什么要有第三、四段？</b>因为「好」有两种：一种是<b>说不清但能感觉到</b>的好（礼貌、有用、不啰嗦）→ 只能让人挑；另一种是<b>能被机器验证</b>的好（数学题、代码）→ 干脆让机器判，还能无限量地判。</p>
+  </div>
+</section>
+
+<!-- ================= 2 · 成本对比 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">2</span><h2>钱和数据，全砸在第一段</h2></div>
+  <p class="lede">这张图解释了为什么全世界只有几家公司做预训练，而人人都能做后训练。</p>
+
+  <div class="card">
+    <div class="barlab"><b>算力花在哪</b><i>数千万美元 vs 几万美元</i></div>
+    <div class="bar1">
+      <span style="width:97%;background:var(--s1)">预训练 ≈ 99%</span>
+      <span style="width:3%;background:var(--s3)"></span>
+    </div>
+    <p class="note" style="margin-top:8px">右边那条细缝，装着 SFT ＋ 对齐 ＋ RL 的全部。</p>
+
+    <div class="barlab"><b>数据量级</b><i>注意单位不一样</i></div>
+    <div style="margin-top:14px">
+      <div class="pb"><span>预训练</span><div class="bar"><i style="width:100%"></i></div><span class="v">~15 万亿字</span></div>
+      <div class="pb"><span>SFT</span><div class="bar"><i style="width:2%;background:var(--s2)"></i></div><span class="v">几万条</span></div>
+      <div class="pb"><span>偏好对齐</span><div class="bar"><i style="width:1.5%;background:var(--s3)"></i></div><span class="v">几万~百万对</span></div>
+      <div class="pb"><span>推理 RL</span><div class="bar"><i style="width:1%;background:var(--s4)"></i></div><span class="v">几万道题</span></div>
+    </div>
+    <p class="note" style="font-size:16px"><b>一句话：</b>知识几乎全部来自第一段。后面三段不教新知识，只教<b>怎么把已有的知识拿出来用</b>。这也是为什么微调解决不了「模型不知道我公司的事」——那是知识问题，该用检索或继续预训练。</p>
+  </div>
+</section>
+
+<!-- ================= 3 · 逐段展开 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">3</span><h2>四段各自在干什么</h2></div>
+  <p class="lede">每段一张卡：一句话本质 ＋ 数据长什么样 ＋ 这一格里都有哪些方法。</p>
+
+  <!-- 3.1 预训练 -->
+  <div class="stage" style="border-left-color:var(--s1)">
+    <h3>① 预训练 <small>PRE-TRAINING · 自监督</small></h3>
+    <div class="oneline">把整个互联网遮住最后一个字，让模型猜。猜错了就改自己。重复十万亿次。</div>
+
+    <div class="demo">
+      <div class="lbl">训练数据长这样 —— 就是普通文本，没有任何标注</div>
+      <div style="font-size:clamp(17px,2.4vw,22px);font-weight:800;margin:12px 0 16px">
+        「巴黎是法国的<span style="background:var(--s2);border:2px solid var(--ink);border-radius:8px;padding:2px 10px;margin:0 4px">首都</span>」
+      </div>
+      <div class="pb hit"><span>首都 ✅</span><div class="bar"><i style="width:62%"></i></div><span class="v">0.62</span></div>
+      <div class="pb"><span>城市</span><div class="bar"><i style="width:20%"></i></div><span class="v">0.20</span></div>
+      <div class="pb"><span>香蕉</span><div class="bar"><i style="width:1%"></i></div><span class="v">0.001</span></div>
+      <p class="note">没人教它地理、语法、编程、推理。<b>这些全是「拼命猜下一个字」的副产品。</b></p>
+    </div>
+
+    <div class="kv">
+      <div><b>监督信号</b><span>文本自己</span></div>
+      <div><b>人的参与</b><span>只筛数据，不标答案</span></div>
+      <div><b>时间</b><span>几周 ~ 几个月，几万张卡</span></div>
+      <div><b>产物</b><span>Base 模型：会续写，<br>不会听话</span></div>
+    </div>
+
+    <div class="vars">
+      <div class="lbl">这一格里的各种方法</div>
+      <div class="vrow"><span class="vn">因果语言建模 CLM</span><p>猜<b>下一个</b>字。今天所有生成式模型（GPT / Llama / Claude / DeepSeek）都是这个。</p></div>
+      <div class="vrow"><span class="vn">掩码语言建模 MLM</span><p>做<b>完形填空</b>（BERT 那一派）。擅长理解、不擅长生成，现在基本只用于向量／检索模型。</p></div>
+      <div class="vrow"><span class="vn">继续预训练 CPT / DAPT</span><p>拿别人训好的 Base 模型，<b>再喂一大堆你的领域语料</b>（医疗、法律、代码、中文）。这是唯一能真正「灌新知识」的训练方式，也是普通团队够得着的最重训练。</p></div>
+      <div class="vrow"><span class="vn">中期训练 / 退火 Annealing</span><p>预训练<b>快结束时换菜</b>：削掉低质网页，加大教科书、数学、代码比例，同时把学习率降下来。便宜、见效快，是近两年模型能力跃升的隐形功臣。</p></div>
+      <div class="vrow"><span class="vn">长上下文扩展</span><p>用少量长文档接着训，把位置编码「拉长」，让 8K 变 128K / 1M。属于预训练尾巴上的一道工序。</p></div>
+    </div>
+  </div>
+
+  <!-- 3.2 SFT -->
+  <div class="stage" style="border-left-color:var(--s2)">
+    <h3>② 监督微调 <small>SFT / INSTRUCTION TUNING · 有标准答案</small></h3>
+    <div class="oneline">给它看几万篇「标准范文」，让它学会：人一提问，就该好好回答。</div>
+
+    <div class="demo">
+      <div class="lbl">训练数据长这样 —— 成对出现，答案是人写的</div>
+      <div class="ab" style="margin-top:14px">
+        <div class="abx"><div class="t">输入（人问）</div>用三句话解释黑洞。</div>
+        <div class="abx win"><div class="t">目标输出（人写的范文）</div>黑洞是引力大到光都跑不出来的地方……</div>
+      </div>
+      <p class="note">和预训练<b>数学上完全一样</b>（还是猜下一个字），只是数据换成了对话，而且只对「回答」部分算分。<br>所以 SFT ≠ 新技术，SFT = <b>换了数据的预训练</b>。</p>
+    </div>
+
+    <div class="kv">
+      <div><b>监督信号</b><span>人写的正确答案</span></div>
+      <div><b>数据量</b><span>几千 ~ 几十万条</span></div>
+      <div><b>时间</b><span>几小时 ~ 几天，几张卡</span></div>
+      <div><b>产物</b><span>Instruct 模型：<br>会听话的助手</span></div>
+    </div>
+
+    <div class="vars">
+      <div class="lbl">这一格里的各种方法</div>
+      <div class="vrow"><span class="vn">全参微调 Full FT</span><p>所有权重都改。效果上限最高，显存最贵（约等于重训一遍）。</p></div>
+      <div class="vrow"><span class="vn">PEFT：LoRA / QLoRA</span><p><b>冻住原模型，只外挂一小片可训练的补丁</b>（常见只有 0.1%~1% 的参数）。显存降一个量级，效果多数场景够用。QLoRA = 把底模压成 4bit 再挂 LoRA，单卡就能微调很大的模型。<br>同类还有 Adapter / Prefix-tuning / Prompt-tuning / (IA)³ —— 思路都是「别动主体，加个小旋钮」。</p></div>
+      <div class="vrow"><span class="vn">知识蒸馏 Distillation</span><p><b>让强模型当老师出题又给答案，小模型照抄。</b>今天绝大多数开源小模型的对话能力都来自这一步。<br>抄文字叫黑盒蒸馏；连老师的概率分布一起抄叫白盒蒸馏（效果更好，但要能拿到老师的内部输出）。</p></div>
+      <div class="vrow"><span class="vn">自造数据自己学</span><p>范文太贵，就让模型<b>自己写一堆答案，只留下对的那些，再拿去 SFT</b>。<br>拒绝采样微调（RFT / RAFT）、STaR、Self-Instruct 都是这一套。它是 SFT 和 RL 之间的过渡形态。</p></div>
+      <div class="vrow"><span class="vn">安全微调</span><p>专门喂「该拒绝的问题 + 得体的拒绝方式」。红队攻出来的漏洞，会变成下一轮的训练数据。</p></div>
+    </div>
+  </div>
+
+  <!-- 3.3 对齐 -->
+  <div class="stage" style="border-left-color:var(--s3)">
+    <h3>③ 偏好对齐 <small>PREFERENCE ALIGNMENT / RLHF · 只有好坏，没有标准答案</small></h3>
+    <div class="oneline">「什么是好回答」写不成范文，但人一眼能挑出来。那就让它学人的口味。</div>
+
+    <div class="demo">
+      <div class="lbl">训练数据长这样 —— 不是答案，是一次投票</div>
+      <div class="ab" style="margin-top:14px">
+        <div class="abx"><div class="t">回答 A</div>根据相关规定，此问题涉及多个层面，建议您咨询专业人士……</div>
+        <div class="abx win"><div class="t">回答 B　👉 人选了这个</div>可以。你需要做三件事：1) …… 2) …… 3) ……</div>
+      </div>
+      <p class="note">两个都不算错。B 只是<b>更有用</b>。这种「说不清但感觉得到」的标准，只能靠比较来教。<br>它治的是 SFT 治不了的病：啰嗦、和稀泥、瞎编、该拒绝时不拒绝。</p>
+    </div>
+
+    <div class="kv">
+      <div><b>监督信号</b><span>A 比 B 好（一次比较）</span></div>
+      <div><b>数据量</b><span>几万 ~ 上百万对</span></div>
+      <div><b>时间</b><span>几天，中等算力</span></div>
+      <div><b>产物</b><span>「有人味」的模型：<br>能用、听得懂、有边界</span></div>
+    </div>
+
+    <div class="vars">
+      <div class="lbl">同一个目标，三条技术路线</div>
+      <div class="vrow"><span class="vn">路线一：RLHF<small>RM ＋ PPO</small></span><p><b>先用人的投票训一个「打分器」（奖励模型 RM），再用强化学习让模型去讨好这个打分器。</b>ChatGPT 就是靠这条路出圈的。<br>效果强，但要同时伺候四个模型、调参痛苦、还会「钻打分器的空子」（reward hacking）。</p></div>
+      <div class="vrow"><span class="vn">路线二：DPO 一家<small>免打分器</small></span><p><b>数学上证明：不用训打分器，直接让「被选中的答案」概率升高、「被淘汰的」降低就行。</b>一行 loss，训练像 SFT 一样简单，成了开源界默认选择。<br>同族：IPO、KTO（只需标「这条好/不好」，不用成对）、ORPO（SFT 和对齐一步做完）、SimPO。</p></div>
+      <div class="vrow"><span class="vn">路线三：AI 来投票<small>RLAIF / 宪法 AI</small></span><p>人工投票太慢太贵，那就<b>写一份原则清单（"宪法"），让 AI 按清单去评判 AI</b>。人只负责写规则，不再逐条打分。可扩展性大幅提升，也是「AI 反馈」这一支的起点。</p></div>
+      <div class="vrow"><span class="vn">顺带一提</span><p>训那个<b>奖励模型本身</b>也是一次训练（目标是「给好答案打高分」）。它训不好，后面全白干。</p></div>
+    </div>
+  </div>
+
+  <!-- 3.4 RL -->
+  <div class="stage" style="border-left-color:var(--s4)">
+    <h3>④ 推理强化学习 <small>RLVR · 奖励能被机器验证</small></h3>
+    <div class="oneline">数学题和代码有一个好处：<b>对错不用问人</b>。那就让模型自己刷题，刷对了就加强。</div>
+
+    <div class="demo">
+      <div class="lbl">这是一个循环，不是一份数据集</div>
+      <div class="rl">
+        <div class="rlx"><div class="n">STEP 1</div><h5>出题</h5><p>一道有标准答案的数学题 / 一个带单元测试的编程任务。</p></div>
+        <div class="rlx"><div class="n">STEP 2</div><h5>试很多次</h5><p>同一道题让模型自己写 8~64 种解法。</p></div>
+        <div class="rlx"><div class="n">STEP 3</div><h5>机器判分</h5><p>答案对不对？测试过不过？<b>不需要人。</b></p></div>
+        <div class="rlx"><div class="n">STEP 4</div><h5>加强对的</h5><p>让「做对的那些写法」以后更容易被写出来。</p></div>
+      </div>
+      <div class="loopback">↻ 转几万圈之后，模型自己学会了：先慢慢想、多检查、发现不对就回头 ——「长思维链」是被奖励逼出来的，没人教过它</div>
+    </div>
+
+    <div class="kv">
+      <div><b>监督信号</b><span>可自动验证的对错</span></div>
+      <div><b>人的参与</b><span>只出题给答案，<br>不评过程</span></div>
+      <div><b>算力</b><span>很贵：每题要生成几十遍</span></div>
+      <div><b>产物</b><span>推理模型（o 系 / R1 类）：<br>肯花时间想</span></div>
+    </div>
+
+    <div class="vars">
+      <div class="lbl">这一格里的各种方法</div>
+      <div class="vrow"><span class="vn">结果奖励 ORM</span><p><b>只看最终答案对不对</b>，中间怎么绕的不管。简单、不易被钻空子，是目前主流。</p></div>
+      <div class="vrow"><span class="vn">过程奖励 PRM</span><p><b>每一步都打分</b>。信号密集、学得快，但要标「每一步对不对」，贵，而且容易被钻空子。</p></div>
+      <div class="vrow"><span class="vn">算法：PPO / GRPO / RLOO</span><p>都是「怎么把奖励变成权重更新」的具体做法。GRPO 的思路很直观：<b>同一题采样一组答案，比组内平均分高的就鼓励，低的就抑制</b>，因此省掉了额外的价值网络 —— 便宜，DeepSeek-R1 用它出名。</p></div>
+      <div class="vrow"><span class="vn">Agentic RL</span><p>把奖励挂在<b>多轮、带工具的任务</b>上：能不能查对资料、跑通脚本、改完这个 bug。奖励来自真实环境的执行结果。这是当下最热的前沿。</p></div>
+      <div class="vrow"><span class="vn">自我改进 / 自我对弈</span><p>模型自己出题、自己解、自己筛，把成功轨迹回灌成训练数据，滚雪球。摆脱人工数据上限的方向。</p></div>
+      <div class="vrow"><span class="vn">推理蒸馏</span><p>让大推理模型把「想的过程」完整写出来，<b>小模型照抄这个思考过程</b>。这就是那些「7B 也会做数学」的小模型的来历 —— 严格说它落在 SFT 格里。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4 · 全家谱 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">4</span><h2>名词归位表</h2></div>
+  <p class="lede">你听过的词，一个不落地塞进那四段（外加一段「模型手术」）。看不懂细节没关系，只要知道<b>它属于哪一格</b>。</p>
+
+  <div class="tree">
+    <div class="branch a">
+      <div class="bh">一 · 预训练 <small>没人打分，文本自己是答案</small></div>
+      <div class="leaf"><div class="ln">因果语言建模<small>Causal LM / next-token</small></div><p>猜下一个字。所有生成式大模型的地基。</p></div>
+      <div class="leaf"><div class="ln">掩码语言建模<small>Masked LM</small></div><p>完形填空。BERT 一派，现多用于检索／向量模型。</p></div>
+      <div class="leaf"><div class="ln">继续预训练<small>CPT / DAPT</small></div><p>在现成 Base 上继续喂领域语料。<b>唯一真正加新知识的方式。</b></p></div>
+      <div class="leaf"><div class="ln">中期训练 · 退火<small>Mid-training / Annealing</small></div><p>末期换高质量数据 ＋ 降学习率，性价比极高。</p></div>
+      <div class="leaf"><div class="ln">长上下文扩展<small>Long-context extension</small></div><p>把窗口从 8K 拉到 128K／1M。</p></div>
+    </div>
+
+    <div class="branch b">
+      <div class="bh">二 · 监督微调 <small>人给出标准答案</small></div>
+      <div class="leaf"><div class="ln">指令微调<small>Instruction tuning</small></div><p>教会「被问就好好答」。SFT 最主要的用途。</p></div>
+      <div class="sublbl">按「改多少权重」分</div>
+      <div class="leaf"><div class="ln">全参微调<small>Full fine-tuning</small></div><p>全改。上限最高，最贵。</p></div>
+      <div class="leaf"><div class="ln">LoRA / QLoRA<small>参数高效 PEFT</small></div><p>冻住主体，只训一小片补丁。<b>90% 的场景用这个。</b></p></div>
+      <div class="leaf"><div class="ln">Adapter / Prefix / Prompt-tuning<small>PEFT 其它形态</small></div><p>思路相同：别动主体，加个小旋钮。</p></div>
+      <div class="sublbl">按「答案从哪来」分</div>
+      <div class="leaf"><div class="ln">人工标注</div><p>最贵、最准，是质量的天花板。</p></div>
+      <div class="leaf"><div class="ln">蒸馏<small>Distillation（黑盒／白盒）</small></div><p>抄强模型的输出，或连它的概率分布一起抄。</p></div>
+      <div class="leaf"><div class="ln">拒绝采样 / STaR / Self-Instruct<small>Rejection sampling FT</small></div><p>模型自产答案，筛掉错的，再学回去。</p></div>
+      <div class="leaf"><div class="ln">安全微调<small>Safety FT ← 红队</small></div><p>把攻击案例变成「该怎么拒绝」的训练数据。</p></div>
+    </div>
+
+    <div class="branch c">
+      <div class="bh">三 · 偏好对齐 <small>人（或 AI）只说哪个更好</small></div>
+      <div class="leaf"><div class="ln">RLHF<small>奖励模型 RM ＋ PPO</small></div><p>先训打分器，再用 RL 去讨好它。ChatGPT 的成名路线。</p></div>
+      <div class="leaf"><div class="ln">奖励模型训练<small>Reward modeling</small></div><p>把「人的口味」压进一个打分模型里。RLHF 的前置步骤。</p></div>
+      <div class="leaf"><div class="ln">DPO<small>Direct Preference Optimization</small></div><p>跳过打分器，直接优化偏好。<b>开源界默认选择。</b></p></div>
+      <div class="leaf"><div class="ln">IPO / KTO / ORPO / SimPO<small>DPO 家族</small></div><p>各自的变体：KTO 不用成对标注，ORPO 把 SFT 和对齐合成一步。</p></div>
+      <div class="leaf"><div class="ln">RLAIF · 宪法 AI<small>Constitutional AI</small></div><p>写一份原则清单，让 AI 按清单评判 AI。人只写规则。</p></div>
+    </div>
+
+    <div class="branch d">
+      <div class="bh">四 · 强化学习（奖励可验证） <small>机器判对错</small></div>
+      <div class="leaf"><div class="ln">RLVR<small>可验证奖励 RL</small></div><p>数学答案、单元测试、编译通过 —— 奖励不来自人。</p></div>
+      <div class="leaf"><div class="ln">GRPO / PPO / RLOO / REINFORCE++</div><p>把奖励变成权重更新的具体算法。GRPO 最省，因此最流行。</p></div>
+      <div class="leaf"><div class="ln">结果奖励 ORM vs 过程奖励 PRM</div><p>只看结果，还是每步都评。前者稳，后者快但贵。</p></div>
+      <div class="leaf"><div class="ln">Agentic RL<small>工具 / 多轮 / 环境</small></div><p>奖励来自真实执行：脚本跑通了吗？bug 修好了吗？当下最热。</p></div>
+      <div class="leaf"><div class="ln">自我对弈 / 自我改进<small>Self-play, self-improve</small></div><p>自己出题自己解，成功轨迹回灌。突破人工数据上限。</p></div>
+    </div>
+
+    <div class="branch e">
+      <div class="bh">五 · 模型手术 <small>不学新东西，只改形态（常被误当成「训练」）</small></div>
+      <div class="leaf"><div class="ln">模型合并<small>Model merging / soup</small></div><p><b>把几个微调好的模型的权重平均起来</b>。零梯度、几分钟、经常白赚一点效果。</p></div>
+      <div class="leaf"><div class="ln">量化<small>PTQ / QAT</small></div><p>把权重从 16bit 压到 8/4bit 省显存。事后压叫 PTQ，边训边压叫 QAT。</p></div>
+      <div class="leaf"><div class="ln">剪枝 / 层裁剪<small>Pruning</small></div><p>删掉不重要的部分再补一轮训练。</p></div>
+      <div class="leaf"><div class="ln">遗忘<small>Unlearning</small></div><p>定向让模型忘掉某些内容（版权、隐私）。</p></div>
+      <div class="leaf"><div class="ln">MoE<small>混合专家</small></div><p>提醒：这是<b>架构</b>选择，不是训练方式。它决定长什么样，不决定怎么学。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5 · 对比表 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">5</span><h2>一张表看完</h2></div>
+  <p class="lede">如果只记一行，记「谁在打分」那一列。</p>
+
+  <div class="tblwrap">
+    <table class="tbl">
+      <thead><tr>
+        <th>阶段</th><th>数据长什么样</th><th>谁在打分</th><th>成本</th><th>治什么病</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td>预训练</td>
+          <td>纯文本，十万亿字，无标注</td>
+          <td>没人。下一个字就是答案</td>
+          <td>数千万美元<br>几周~几个月</td>
+          <td>什么都不懂 → 有了知识和语感</td>
+        </tr>
+        <tr>
+          <td>继续预训练</td>
+          <td>你的领域语料，十亿~千亿字</td>
+          <td>同上</td>
+          <td>几千~几十万美元</td>
+          <td>不懂你这行的术语和材料</td>
+        </tr>
+        <tr>
+          <td>SFT</td>
+          <td>（问题，人写的标准答案）</td>
+          <td>人，写出答案</td>
+          <td>几十~几千美元</td>
+          <td>只会续写，不会听话；<br>格式不对、不按要求做</td>
+        </tr>
+        <tr>
+          <td>偏好对齐<br><span style="font-weight:600">RLHF / DPO</span></td>
+          <td>（问题，答案 A，答案 B，人选了 A）</td>
+          <td>人（或 AI）挑好坏</td>
+          <td>中等</td>
+          <td>啰嗦、和稀泥、瞎编、<br>该拒绝时不拒绝</td>
+        </tr>
+        <tr>
+          <td>推理 RL<br><span style="font-weight:600">RLVR</span></td>
+          <td>（题目，可自动判定的正确答案）</td>
+          <td>机器：判对错 / 跑测试</td>
+          <td>高：每题生成几十遍</td>
+          <td>不肯多想，一步答错就崩</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================= 6 · 不是训练 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">6</span><h2>这些常被叫做「训练」，其实不是</h2></div>
+  <p class="lede">判据只有一个：<b>权重有没有被改？</b> 没改，就不是训练 —— 关掉窗口它就忘了。</p>
+
+  <div class="card">
+    <div class="no">
+      <div class="nox"><h5><span class="xmark">✕</span>写提示词 / Prompt</h5>
+        <p>只是把话说清楚。改的是输入，不是模型。</p></div>
+      <div class="nox"><h5><span class="xmark">✕</span>给几个例子（few-shot）</h5>
+        <p>「上下文学习」里的"学习"是个比喻。它在<b>当场模仿</b>，不是在变聪明。</p></div>
+      <div class="nox"><h5><span class="xmark">✕</span>RAG / 知识库</h5>
+        <p>查资料再回答。要让模型「知道公司内部的事」，<b>这个几乎总是比微调更对</b>。</p></div>
+      <div class="nox"><h5><span class="xmark">✕</span>接工具 / 记忆 / 多智能体</h5>
+        <p>都是模型外面的系统工程。模型本身一个字都没改。</p></div>
+      <div class="nox" style="background:#E6F6EE"><h5><span class="xmark" style="background:var(--ok);color:#fff">✓</span>Prompt-tuning</h5>
+        <p>容易混淆的例外：它训练的是一段「假词向量」。<b>有梯度，算训练。</b></p></div>
+      <div class="nox" style="background:#E6F6EE"><h5><span class="xmark" style="background:var(--ok);color:#fff">✓</span>Best-of-N / 多数投票</h5>
+        <p>推理时多生成几遍挑最好的 —— <b>不算训练</b>，但同样的机制放进训练循环里，就是第四段的 RL。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PUNCH ================= -->
+<div class="punch reveal">
+  <div class="big">三句话，够用了</div>
+  <p>
+    <b>1 · 知识在第一段学完。</b>后面三段不加知识，只教它怎么把知识用出来。<br><br>
+    <b>2 · 分辨任何一种训练方式，只问「谁在打分」。</b>没人打分＝预训练；人写答案＝SFT；人挑好坏＝对齐；机器判对错＝RL。<br><br>
+    <b>3 · 先问这事要不要训练。</b>顺序是 提示词 → RAG → LoRA → 继续预训练 → 从头训。<br>八成的「我要微调」，停在前两步就解决了。
+  </p>
+</div>
+
+</div>
+
+<script>
+const io = new IntersectionObserver((es)=>{
+  es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:0.06});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

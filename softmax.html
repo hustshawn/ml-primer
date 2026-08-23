@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Softmax · 一堆乱数 → 一组概率</title>
+<style>
+:root{
+  --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B;
+  --hot:#E4572E; --blue:#2E6FB7; --ok:#1E9E62; --pur:#7B4FBF; --yel:#F2B705;
+  --card:#FFFFFF;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(#00000010 1px, transparent 1px);
+  background-size:28px 28px;
+}
+.wrap{max-width:1000px; margin:0 auto; padding:0 24px 130px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+/* hero */
+.hero{padding:104px 0 30px; text-align:center}
+.kicker{display:inline-block; font-size:14px; letter-spacing:.22em; font-weight:700;
+  border:2px solid var(--ink); padding:7px 16px; border-radius:100px; background:var(--yel)}
+h1{font-size:clamp(38px,7.2vw,80px); line-height:1.03; font-weight:900; letter-spacing:-.03em; margin:26px 0 0}
+h1 em{font-style:normal; color:var(--hot)}
+.sub{font-size:clamp(17px,2.4vw,23px); color:var(--muted); margin-top:22px; font-weight:500}
+
+/* big before/after */
+.ba{display:grid; grid-template-columns:1fr 84px 1fr; gap:14px; align-items:center; margin-top:52px}
+@media(max-width:760px){.ba{grid-template-columns:1fr; gap:18px}}
+.box{border:3px solid var(--ink); border-radius:20px; background:#fff; padding:24px 20px; box-shadow:7px 7px 0 var(--ink)}
+.box .t{font-size:11.5px; font-weight:900; letter-spacing:.16em; color:var(--muted); margin-bottom:14px}
+.nums{display:flex; gap:9px; justify-content:center; flex-wrap:wrap}
+.nums span{border:2px solid var(--ink); border-radius:11px; padding:9px 12px; font-weight:900;
+  font-size:clamp(15px,2.4vw,20px); background:#F3F0EA; font-family:ui-monospace,Menlo,monospace}
+.box.pre{background:#FDEDE7}
+.box.post{background:#E6F6EE}
+.box.post .nums span{background:#fff}
+.box .foot{margin-top:16px; font-size:14px; font-weight:800}
+.box.pre .foot{color:var(--hot)}
+.box.post .foot{color:var(--ok)}
+.arrowbox{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px}
+.arrowbox .aw{font-size:40px; font-weight:900; line-height:1}
+.arrowbox .al{font-size:12px; font-weight:900; letter-spacing:.1em; background:var(--ink); color:var(--bg);
+  padding:5px 10px; border-radius:100px}
+@media(max-width:760px){.arrowbox{flex-direction:row}.arrowbox .aw{transform:rotate(90deg)}}
+
+/* sections */
+section{margin-top:96px}
+.num{display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px;
+  border-radius:50%; background:var(--ink); color:var(--bg); font-weight:900; font-size:20px; flex:0 0 46px}
+.head{display:flex; gap:18px; align-items:center; margin-bottom:10px}
+h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; line-height:1.15}
+.lede{font-size:clamp(16px,2vw,19px); color:var(--muted); max-width:790px; margin-left:64px; font-weight:500}
+@media(max-width:640px){.lede{margin-left:0}}
+.card{background:var(--card); border:3px solid var(--ink); border-radius:22px;
+  box-shadow:8px 8px 0 var(--ink); padding:30px; margin-top:28px}
+.note{font-size:15.5px; color:var(--muted); margin-top:14px}
+.note b{color:var(--ink)}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:18px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+.pill{display:inline-block; font-size:13px; font-weight:800; padding:5px 12px; border-radius:100px;
+  border:2px solid var(--ink); background:var(--yel)}
+
+/* three steps */
+.steps{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+@media(max-width:820px){.steps{grid-template-columns:1fr}}
+.st{border:3px solid var(--ink); border-radius:18px; padding:22px 18px; position:relative; background:#fff}
+.st .sn{font-size:11.5px; font-weight:900; letter-spacing:.16em; color:var(--muted)}
+.st h4{font-size:22px; font-weight:900; margin:6px 0 4px}
+.st .fx{font-size:clamp(24px,4vw,34px); font-weight:900; margin:12px 0 8px; font-family:ui-monospace,Menlo,monospace}
+.st p{font-size:14.5px; color:var(--muted); font-weight:600}
+.st.s1{background:#FDEDE7} .st.s1 .fx{color:var(--hot)}
+.st.s2{background:#FFF6DE}
+.st.s3{background:#E6F6EE} .st.s3 .fx{color:var(--ok)}
+
+/* math table */
+.mt{width:100%; border-collapse:collapse; margin-top:6px; font-family:ui-monospace,Menlo,monospace}
+.mt th{background:var(--ink); color:var(--bg); padding:12px 14px; text-align:left; font-size:12.5px;
+  letter-spacing:.06em; font-weight:800; font-family:-apple-system,"PingFang SC",system-ui,sans-serif}
+.mt td{padding:14px; border-bottom:2px solid #00000012; font-size:clamp(16px,2.4vw,21px); font-weight:900}
+.mt tr:last-child td{border-bottom:none}
+.mt .w{font-family:-apple-system,"PingFang SC",system-ui,sans-serif}
+.mt .dim{color:var(--muted); font-weight:700}
+.mt tfoot td{background:#F3F0EA; font-size:15px; font-weight:900}
+.mtwrap{overflow-x:auto; border:3px solid var(--ink); border-radius:18px; background:#fff}
+
+/* bars */
+.pb{display:grid; grid-template-columns:70px 1fr 66px; gap:12px; align-items:center; margin:10px 0; font-weight:800}
+.pb .bar{height:28px; border:2px solid var(--ink); border-radius:7px; background:#F1EDE6; overflow:hidden}
+.pb .bar i{display:block; height:100%; background:var(--blue); transition:width .28s ease}
+.pb.hit .bar i{background:var(--ok)}
+.pb .v{font-size:14px; color:var(--muted); font-family:ui-monospace,Menlo,monospace; text-align:right}
+.pb .k{font-size:16px}
+
+/* hard vs soft */
+.hs{border:3px solid var(--ink); border-radius:18px; padding:22px; background:#fff}
+.hs h4{font-size:21px; font-weight:900; display:flex; align-items:center; gap:10px}
+.hs h4 .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--ink)}
+.hs .why{margin-top:16px; font-size:14.5px; font-weight:800; border:2px solid var(--ink); border-radius:10px;
+  padding:10px 13px; background:#F3F0EA}
+
+/* temperature */
+.slider{margin:8px 0 26px}
+.track{position:relative}
+.slider input{width:100%; height:34px; -webkit-appearance:none; appearance:none; background:transparent; position:relative; z-index:2}
+.slider input::-webkit-slider-runnable-track{height:14px; border:3px solid var(--ink); border-radius:100px;
+  background:linear-gradient(90deg,#2E6FB7 0%,#F2B705 47.4%,#F6DACE 47.4%,#E4572E 100%)}
+.slider input::-webkit-slider-thumb{-webkit-appearance:none; width:34px; height:34px; margin-top:-13px;
+  border-radius:50%; background:#fff; border:4px solid var(--ink); cursor:grab; box-shadow:2px 2px 0 var(--ink)}
+.slider input::-moz-range-track{height:14px; border:3px solid var(--ink); border-radius:100px;
+  background:linear-gradient(90deg,#2E6FB7 0%,#F2B705 47.4%,#F6DACE 47.4%,#E4572E 100%)}
+.slider input::-moz-range-thumb{width:30px; height:30px; border-radius:50%; background:#fff; border:4px solid var(--ink)}
+.tick{position:absolute; left:47.4%; top:6px; width:3px; height:22px; background:var(--ink); z-index:1}
+.slabs{position:relative; height:40px; margin-top:2px; font-size:12.5px; font-weight:800; color:var(--muted)}
+.slabs span{position:absolute; top:0; line-height:1.35}
+.slabs span i{font-style:normal; font-size:11.5px; font-weight:700}
+.slabs .lo{left:0} .slabs .hi{right:0; text-align:right}
+.slabs .mid{left:47.4%; transform:translateX(-50%); text-align:center; color:var(--ink)}
+@media(max-width:600px){.slabs .mid{font-size:11px} .slabs span i{display:none}}
+.treadout{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:6px}
+.treadout .tv{font-size:clamp(34px,6vw,58px); font-weight:900; letter-spacing:-.03em; font-family:ui-monospace,Menlo,monospace}
+.treadout .td{font-size:15px; font-weight:900; border:2px solid var(--ink); border-radius:100px; padding:6px 14px; background:var(--yel)}
+
+/* api caps */
+.api{width:100%; border-collapse:collapse; font-size:14.5px; min-width:540px}
+.api th{background:var(--ink); color:var(--bg); padding:11px 14px; text-align:left; font-size:12.5px;
+  font-weight:800; letter-spacing:.04em}
+.api td{padding:13px 14px; border-bottom:2px solid #00000012; font-weight:700; color:var(--muted); vertical-align:top}
+.api tr:last-child td{border-bottom:none}
+.api td:first-child{color:var(--ink); font-weight:900; white-space:nowrap}
+.api td.r{font-family:ui-monospace,Menlo,monospace; font-weight:900; color:var(--ink); white-space:nowrap}
+.apiwrap{overflow-x:auto; border:3px solid var(--ink); border-radius:16px; background:#fff; margin-top:18px}
+
+/* where it lives */
+.loc{border:3px solid var(--ink); border-left-width:14px; border-radius:16px; padding:22px; background:#fff; margin-top:18px}
+.loc h4{font-size:20px; font-weight:900}
+.loc p{font-size:15.5px; color:var(--muted); font-weight:600; margin-top:8px}
+.loc .chain{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:14px; font-size:13.5px; font-weight:900}
+.loc .chain span{border:2px solid var(--ink); border-radius:9px; padding:6px 11px; background:#F3F0EA; white-space:nowrap}
+.loc .chain span.me{background:var(--ink); color:var(--bg)}
+
+.punch{margin-top:96px; background:var(--ink); color:var(--bg); border-radius:26px; padding:50px 34px; text-align:center;
+  box-shadow:10px 10px 0 var(--hot)}
+.punch .big{font-size:clamp(24px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; line-height:1.15}
+.punch p{color:#C9C2B8; margin-top:22px; font-size:17px; max-width:640px; margin-left:auto; margin-right:auto; text-align:left}
+.punch b{color:#fff}
+
+.reveal{opacity:0; transform:translateY(22px); transition:opacity .55s ease, transform .55s ease}
+.reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HERO -->
+<div class="hero">
+  <span class="kicker">SOFTMAX</span>
+  <h1>一堆乱数<br><em>→ 一组概率</em></h1>
+  <p class="sub">模型算完只会吐出乱七八糟的分数。<br>softmax 唯一的工作，是把它们变成「能当概率用」的数字。</p>
+
+  <div class="ba">
+    <div class="box pre">
+      <div class="t">模型吐出来的原始分数（LOGITS）</div>
+      <div class="nums"><span>2.0</span><span>1.0</span><span>0.1</span><span>−1.0</span></div>
+      <div class="foot">✕ 有负数　✕ 加起来 = 2.1，不是 1</div>
+    </div>
+    <div class="arrowbox">
+      <div class="aw">→</div>
+      <div class="al">SOFTMAX</div>
+    </div>
+    <div class="box post">
+      <div class="t">变成概率</div>
+      <div class="nums"><span>64%</span><span>23%</span><span>10%</span><span>3%</span></div>
+      <div class="foot">✓ 全是正数　✓ 加起来正好 = 100%</div>
+    </div>
+  </div>
+</div>
+
+<!-- 1 · 三步 -->
+<section class="reveal">
+  <div class="head"><span class="num">1</span><h2>只有三步</h2></div>
+  <p class="lede">整个 softmax 就这三步。没有第四步。</p>
+
+  <div class="card">
+    <div class="steps">
+      <div class="st s1">
+        <div class="sn">STEP 1</div><h4>全变正数</h4>
+        <div class="fx">e<sup>分数</sup></div>
+        <p>每个分数都放到 e 的头上。<br>负数也变正，<b>而且大的被拉得更大</b>。</p>
+      </div>
+      <div class="st s2">
+        <div class="sn">STEP 2</div><h4>加起来</h4>
+        <div class="fx">Σ</div>
+        <p>把上一步的结果全部加总，<br>得到一个「总量」。</p>
+      </div>
+      <div class="st s3">
+        <div class="sn">STEP 3</div><h4>各自除以总量</h4>
+        <div class="fx">÷ Σ</div>
+        <p>每个都变成「占总量的几分之几」。<br><b>加起来必然是 1。</b></p>
+      </div>
+    </div>
+
+    <div class="pill" style="margin-top:26px">用刚才那四个数字走一遍</div>
+    <div class="mtwrap" style="margin-top:14px">
+      <table class="mt">
+        <thead><tr><th>候选词</th><th>① 原始分数</th><th>② 放到 e 头上</th><th>③ 除以总量</th></tr></thead>
+        <tbody>
+          <tr><td class="w">好</td><td>2.0</td><td>7.39</td><td style="color:var(--ok)">64%</td></tr>
+          <tr><td class="w">热</td><td>1.0</td><td>2.72</td><td>23%</td></tr>
+          <tr><td class="w">冷</td><td>0.1</td><td>1.11</td><td>10%</td></tr>
+          <tr><td class="w">香蕉</td><td class="dim">−1.0</td><td>0.37</td><td class="dim">3%</td></tr>
+        </tbody>
+        <tfoot><tr><td class="w">总量</td><td class="dim">（加起来 2.1，没意义）</td><td>11.58</td><td>100%</td></tr></tfoot>
+      </table>
+    </div>
+    <p class="note">第三列除以 11.58，就是第四列。<b>就这样，结束了。</b></p>
+  </div>
+</section>
+
+<!-- 2 · 为什么是 e -->
+<section class="reveal">
+  <div class="head"><span class="num">2</span><h2>为什么非得套个 e？</h2></div>
+  <p class="lede">直接「每个除以总和」不行吗？不行 —— 三个理由。</p>
+
+  <div class="grid3">
+    <div class="card" style="margin-top:22px;background:#FDEDE7">
+      <div class="pill" style="background:#fff">理由一</div>
+      <h4 style="font-size:21px;font-weight:900;margin-top:12px">负数会出事</h4>
+      <p class="note" style="font-size:15px">−1.0 直接除，得出「−48% 的概率」。<br><b>e 的头上永远是正数</b>，问题消失。</p>
+    </div>
+    <div class="card" style="margin-top:22px;background:#FFF6DE">
+      <div class="pill" style="background:#fff">理由二</div>
+      <h4 style="font-size:21px;font-weight:900;margin-top:12px">该拉开差距</h4>
+      <p class="note" style="font-size:15px">分数差 1 分，概率差不该只有一点点。<br>e 让<b>领先者拿走更大份额</b>，同时垫底的不会被清零。</p>
+    </div>
+    <div class="card" style="margin-top:22px;background:#E8F1FA">
+      <div class="pill" style="background:#fff">理由三 · 真正的原因</div>
+      <h4 style="font-size:21px;font-weight:900;margin-top:12px">求导特别好看</h4>
+      <p class="note" style="font-size:15px">和训练用的 loss 配在一起，梯度化简成一句话：<br><b class="mono" style="font-size:17px">预测 − 正确答案</b><br>训练时最省事的形式，就长这样。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · soft vs hard -->
+<section class="reveal">
+  <div class="head"><span class="num">3</span><h2>名字里的「soft」是跟谁比</h2></div>
+  <p class="lede">跟「硬」的做法比 —— 只留最高分，赢家通吃。</p>
+
+  <div class="card grid2">
+    <div class="hs" style="background:#F9F6F0">
+      <h4><span class="dot" style="background:var(--hot)"></span>硬办法：赢家通吃</h4>
+      <div style="margin-top:14px">
+        <div class="pb"><span class="k">好</span><div class="bar"><i style="width:100%;background:var(--hot)"></i></div><span class="v">100%</span></div>
+        <div class="pb"><span class="k">热</span><div class="bar"><i style="width:0%"></i></div><span class="v">0%</span></div>
+        <div class="pb"><span class="k">冷</span><div class="bar"><i style="width:0%"></i></div><span class="v">0%</span></div>
+        <div class="pb"><span class="k">香蕉</span><div class="bar"><i style="width:0%"></i></div><span class="v">0%</span></div>
+      </div>
+      <div class="why">✕ 阶梯式跳变 → <b>没有梯度 → 没法训练</b></div>
+    </div>
+    <div class="hs" style="background:#E6F6EE">
+      <h4><span class="dot" style="background:var(--ok)"></span>软办法：softmax</h4>
+      <div style="margin-top:14px">
+        <div class="pb hit"><span class="k">好</span><div class="bar"><i style="width:64%"></i></div><span class="v">64%</span></div>
+        <div class="pb hit"><span class="k">热</span><div class="bar"><i style="width:23%"></i></div><span class="v">23%</span></div>
+        <div class="pb hit"><span class="k">冷</span><div class="bar"><i style="width:10%"></i></div><span class="v">10%</span></div>
+        <div class="pb hit"><span class="k">香蕉</span><div class="bar"><i style="width:3%"></i></div><span class="v">3%</span></div>
+      </div>
+      <div class="why">✓ 处处平滑 → <b>能求导 → 能训练</b></div>
+    </div>
+  </div>
+  <p class="note" style="margin-left:6px">「大的拿大头，小的也留一点」—— 这个「留一点」不是善良，是<b>为了让梯度有路可走</b>。训练全靠它。<br>
+  <span style="font-size:14px">（冷知识：名字其实起偏了。它逼近的是 argmax「指出谁最大」，不是 max「最大值是多少」。）</span></p>
+</section>
+
+<!-- 4 · 温度 -->
+<section class="reveal">
+  <div class="head"><span class="num">4</span><h2>温度：唯一的旋钮</h2></div>
+  <p class="lede">你在 API 里调的 <b class="mono">temperature</b>，就是在 softmax 之前<b>把所有分数除以 T</b>。拖一下试试。<br>
+  <span style="font-size:16px">（各家 API 允许的范围<b>并不一样</b>，而且都比你想的窄 —— 滑块下面有实测的对照表。）</span></p>
+
+  <div class="card">
+    <div class="treadout">
+      <span class="pill" style="background:#fff">temperature</span>
+      <span class="tv" id="tv">1.0</span>
+      <span class="td" id="td">原样</span>
+    </div>
+    <div class="slider">
+      <div class="track">
+        <input type="range" id="t" min="0.1" max="2.0" step="0.05" value="1.0">
+        <span class="tick"></span>
+      </div>
+      <div class="slabs">
+        <span class="lo">0.1<br><i>冷 · 死板</i></span>
+        <span class="mid">1.0<br><i>Claude 的上限 · 各家的默认值</i></span>
+        <span class="hi">2.0<br><i>OpenAI 的上限</i></span>
+      </div>
+    </div>
+
+    <div id="bars">
+      <div class="pb hit"><span class="k">好</span><div class="bar"><i data-i="0" style="width:64%"></i></div><span class="v" data-v="0">64%</span></div>
+      <div class="pb hit"><span class="k">热</span><div class="bar"><i data-i="1" style="width:23%"></i></div><span class="v" data-v="1">23%</span></div>
+      <div class="pb hit"><span class="k">冷</span><div class="bar"><i data-i="2" style="width:10%"></i></div><span class="v" data-v="2">10%</span></div>
+      <div class="pb hit"><span class="k">香蕉</span><div class="bar"><i data-i="3" style="width:3%"></i></div><span class="v" data-v="3">3%</span></div>
+    </div>
+    <p class="note" id="tmsg">原始分数原封不动进 softmax。</p>
+
+    <div class="grid3" style="margin-top:24px">
+      <div class="hs" style="background:#E8F1FA">
+        <h4 style="font-size:18px">T 小 → 拉大差距</h4>
+        <p class="note" style="font-size:14.5px">强者更强，弱者归零。<br>越来越像「赢家通吃」。<br><b>T→0 就是永远选第一名。</b></p>
+      </div>
+      <div class="hs" style="background:#FFF6DE">
+        <h4 style="font-size:18px">T = 1 → 不动</h4>
+        <p class="note" style="font-size:14.5px">除以 1，等于什么都没做。<br>模型原本的判断。</p>
+      </div>
+      <div class="hs" style="background:#FDEDE7">
+        <h4 style="font-size:18px">T 大 → 压平差距</h4>
+        <p class="note" style="font-size:14.5px">大家越来越接近。<br>「香蕉」也开始有机会。<br><b>数学上 T→∞ 就是纯抽签。</b></p>
+      </div>
+    </div>
+    <p class="note"><b>注意：温度不改变谁是第一名</b>，只改变第一名领先多少。所以它调的是「敢不敢冒险」，不是「聪不聪明」。</p>
+
+    <div class="pill" style="margin-top:28px;background:#FDEDE7">容易被误会的一点：T 在数学上可以无限大，但产品里不行</div>
+    <div class="apiwrap">
+      <table class="api">
+        <thead><tr><th>在哪调</th><th>实际允许的范围</th><th>依据</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Claude<br>（Anthropic）</td>
+            <td class="r">0.0 – 1.0</td>
+            <td>官方 SDK 里写明「默认 1.0，范围 0.0 到 1.0」。<b>而 Opus 4.6 之后的新模型已经不支持设置了</b> —— 只接受 1.0，填别的值直接报 400，这个参数在新版 Python SDK 里被整个删掉了。</td>
+          </tr>
+          <tr>
+            <td>OpenAI</td>
+            <td class="r">0.0 – 2.0</td>
+            <td>官方 OpenAPI 规范：<span class="mono">minimum: 0 / maximum: 2 / default: 1</span>。</td>
+          </tr>
+          <tr>
+            <td>自己跑模型<br>（vLLM / transformers）</td>
+            <td class="r">任意正数</td>
+            <td>源码里就是个 float，默认 1.0，<b>没有上限检查</b>。想试 T = 50 只能在这里试。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">所以「T 可以无限大」是<b>公式的性质</b>，不是你在 API 里的可调范围。而且超过 1 之后输出质量掉得很快 —— 这就是为什么绝大多数场合，这个值实际就在 <b>0 ~ 1</b> 之间。
+    <br><br><b>还有一个小坑：</b>T = 0 也不保证每次结果一模一样。Anthropic 文档明确写了「即便 temperature 为 0.0，结果也不会完全确定」—— 因为浮点计算和批处理本身就带抖动，跟 softmax 无关。</p>
+  </div>
+</section>
+
+<!-- 5 · 在 LLM 里的位置 -->
+<section class="reveal">
+  <div class="head"><span class="num">5</span><h2>在大模型里，它出现在两个地方</h2></div>
+  <p class="lede">很多人只知道第一个。第二个其实更关键。</p>
+
+  <div class="loc" style="border-left-color:var(--hot)">
+    <h4>① 出口：挑下一个词</h4>
+    <p>模型对词表里<b>十几万个词</b>各给一个分数 → softmax → 变成概率 → 抽一个出来。这就是你调 temperature 影响的那个。</p>
+    <div class="chain"><span>12万个分数</span><span>→</span><span class="me">SOFTMAX</span><span>→</span><span>12万个概率，和为1</span><span>→</span><span>采样出一个词</span></div>
+  </div>
+
+  <div class="loc" style="border-left-color:var(--pur)">
+    <h4>② 内部：注意力决定「看哪里」</h4>
+    <p>每读一个词，模型给前文每个词打一个「相关度」分 → softmax → 变成一组和为 1 的权重 → 按权重把前文混合起来。<br><b>Attention 的那个「注意力分配」，本体就是一次 softmax。</b>一个模型跑一遍，这里要做几十万次。</p>
+    <div class="chain"><span>它和每个前文词的相关度</span><span>→</span><span class="me">SOFTMAX</span><span>→</span><span>注意力权重，和为1</span><span>→</span><span>加权取信息</span></div>
+  </div>
+</section>
+
+<!-- 6 · 两个细节 -->
+<section class="reveal">
+  <div class="head"><span class="num">6</span><h2>两个值得知道的细节</h2></div>
+
+  <div class="grid2">
+    <div class="card" style="margin-top:24px">
+      <div class="pill">工程</div>
+      <h4 style="font-size:21px;font-weight:900;margin-top:12px">整体减一个数，结果不变</h4>
+      <p class="note" style="font-size:15.5px">e<sup>1000</sup> 会把计算机撑爆。<br>解决办法出乎意料地简单：<b>所有分数一起减去最大值</b>，再算 softmax。</p>
+      <div class="hs" style="background:#F9F6F0;margin-top:16px">
+        <div class="mono" style="font-size:clamp(14px,2.2vw,17px);font-weight:900">
+          [2.0, 1.0, 0.1, −1.0]<br>
+          <span style="color:var(--muted)">↓ 全部 −2.0</span><br>
+          [0, −1.0, −1.9, −3.0]
+        </div>
+        <div class="why" style="margin-top:12px">→ 概率<b>一模一样</b>：64% / 23% / 10% / 3%</div>
+      </div>
+      <p class="note">softmax 只在乎<b>分数之间差多少</b>，不在乎绝对值。所以每个真实实现里都有这一行。</p>
+    </div>
+
+    <div class="card" style="margin-top:24px">
+      <div class="pill" style="background:#FDEDE7">易误解</div>
+      <h4 style="font-size:21px;font-weight:900;margin-top:12px">「99%」不等于「99% 是对的」</h4>
+      <p class="note" style="font-size:15.5px">softmax 是把分数<b>规范化</b>，不是做民意调查。它保证「加起来等于 1」，<b>不保证</b>这个数字对应真实世界的可信度。</p>
+      <div class="hs" style="background:#FDEDE7;margin-top:16px">
+        <div style="font-size:17px;font-weight:900">模型可以 99% 的把握，答一个错的。</div>
+        <p class="note" style="font-size:14.5px;margin-top:8px">因为分数是训练出来的，softmax 只是忠实地把它们摊成百分比。垃圾进，规范化的垃圾出。</p>
+      </div>
+      <p class="note">这件事有个专门名字叫<b>校准（calibration）</b>，是一个独立的研究问题。</p>
+    </div>
+  </div>
+</section>
+
+<!-- PUNCH -->
+<div class="punch reveal">
+  <div class="big">记三句就够</div>
+  <p>
+    <b>1 ·</b> softmax = <b>套个 e，再各自除以总和</b>。目的只有一个：让一堆乱数变成加起来是 1 的概率。<br><br>
+    <b>2 ·</b> 为什么要「软」？因为硬着来（只留第一名）<b>没有梯度，模型就没法训练</b>。<br><br>
+    <b>3 ·</b> temperature 就是<b>进 softmax 前先除以 T</b>。它只改变第一名领先多少，不改变谁是第一名。
+  </p>
+</div>
+
+</div>
+
+<script>
+const LOGITS = [2.0, 1.0, 0.1, -1.0];
+const bars = [...document.querySelectorAll('#bars i')];
+const vals = [...document.querySelectorAll('#bars .v')];
+const tEl = document.getElementById('t');
+const tv = document.getElementById('tv'), td = document.getElementById('td'), tmsg = document.getElementById('tmsg');
+
+function softmax(z, T){
+  const s = z.map(x => x / T);
+  const m = Math.max(...s);                      // 减最大值：数值稳定，结果不变
+  const e = s.map(x => Math.exp(x - m));
+  const sum = e.reduce((a,b) => a+b, 0);
+  return e.map(x => x / sum);
+}
+
+function render(){
+  const T = parseFloat(tEl.value);
+  const p = softmax(LOGITS, T);
+  const top = Math.max(...p);
+  p.forEach((v,i) => {
+    bars[i].style.width = (v*100).toFixed(1) + '%';
+    vals[i].textContent = (v*100).toFixed(1) + '%';
+  });
+  tv.textContent = T.toFixed(2);
+
+  let label, msg;
+  if (T < 0.55)      { label = '冷 · 死板'; msg = '差距被放大，第一名快要吃掉全部 —— 越来越接近「永远选最高分」。输出稳定，但会重复、发死。'; }
+  else if (T <= 1.0) { label = T > 0.98 ? '原样 · 默认值' : '常用区间'; msg = '各家 API 都支持的区间。第一名明显领先，但其它选项仍留有机会。'; }
+  else               { label = '已超过 Claude 的上限'; msg = '差距被压平，「香蕉」也开始有机会 —— 更有新意，也更容易胡说。<b>这一段 Claude 不接受</b>（填 >1 直接报 400），只有 OpenAI（最高 2.0）和你自己跑的模型能调到这里。'; }
+  td.textContent = label;
+  tmsg.innerHTML = `T = ${T.toFixed(2)}：第一名占 <b>${(top*100).toFixed(1)}%</b>。${msg}`;
+}
+tEl.addEventListener('input', render);
+render();
+
+const io = new IntersectionObserver((es)=>{
+  es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:0.06});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

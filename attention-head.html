@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention 和 Head · 图解</title>
+<style>
+:root{
+  --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B;
+  --fwd:#E4572E; --bwd:#2E6FB7; --upd:#1E9E62; --pur:#7B4FBF; --yel:#F2B705; --red:#B0453B;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(#00000010 1px, transparent 1px); background-size:28px 28px;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:0 24px 140px}
+
+.hero{padding:96px 0 50px; text-align:center}
+.kicker{display:inline-block; font-size:13px; letter-spacing:.2em; font-weight:700;
+  border:2px solid var(--ink); padding:7px 16px; border-radius:100px; background:var(--yel)}
+h1{font-size:clamp(32px,6vw,68px); line-height:1.05; font-weight:900; letter-spacing:-.03em; margin:24px 0 0}
+h1 em{font-style:normal; color:var(--fwd)}
+.twoline{margin:40px auto 0; max-width:860px; display:grid; grid-template-columns:1fr 1fr; gap:20px}
+@media(max-width:760px){.twoline{grid-template-columns:1fr}}
+.tl{background:#fff; border:3px solid var(--ink); border-radius:20px; box-shadow:7px 7px 0 var(--ink); padding:26px; text-align:left}
+.tl .w{font-family:ui-monospace,Menlo,monospace; font-size:15px; font-weight:900; color:var(--fwd); letter-spacing:.04em}
+.tl .d{font-size:clamp(19px,2.7vw,26px); font-weight:900; line-height:1.35; margin-top:8px}
+.tl .n{font-size:14px; color:var(--muted); margin-top:12px; font-weight:600}
+
+section{margin-top:98px}
+.num{display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px;
+  border-radius:50%; background:var(--ink); color:var(--bg); font-weight:900; font-size:20px; flex:0 0 46px}
+.head{display:flex; gap:18px; align-items:center; margin-bottom:10px}
+h2{font-size:clamp(24px,4vw,40px); font-weight:900; letter-spacing:-.02em; line-height:1.15}
+.lede{font-size:clamp(15.5px,2vw,19px); color:var(--muted); max-width:790px; margin-left:64px; font-weight:500}
+@media(max-width:640px){.lede{margin-left:0}}
+
+.card{background:#fff; border:3px solid var(--ink); border-radius:22px; box-shadow:8px 8px 0 var(--ink); padding:30px; margin-top:30px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+.grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:20px}
+@media(max-width:860px){.grid2,.grid3{grid-template-columns:1fr} .grid4{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.grid4{grid-template-columns:1fr}}
+.big{font-size:clamp(26px,4.4vw,44px); font-weight:900; line-height:1; letter-spacing:-.03em}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.note{font-size:15px; color:var(--muted); margin-top:10px}
+.pill{display:inline-block; font-size:13px; font-weight:800; padding:5px 12px; border-radius:100px; border:2px solid var(--ink); background:var(--yel)}
+h4.sh{font-size:20px; font-weight:900; margin-bottom:6px}
+.hl{background:var(--yel); padding:2px 7px; border-radius:6px; font-weight:900}
+
+/* shape pipeline */
+.pipe{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:6px}
+.shp{border:3px solid var(--ink); border-radius:12px; padding:11px 14px; background:#fff; text-align:center; min-width:96px}
+.shp b{display:block; font-family:ui-monospace,Menlo,monospace; font-size:15px; font-weight:900}
+.shp span{display:block; font-size:11.5px; color:var(--muted); font-weight:800; margin-top:2px}
+.shp.q{background:#FDEDE7} .shp.k{background:#E8F1FA} .shp.v{background:#E6F6EE}
+.shp.s{background:#FFF6DE} .shp.o{background:#F1EBF8}
+.arw{font-size:20px; font-weight:900; color:var(--muted)}
+
+.steplist{counter-reset:s}
+.sl{display:flex; gap:16px; align-items:flex-start; padding:16px 0; border-bottom:2px dashed #00000018}
+.sl:last-child{border-bottom:none}
+.sl .sn{counter-increment:s; flex:0 0 34px; height:34px; border-radius:9px; background:var(--ink); color:var(--bg);
+  display:flex; align-items:center; justify-content:center; font-weight:900; font-size:16px}
+.sl .sn::before{content:counter(s)}
+.sl h5{font-size:17.5px; font-weight:900}
+.sl h5 code{font-family:ui-monospace,Menlo,monospace; background:#F1EDE6; border:1.5px solid #00000020;
+  padding:1px 7px; border-radius:6px; font-size:15px; margin-left:6px}
+.sl p{font-size:14.5px; color:var(--muted); margin-top:3px}
+
+/* heatmap */
+.hmwrap{overflow-x:auto; padding-bottom:6px}
+.hm{display:inline-grid; gap:3px}
+.hc{display:flex; align-items:center; justify-content:center; border-radius:5px; font-size:11.5px; font-weight:900;
+  border:2px solid #16130F; min-width:0}
+.hc.hd{border:none; background:transparent; color:var(--muted); font-size:12px; font-weight:900}
+.hm.big8 .hc{width:52px; height:38px}
+.hm.big8 .hc.hd{width:52px; height:26px}
+.hm.big8 .hcorner{width:46px}
+.hm.mini .hc{width:26px; height:22px; border-width:1.5px; font-size:0}
+.rowhl{outline:4px solid var(--fwd); outline-offset:3px; border-radius:8px}
+@media(max-width:700px){.hm.big8 .hc{width:40px;height:32px;font-size:10.5px} .hm.big8 .hc.hd{width:40px}}
+
+/* softmax bars */
+.smx{margin-top:14px}
+.sr{display:grid; grid-template-columns:56px 1fr 62px; gap:10px; align-items:center; margin:7px 0; font-weight:800; font-size:14.5px}
+.sr .bar{height:24px; border:2px solid var(--ink); border-radius:5px; background:#F1EDE6; overflow:hidden}
+.sr .bar i{display:block; height:100%}
+.sr .v{font-family:ui-monospace,Menlo,monospace; font-size:13px; color:var(--muted); text-align:right}
+
+/* budget */
+.bud{border:3px solid var(--ink); border-radius:14px; padding:16px; background:#fff; margin-top:12px}
+.budbar{display:flex; height:36px; border:3px solid var(--ink); border-radius:9px; overflow:hidden; margin-top:8px}
+.budbar span{display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:900; color:#fff;
+  border-right:2px solid var(--ink); white-space:nowrap; overflow:hidden}
+.budbar span:last-child{border-right:none}
+
+/* head split */
+.hsplit{display:flex; gap:5px; margin-top:10px; flex-wrap:wrap}
+.hpiece{flex:1; min-width:52px; height:56px; border:2.5px solid var(--ink); border-radius:7px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-weight:900; font-size:11px}
+
+/* bleu bars */
+.bl{display:grid; grid-template-columns:96px 1fr 66px; gap:12px; align-items:center; margin:10px 0; font-weight:900; font-size:14.5px}
+.bl .bar{height:30px; border:3px solid var(--ink); border-radius:8px; background:#F1EDE6; overflow:hidden}
+.bl .bar i{display:block; height:100%}
+.bl .v{font-family:ui-monospace,Menlo,monospace; font-size:14px; text-align:right}
+
+/* table */
+.tbl{width:100%; border-collapse:collapse; font-size:15px}
+.tbl th{background:var(--ink); color:var(--bg); padding:13px; text-align:left; font-weight:800; font-size:13.5px}
+.tbl td{padding:12px 13px; border-bottom:2px solid #00000012; vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td:first-child{font-weight:800}
+.tbl td.m{color:var(--muted)}
+.tblwrap{overflow-x:auto; border:3px solid var(--ink); border-radius:20px; box-shadow:8px 8px 0 var(--ink); margin-top:30px; background:#fff}
+tr.hi td{background:#FFF6DE}
+
+.punch{margin-top:96px; background:var(--ink); color:var(--bg); border-radius:26px; padding:50px 34px; text-align:center;
+  box-shadow:10px 10px 0 var(--fwd)}
+.punch .big{font-size:clamp(24px,4.2vw,42px); color:#fff}
+.punch p{color:#C9C2B8; margin-top:20px; font-size:16.5px; max-width:680px; margin-left:auto; margin-right:auto}
+.punch .mono{color:var(--yel)}
+
+.reveal{opacity:0; transform:translateY(22px); transition:opacity .55s ease, transform .55s ease}
+.reveal.in{opacity:1; transform:none}
+.src{margin-top:56px; text-align:center; font-size:13px; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hero">
+  <span class="kicker">两个被名字耽误的概念</span>
+  <h1>Attention 是什么<br>Head 又是<em>什么</em></h1>
+  <div class="twoline">
+    <div class="tl">
+      <div class="w">ATTENTION</div>
+      <div class="d">一次<br>由内容决定的<br>加权平均。</div>
+      <div class="n">重点在「由内容决定」—— 权重是当场算出来的，不是训好固定的。</div>
+    </div>
+    <div class="tl">
+      <div class="w">HEAD</div>
+      <div class="d">把同一件事<br>并行做 8 遍，<br>各用一套标准。</div>
+      <div class="n">一个 head = 一套独立的 Q/K/V 矩阵 = 一个独立的注意力分布。</div>
+    </div>
+  </div>
+</div>
+
+<!-- 1 -->
+<section class="reveal">
+  <div class="head"><span class="num">1</span><h2>Attention 的全部：五步，带形状</h2></div>
+  <p class="lede">用论文的配置：<span class="mono">d_model = 512</span>，一个 head <span class="mono">d_k = 64</span>，输入 n 个词。</p>
+
+  <div class="card">
+    <div class="pipe">
+      <div class="shp"><b>(n, 512)</b><span>X 输入</span></div>
+      <span class="arw">→</span>
+      <div class="shp q"><b>(n, 64)</b><span>Q 我要找什么</span></div>
+      <div class="shp k"><b>(n, 64)</b><span>K 我是什么</span></div>
+      <div class="shp v"><b>(n, 64)</b><span>V 我能给什么</span></div>
+      <span class="arw">→</span>
+      <div class="shp s"><b>(n, n)</b><span>A 谁看谁多少</span></div>
+      <span class="arw">→</span>
+      <div class="shp o"><b>(n, 64)</b><span>O 输出</span></div>
+    </div>
+
+    <div class="steplist" style="margin-top:24px">
+      <div class="sl"><div class="sn"></div><div>
+        <h5>投影 <code>Q=XW^Q　K=XW^K　V=XW^V</code></h5>
+        <p>每个词乘三个<b>学出来的</b>矩阵，掏出三个 64 维向量。参数只有这三个矩阵。</p></div></div>
+      <div class="sl"><div class="sn"></div><div>
+        <h5>打分 <code>S = Q·Kᵀ　→ (n, n)</code></h5>
+        <p><b>S[i][j] = 第 i 个词对第 j 个词的兴趣。</b>方向越像，点积越大。这一步生成了整个 n×n 的关系表。</p></div></div>
+      <div class="sl"><div class="sn"></div><div>
+        <h5>降温 + 遮罩 <code>S = S/√64 + mask</code></h5>
+        <p>除以 8 把分数压回正常范围（第 3 节会看到不除会死）。因果模型再把上三角设成 −∞。</p></div></div>
+      <div class="sl"><div class="sn"></div><div>
+        <h5>归一 <code>A = softmax(S, dim=-1)</code></h5>
+        <p>按<b>行</b>做 softmax。每一行加起来等于 1 —— 「我的注意力总共就 100%，怎么分」。</p></div></div>
+      <div class="sl"><div class="sn"></div><div>
+        <h5>取值 <code>O = A·V　→ (n, 64)</code></h5>
+        <p>第 i 个词的输出 = 所有 V 按第 i 行权重做加权平均。<b>信息在这一步真正流动。</b></p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="reveal">
+  <div class="head"><span class="num">2</span><h2>更准的名字：可微分的查字典</h2></div>
+  <p class="lede">「注意力」这个词有点误导。它做的事其实是<b>软查字典</b> —— 这是最好用的心智模型。</p>
+
+  <div class="grid2" style="margin-top:28px">
+    <div class="card" style="margin-top:0;background:#F3F0EA">
+      <div class="pill" style="background:#fff">硬查字典 · 你写过一万次</div>
+      <p class="mono" style="font-size:16px;margin-top:16px;line-height:1.9">
+        d = {"动物": v₁, "马路": v₂, "累": v₃}<br>
+        d["动物"] → v₁
+      </p>
+      <p class="note" style="font-size:15.5px">
+        key 要<b>完全相等</b>才命中。<br>
+        命中一个，返回一个。<br>
+        不可微 —— 没法训练。
+      </p>
+    </div>
+    <div class="card" style="margin-top:0;background:#E6F6EE">
+      <div class="pill" style="background:#fff">软查字典 · 就是 attention</div>
+      <p class="mono" style="font-size:16px;margin-top:16px;line-height:1.9">
+        query「一个能累的活物」<br>
+        → 动物 57% · 累 26% · 马路 17%<br>
+        → 0.57·v₁ + 0.26·v₃ + 0.17·v₂
+      </p>
+      <p class="note" style="font-size:15.5px">
+        每个 key <b>部分</b>命中，程度用点积衡量。<br>
+        返回的是<b>所有 value 的混合</b>。<br>
+        全程可微 —— 所以能用梯度下降学。
+      </p>
+    </div>
+  </div>
+  <p class="note" style="text-align:center;font-size:16.5px;margin-top:24px">
+    Q / K / V 这三个字母就是从检索借来的：<span class="hl">Query 查询词 · Key 索引 · Value 正文</span>
+  </p>
+</section>
+
+<!-- 3 -->
+<section class="reveal">
+  <div class="head"><span class="num">3</span><h2>真正的主角：那张 n×n 表</h2></div>
+  <p class="lede">Attention 的一切都发生在这张表里。行 = 谁在看，列 = 看谁，格子越深 = 权重越大，每行加起来 = 1。</p>
+
+  <div class="card">
+    <div class="pill">一个 head 的注意力矩阵（示意）</div>
+    <div class="hmwrap" style="margin-top:16px"><div id="mainHM"></div></div>
+    <p class="note" style="margin-top:16px;font-size:16px">
+      被框出来的是「<b>它</b>」那一行 —— 45% 的注意力压在「动物」上。<b>模型解决了指代。</b><br>
+      没有任何规则告诉它「它」是代词，是 W<sup>Q</sup> / W<sup>K</sup> 在训练中自己学会了「什么算相关」。
+    </p>
+    <p class="note" style="font-size:14.5px;color:var(--muted)">
+      注：格子里的数是示意值，用来展示模式；第 4 节给一个逐步算到底的真实例子。
+    </p>
+  </div>
+
+  <div class="card" style="background:#FDEDE7">
+    <h4 class="sh">这张表也是账单</h4>
+    <p class="note" style="font-size:16px">
+      它是 <span class="mono">n × n</span>。序列长度翻倍，它<b>翻四倍</b>。<br>
+      8K 上下文 → 6400 万个格子 <span class="mono">×</span> 每层 <span class="mono">×</span> 每个 head。<br><br>
+      长上下文为什么贵、FlashAttention 在优化什么、稀疏注意力在砍什么 —— 全都是这张表。
+    </p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="reveal">
+  <div class="head"><span class="num">4</span><h2>把「它」那一行真的算一遍</h2></div>
+  <p class="lede">简化到 3 个候选。这个例子顺手说明了 <span class="mono">÷√d_k</span> 为什么不是装饰。</p>
+
+  <div class="card grid2">
+    <div>
+      <div class="pill">Step 1 · 点积打分</div>
+      <p class="mono" style="font-size:15px;margin-top:14px;line-height:2">
+        Q<sub>它</sub> · K<sub>动物</sub> = <b>12.8</b><br>
+        Q<sub>它</sub> · K<sub>累</sub>　 = <b>6.4</b><br>
+        Q<sub>它</sub> · K<sub>马路</sub> = <b>3.2</b>
+      </p>
+      <p class="note">64 个数相乘再相加，方差正好是 64，所以分数轻易就到 ±10 以上。</p>
+      <div class="pill" style="background:#E8F1FA;margin-top:22px">Step 2 · ÷√64 = ÷8</div>
+      <p class="mono" style="font-size:15px;margin-top:12px;line-height:2">
+        12.8 → <b>1.6</b>　　6.4 → <b>0.8</b>　　3.2 → <b>0.4</b>
+      </p>
+    </div>
+    <div>
+      <div class="pill" style="background:#FDEDE7">❌ 不除，直接 softmax</div>
+      <div class="smx">
+        <div class="sr"><span>动物</span><div class="bar"><i style="width:99.8%;background:var(--red)"></i></div><span class="v">0.998</span></div>
+        <div class="sr"><span>累</span><div class="bar"><i style="width:0.2%;background:var(--red)"></i></div><span class="v">0.002</span></div>
+        <div class="sr"><span>马路</span><div class="bar"><i style="width:0.1%;background:var(--red)"></i></div><span class="v">0.000</span></div>
+      </div>
+      <p class="note">几乎是 one-hot。softmax 饱和 → <b>梯度接近 0 → 训不动</b>。而且只剩一个词的信息，别的全丢了。</p>
+
+      <div class="pill" style="background:#E6F6EE;margin-top:24px">✅ 除以 8 之后</div>
+      <div class="smx">
+        <div class="sr"><span>动物</span><div class="bar"><i style="width:57.1%;background:var(--upd)"></i></div><span class="v">0.571</span></div>
+        <div class="sr"><span>累</span><div class="bar"><i style="width:25.7%;background:var(--upd)"></i></div><span class="v">0.257</span></div>
+        <div class="sr"><span>马路</span><div class="bar"><i style="width:17.2%;background:var(--upd)"></i></div><span class="v">0.172</span></div>
+      </div>
+      <p class="note">有层次、有梯度。方差被拉回 1，这才是 √d<sub>k</sub> 的全部作用。</p>
+    </div>
+  </div>
+
+  <div class="card" style="background:#FFF6DE">
+    <h4 class="sh">Step 3 · 输出</h4>
+    <p class="mono" style="font-size:17px;margin-top:8px">O<sub>它</sub> = 0.571 · V<sub>动物</sub> ＋ 0.257 · V<sub>累</sub> ＋ 0.172 · V<sub>马路</sub></p>
+    <p class="note" style="font-size:16px">「它」原本是个空洞的代词，走完这一层，它的向量里已经装了 57% 的「动物」。<br>
+    <b>这就是 attention 干的唯一一件事：让词与词交换内容。</b></p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="reveal">
+  <div class="head"><span class="num">5</span><h2>最该记住的一点：A 不是参数</h2></div>
+  <p class="lede">如果只带走一句话，带这句。这是 attention 和普通神经网络层的本质分界。</p>
+
+  <div class="grid2" style="margin-top:28px">
+    <div class="card" style="margin-top:0">
+      <div class="pill" style="background:#F1EDE6">普通 Linear / FFN 层</div>
+      <div class="big" style="margin-top:16px;font-size:28px">权重是<br>训完就<b style="color:var(--red)">钉死</b>的</div>
+      <p class="note" style="font-size:15.5px">不管输入什么句子，都用同一套 W。<br><b>固定的变换。</b></p>
+    </div>
+    <div class="card" style="margin-top:0;background:#E8F1FA">
+      <div class="pill" style="background:#fff">Attention</div>
+      <div class="big" style="margin-top:16px;font-size:28px">混合权重是<br><b style="color:var(--bwd)">当场算</b>出来的</div>
+      <p class="note" style="font-size:15.5px">同一个模型，「它」在不同句子里会连到不同的词。<br><b>动态路由。</b></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <p style="font-size:17px;font-weight:800;line-height:1.9">
+      参数（<span class="mono">W^Q, W^K, W^V, W^O</span>）学的<b>不是</b>「连哪个词」，<br>
+      而是<span class="hl">「按什么标准判断相关」</span>。<br><br>
+      <span style="font-weight:600;color:var(--muted);font-size:15.5px">
+      连哪个词，是推理时看着实际输入现算的。这就是为什么同一套权重能处理它从没见过的句子结构。</span>
+    </p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="reveal">
+  <div class="head"><span class="num">6</span><h2>那么，一个 head 是什么</h2></div>
+  <p class="lede">前面第 1–5 节讲的整套流程，跑一遍 —— <b>那就是一个 head</b>。</p>
+
+  <div class="card">
+    <div class="pipe" style="justify-content:center">
+      <div class="shp"><b>一套</b><span>W^Q W^K W^V</span></div>
+      <span class="arw">→</span>
+      <div class="shp s"><b>一个 (n,n)</b><span>注意力矩阵</span></div>
+      <span class="arw">→</span>
+      <div class="shp o"><b>一个 (n,64)</b><span>输出</span></div>
+    </div>
+    <p class="note" style="text-align:center;font-size:17px;margin-top:20px">
+      一个 head 只能产出 <b>一个</b> 概率分布 —— 也就是<b>一种</b>「什么算相关」的判断标准。<br>
+      这个限制，就是需要多个 head 的全部理由。
+    </p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="reveal">
+  <div class="head"><span class="num">7</span><h2>为什么不能只有一个：softmax 的预算只有 1</h2></div>
+  <p class="lede">softmax 强制内部竞争。给了这个，就没得给那个。</p>
+
+  <div class="card">
+    <p style="font-size:16.5px;font-weight:700">「它」这一个位置，同时需要好几种<b>互不相干</b>的信息：</p>
+    <div class="grid3" style="margin-top:16px">
+      <div class="bud" style="background:#FDEDE7"><b>① 指代对象是谁</b><p class="note" style="margin-top:4px">→ 动物</p></div>
+      <div class="bud" style="background:#E8F1FA"><b>② 我的谓语是哪个</b><p class="note" style="margin-top:4px">→ 累</p></div>
+      <div class="bud" style="background:#E6F6EE"><b>③ 紧邻的词是什么</b><p class="note" style="margin-top:4px">→ 因为</p></div>
+    </div>
+
+    <p style="font-size:16px;font-weight:800;margin-top:28px">1 个 head：只有一条 100% 的预算，三件事互相挤</p>
+    <div class="budbar">
+      <span style="width:45%;background:var(--fwd)">指代 45%</span>
+      <span style="width:33%;background:var(--bwd)">谓语 33%</span>
+      <span style="width:22%;background:var(--upd)">邻居 22%</span>
+    </div>
+    <p class="note">每件事都只做了一半。而且这三种「相关」的判断标准不一样，硬塞进同一个点积里会互相干扰。</p>
+
+    <p style="font-size:16px;font-weight:800;margin-top:28px">8 个 head：每个 head 自己一条完整的 100%</p>
+    <div class="budbar" style="margin-top:8px"><span style="width:100%;background:var(--fwd)">head 1 · 专心做指代 100%</span></div>
+    <div class="budbar" style="margin-top:6px"><span style="width:100%;background:var(--bwd)">head 2 · 专心找谓语 100%</span></div>
+    <div class="budbar" style="margin-top:6px"><span style="width:100%;background:var(--upd)">head 3 · 专心看邻居 100%</span></div>
+    <div class="budbar" style="margin-top:6px"><span style="width:100%;background:#B0A99E">head 4–8 · ⋯</span></div>
+    <p class="note" style="margin-top:14px;font-size:16px">
+      <b>8 个 head = 8 个独立的 softmax = 8 套并行的、各自定义「相关」的标准。</b>
+    </p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="reveal">
+  <div class="head"><span class="num">8</span><h2>它们真的分工了（没人安排）</h2></div>
+  <p class="lede">论文 Figure 5 的观察：不同 head 的 n×n 表长得完全不一样，各有明显的行为模式。</p>
+
+  <div class="card">
+    <div class="grid4">
+      <div><div class="pill" style="font-size:12px">head A</div><div id="hmA" style="margin-top:10px"></div>
+        <p class="note" style="font-size:13.5px"><b>看邻居</b><br>对角线亮 —— 只关心自己和身边的词</p></div>
+      <div><div class="pill" style="font-size:12px;background:#E8F1FA">head B</div><div id="hmB" style="margin-top:10px"></div>
+        <p class="note" style="font-size:13.5px"><b>看上一个词</b><br>次对角线亮 —— 像个局部语言模型</p></div>
+      <div><div class="pill" style="font-size:12px;background:#E6F6EE">head C</div><div id="hmC" style="margin-top:10px"></div>
+        <p class="note" style="font-size:13.5px"><b>解决指代</b><br>整列亮 —— 所有人都回看同一个名词</p></div>
+      <div><div class="pill" style="font-size:12px;background:#F1EBF8">head D</div><div id="hmD" style="margin-top:10px"></div>
+        <p class="note" style="font-size:13.5px"><b>盯句首</b><br>第一列亮 —— 常见的「垃圾桶 / 汇聚点」行为</p></div>
+    </div>
+    <p class="note" style="margin-top:20px;font-size:15.5px">
+      这些模式是训练<b>自发</b>长出来的。论文原文的说法是：不同的 head 明显在执行不同任务，许多表现出与句子的<b>句法和语义结构</b>相关的行为。
+    </p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="reveal">
+  <div class="head"><span class="num">9</span><h2>8 个 head 是「切开」，不是「加 8 倍」</h2></div>
+  <p class="lede">这是 multi-head 设计最漂亮的地方 —— 8 个视角基本是白拿的。</p>
+
+  <div class="card">
+    <div class="shp" style="width:100%;min-width:0"><b>d_model = 512</b><span>一个词的向量</span></div>
+    <div class="hsplit" id="hsplit"></div>
+    <p class="note" style="text-align:center;margin-top:12px;font-size:16px">
+      <span class="mono"><b>8 × 64 = 512</b></span>　—　总维度不变，所以总算力和「一个 512 维的 head」<b>几乎一样</b>。
+    </p>
+    <p class="note" style="text-align:center;font-size:14.5px">论文原话：由于每个头维度降低了，总计算成本与全维度的单头注意力相当。</p>
+  </div>
+
+  <div class="card" style="background:#FFF6DE">
+    <h4 class="sh">但也不是白吃的午餐：每个 head 只剩 64 维</h4>
+    <p class="note">论文 Table 3 的消融实验，是一条<b>倒 U</b>：</p>
+    <div style="margin-top:16px">
+      <div class="bl"><span>1 head × 512</span><div class="bar"><i style="width:45%;background:#B0A99E"></i></div><span class="v">24.9</span></div>
+      <div class="bl"><span>8 heads × 64</span><div class="bar"><i style="width:90%;background:var(--upd)"></i></div><span class="v">25.8 ✅</span></div>
+      <div class="bl"><span>32 heads × 16</span><div class="bar"><i style="width:70%;background:#B0A99E"></i></div><span class="v">25.4</span></div>
+    </div>
+    <p class="note" style="font-size:14px">BLEU（newstest2013 dev）· 横轴从 24.0 起画，为了让差异看得见</p>
+    <p class="note" style="font-size:16px;margin-top:14px">
+      <b>头太少</b>：视角不够，一个分布干三件事。<br>
+      <b>头太多</b>：每个头只有 16 维，装不下有意义的「标准」。
+    </p>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="reveal">
+  <div class="head"><span class="num">10</span><h2>代码里根本没有 8 个 head</h2></div>
+  <p class="lede">别被图骗了。实现上不是 8 次矩阵乘 —— 是<b>一次矩阵乘 + 一次 reshape</b>。</p>
+
+  <div class="card">
+    <div class="pipe">
+      <div class="shp"><b>(n, 512)</b><span>X</span></div>
+      <span class="arw">×</span>
+      <div class="shp q"><b>(512, 512)</b><span>W^Q 一整个</span></div>
+      <span class="arw">=</span>
+      <div class="shp"><b>(n, 512)</b><span>Q 全部头</span></div>
+    </div>
+    <div class="pipe" style="margin-top:14px">
+      <span class="arw" style="font-size:15px;font-weight:900">然后</span>
+      <div class="shp"><b>reshape</b><span>(n, 8, 64)</span></div>
+      <span class="arw">→</span>
+      <div class="shp"><b>transpose</b><span>(8, n, 64)</span></div>
+      <span class="arw">→</span>
+      <div class="shp s"><b>batched matmul</b><span>8 个 (n,n) 一把算</span></div>
+    </div>
+    <p class="note" style="margin-top:20px;font-size:17px;font-weight:800">
+      <span class="hl">「8 个 head」＝ 把 512 这个维度切成 8 段，让 softmax 分段独立进行。</span>
+    </p>
+    <p class="note" style="font-size:15.5px">
+      W<sup>Q</sup> 是<b>一个</b> 512×512 的矩阵，不是 8 个 512×64。head 不是结构上的 8 个模块，只是张量上的一个轴。<br>
+      想通这一点，下一节的 GQA 就是显然的了 —— 你只要把那个轴的长度改一改。
+    </p>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="reveal">
+  <div class="head"><span class="num">11</span><h2>MHA / GQA / MQA：改的就是那个轴</h2></div>
+  <p class="lede">推理时 KV cache 要按 head 存。于是有人问：Q 保持 8 个头，K/V 能不能少几个头共用？</p>
+
+  <div class="card">
+    <div class="grid3">
+      <div>
+        <div class="pill">MHA · 论文原版</div>
+        <div id="gqa1" style="margin-top:12px"></div>
+        <p class="note" style="font-size:14.5px">8 个 Q 头，<b>各自</b>一份 K/V。<br>表达力最强，KV cache 最大。</p>
+      </div>
+      <div>
+        <div class="pill" style="background:#E6F6EE">GQA · 今天的主流</div>
+        <div id="gqa2" style="margin-top:12px"></div>
+        <p class="note" style="font-size:14.5px">分组共享，这里 4 个 Q 头共用 1 份 K/V。<br><b>KV cache ÷ 4</b>，质量几乎不掉。</p>
+      </div>
+      <div>
+        <div class="pill" style="background:#FDEDE7">MQA · 最极端</div>
+        <div id="gqa3" style="margin-top:12px"></div>
+        <p class="note" style="font-size:14.5px">全部 8 个 Q 头共用 <b>1 份</b> K/V。<br><b>KV cache ÷ 8</b>，质量开始有损。</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:22px;font-size:16px">
+      注意<b>Q 的头数一个都没少</b> —— 8 套「判断标准」全保留，只是大家查同一本索引。<br>
+      这是纯粹为推理显存做的取舍：训练时 KV cache 不存在，这个优化毫无意义。
+    </p>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="reveal">
+  <div class="head"><span class="num">12</span><h2>接到你熟的东西上</h2></div>
+  <p class="lede">前面那些形状，在推理栈里就是这几个具体的东西。</p>
+
+  <div class="tblwrap">
+  <table class="tbl">
+    <tr><th>这一页讲的</th><th>在推理栈里就是</th></tr>
+    <tr><td>head 这个维度</td><td class="m">KV cache 形状里的 <span class="mono">n_heads</span>：<span class="mono">[layer, 2, batch, n_kv_heads, seq, d_head]</span></td></tr>
+    <tr class="hi"><td>K/V 的 head 数可以少于 Q</td><td class="m">GQA / MQA。KV cache 直接按 <span class="mono">n_q_heads ÷ n_kv_heads</span> 倍缩小</td></tr>
+    <tr><td>那张 <span class="mono">(n, n)</span> 的 A 矩阵</td><td class="m">FlashAttention 要<b>避免落地</b>的东西 —— 它分块算 softmax，A 从来不完整写进 HBM</td></tr>
+    <tr><td>A 是 n×n，随长度平方增长</td><td class="m">长上下文的成本曲线 · 稀疏注意力 / 滑窗注意力在砍的正是它</td></tr>
+    <tr><td>K、V 每个位置算完不再变</td><td class="m">所以可以缓存 —— <b>KV cache 存在的全部理由</b></td></tr>
+    <tr><td>Q 只用当前这一个位置</td><td class="m">所以解码阶段 Q 是 <span class="mono">(1, 64)</span>，变成瘦长的 GEMV → 访存瓶颈，不是算力瓶颈</td></tr>
+  </table>
+  </div>
+
+  <div class="card" style="background:#F3F0EA">
+    <h4 class="sh">顺手去个歧义：两个不相干的 "head"</h4>
+    <p class="note" style="font-size:16px">
+      <b>attention head</b> —— 这一页讲的，512 里切出来的 64 维一段。<br>
+      <b>LM head</b> —— 模型最后那个 <span class="mono">(512 × vocab)</span> 的投影层，把向量变成词表上的分数。<br><br>
+      两者<b>毫无关系</b>，只是都叫 head。看代码时别混。
+    </p>
+  </div>
+</section>
+
+<div class="punch reveal">
+  <div class="big">两句话收尾</div>
+  <p style="margin-top:28px">
+    <b style="color:#fff">Attention</b> = 每个词当场算出「我该听谁的」，然后按这个比例把大家的内容拌进自己。<br>
+    权重是<span class="mono">算</span>出来的，不是<span class="mono">存</span>下来的。
+  </p>
+  <p>
+    <b style="color:#fff">Head</b> = 同一件事按 8 套不同标准并行做一遍，因为一个 softmax 的预算只有 100%。<br>
+    实现上它只是张量的一个轴 —— 所以 GQA 才能顺手把它改小。
+  </p>
+</div>
+
+<p class="src">配置与消融数据取自 arXiv:1706.03762 原文（第 3.2 节、Table 3、Figure 5）· 注意力矩阵为示意值，第 4 节的算式为精确计算</p>
+
+</div>
+
+<script>
+/* ---------- heatmap renderer ---------- */
+function heat(el, data, opts){
+  opts = opts || {};
+  const labels = opts.labels, mini = !!opts.mini, hlRow = opts.hlRow;
+  const n = data.length, max = Math.max(...data.flat());
+  const g = document.createElement('div');
+  g.className = 'hm ' + (mini ? 'mini' : 'big8');
+  g.style.gridTemplateColumns = (labels ? 'auto ' : '') + `repeat(${data[0].length}, auto)`;
+
+  if (labels){
+    const c = document.createElement('div'); c.className = 'hc hd hcorner'; g.appendChild(c);
+    labels.forEach(t=>{ const h=document.createElement('div'); h.className='hc hd'; h.textContent=t; g.appendChild(h); });
+  }
+  data.forEach((row,i)=>{
+    if (labels){ const h=document.createElement('div'); h.className='hc hd hcorner'; h.textContent=labels[i]; g.appendChild(h); }
+    row.forEach(v=>{
+      const c = document.createElement('div');
+      c.className = 'hc';
+      const a = Math.pow(v/max, 0.75);
+      c.style.background = `rgba(46,111,183,${(0.06 + a*0.94).toFixed(3)})`;
+      if (!mini){
+        c.style.color = a > 0.55 ? '#fff' : '#6E655B';
+        c.textContent = v >= 0.10 ? v.toFixed(2).slice(1) : '';
+      }
+      if (i === hlRow) c.style.borderColor = '#E4572E';
+      g.appendChild(c);
+    });
+  });
+  el.appendChild(g);
+}
+
+const toks = ['动物','没有','过','马路','因为','它','累','了'];
+const A = [
+  [.40,.10,.05,.15,.05,.15,.05,.05],
+  [.20,.30,.25,.10,.05,.03,.04,.03],
+  [.10,.15,.30,.35,.03,.02,.03,.02],
+  [.15,.05,.30,.35,.05,.05,.03,.02],
+  [.10,.05,.05,.10,.30,.20,.15,.05],
+  [.45,.04,.03,.12,.06,.10,.18,.02],
+  [.30,.03,.02,.05,.10,.30,.15,.05],
+  [.10,.05,.05,.05,.10,.15,.40,.10],
+];
+heat(document.getElementById('mainHM'), A, {labels:toks, hlRow:5});
+
+/* mini pattern grids: 6x6 */
+const mk = (fn)=>Array.from({length:6},(_,i)=>Array.from({length:6},(_,j)=>fn(i,j)));
+heat(document.getElementById('hmA'), mk((i,j)=> Math.max(0.03, 1 - Math.abs(i-j)*0.45)), {mini:true});
+heat(document.getElementById('hmB'), mk((i,j)=> j===i-1 ? 1 : (j===i ? 0.25 : 0.04)), {mini:true});
+heat(document.getElementById('hmC'), mk((i,j)=> j===2 ? 1 : 0.08), {mini:true});
+heat(document.getElementById('hmD'), mk((i,j)=> j===0 ? 1 : (j===i ? 0.3 : 0.05)), {mini:true});
+
+/* head split strip */
+const cols = ['#E4572E','#EE8A5E','#F2B705','#1E9E62','#2E9E9E','#2E6FB7','#7B4FBF','#B0453B'];
+const hs = document.getElementById('hsplit');
+cols.forEach((c,i)=>{
+  const d = document.createElement('div');
+  d.className='hpiece'; d.style.background=c;
+  d.innerHTML = `<span style="font-size:10px;opacity:.85">head ${i+1}</span><span style="font-size:14px">64</span>`;
+  hs.appendChild(d);
+});
+
+/* ---------- MHA / GQA / MQA ---------- */
+function kvsvg(el, groups){
+  // groups: array of arrays of Q-head indices sharing one KV
+  const N=8, W=34, GAP=8, X0=6;
+  const cx = i => X0 + i*(W+GAP) + W/2;
+  const totalW = X0*2 + N*W + (N-1)*GAP;
+  let s = `<svg viewBox="0 0 ${totalW} 152" style="width:100%">`;
+  // Q row
+  s += `<text x="${totalW/2}" y="12" text-anchor="middle" font-size="11" font-weight="900" fill="#6E655B">Q · 8 个头（都保留）</text>`;
+  for(let i=0;i<N;i++){
+    s += `<rect x="${X0+i*(W+GAP)}" y="20" width="${W}" height="30" rx="6" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>`;
+    s += `<text x="${cx(i)}" y="40" text-anchor="middle" font-size="12" font-weight="900" fill="#fff">${i+1}</text>`;
+  }
+  // KV boxes + lines
+  groups.forEach(g=>{
+    const x1 = X0 + g[0]*(W+GAP);
+    const x2 = X0 + g[g.length-1]*(W+GAP) + W;
+    const w = x2-x1, c = (x1+x2)/2;
+    s += `<rect x="${x1}" y="104" width="${w}" height="30" rx="6" fill="#1E9E62" stroke="#16130F" stroke-width="2.5"/>`;
+    s += `<text x="${c}" y="124" text-anchor="middle" font-size="12" font-weight="900" fill="#fff">K/V</text>`;
+    g.forEach(i=>{ s += `<path d="M${cx(i)} 50 L${c} 104" stroke="#16130F" stroke-width="2" fill="none"/>`; });
+  });
+  s += `<text x="${totalW/2}" y="150" text-anchor="middle" font-size="11" font-weight="900" fill="#6E655B">K/V · ${groups.length} 份 → KV cache 就是这个数</text>`;
+  s += `</svg>`;
+  el.innerHTML = s;
+}
+kvsvg(document.getElementById('gqa1'), [[0],[1],[2],[3],[4],[5],[6],[7]]);
+kvsvg(document.getElementById('gqa2'), [[0,1,2,3],[4,5,6,7]]);
+kvsvg(document.getElementById('gqa3'), [[0,1,2,3,4,5,6,7]]);
+
+/* reveal */
+const io = new IntersectionObserver((es)=>{
+  es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:0.06});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
