@@ -94,76 +94,77 @@ h3 em{font-style:normal; color:var(--acc)}
   <h1>AI / ML 基础<br><em>图解合集</em></h1>
   <p class="sub">每页一个概念，一路读到底。<br>下面的顺序就是推荐的读法：先零件，再架构，最后训练。</p>
 
+  <!-- 数字全部由脚本从卡片算出，不要手填 -->
   <div class="facts">
-    <div class="fact"><div class="n">6</div><div class="t">页</div></div>
-    <div class="fact"><div class="n">60</div><div class="t">小节</div></div>
-    <div class="fact"><div class="n">3</div><div class="t">页可交互</div></div>
+    <div class="fact"><div class="n" id="f-pages"></div><div class="t">页</div></div>
+    <div class="fact"><div class="n" id="f-sections"></div><div class="t">小节</div></div>
+    <div class="fact"><div class="n" id="f-live"></div><div class="t">页可交互</div></div>
     <div class="fact"><div class="n">0</div><div class="t">外部依赖</div></div>
   </div>
 </div>
 
 <!-- 1 · 零件 -->
 <section class="group reveal" style="--acc:var(--hot)">
-  <div class="ghead"><span class="gnum">1</span><h2>先认零件</h2></div>
+  <div class="ghead"><span class="gnum"></span><h2>先认零件</h2></div>
   <p class="glede">两个到处都在用的小部件。不先弄明白这两个，后面看 attention 和训练都会卡。</p>
 
   <div class="grid">
-    <a class="card" href="softmax.html">
+    <a class="card" href="softmax.html" data-sections="6">
       <div class="chips"><span class="chip">Softmax</span><span class="chip live">可交互 · 温度滑块</span></div>
       <h3>一堆乱数<br><em>→ 一组概率</em></h3>
       <p class="d">套个 e，再各自除以总和 —— 整个 softmax 就这三步。<b>temperature 就是进 softmax 之前先除以 T</b>，它只改变第一名领先多少，不改变谁是第一名。</p>
-      <div class="meta"><span class="f">softmax.html</span><span>6 小节</span><span class="go">读 →</span></div>
+      <div class="meta"></div>
     </a>
 
-    <a class="card" href="residual-connections.html">
+    <a class="card" href="residual-connections.html" data-sections="9">
       <div class="chips"><span class="chip">Residual</span><span class="chip live">可交互 · 深度滑块</span></div>
       <h3>别重写，<br><em>只贴便签</em></h3>
       <p class="d">深网络原来是「传话游戏」，传到第 90 层原话早没了。残差连接做的事只有一件：<b>把原话留着</b>。代码上就差一个加号。</p>
-      <div class="meta"><span class="f">residual-connections.html</span><span>9 小节</span><span class="go">读 →</span></div>
+      <div class="meta"></div>
     </a>
   </div>
 </section>
 
 <!-- 2 · 架构 -->
 <section class="group reveal" style="--acc:var(--blue)">
-  <div class="ghead"><span class="gnum">2</span><h2>再看架构</h2></div>
+  <div class="ghead"><span class="gnum"></span><h2>再看架构</h2></div>
   <p class="glede">Transformer 是怎么被想出来的，以及它最核心的那个零件到底在算什么。先读论文那页拿全景，再读 head 那页抠细节。</p>
 
   <div class="grid">
-    <a class="card" href="attention-paper.html">
+    <a class="card" href="attention-paper.html" data-sections="14">
       <div class="chips"><span class="chip">2017 · 论文</span></div>
       <h3>Attention Is<br>All You <em>Need</em></h3>
       <p class="d">它做的事一句话说完：<b>把「一个词一个词地读」这件事彻底扔掉</b>。公式只有四步，一层只有四个盒子，成绩还更好、更便宜。</p>
-      <div class="meta"><span class="f">attention-paper.html</span><span>14 小节</span><span class="go">读 →</span></div>
+      <div class="meta"></div>
     </a>
 
-    <a class="card" href="attention-head.html">
+    <a class="card" href="attention-head.html" data-sections="12">
       <div class="chips"><span class="chip">Attention / Head</span><span class="chip live">可交互 · 热力图</span></div>
       <h3>Attention 是什么<br>Head 又是<em>什么</em></h3>
       <p class="d">attention = 一次<b>由内容决定的加权平均</b>（权重当场算，不是训好固定的）；head = 同一件事并行做 8 遍，各用一套标准。顺带讲清 MHA / GQA / MQA 改的是哪个轴。</p>
-      <div class="meta"><span class="f">attention-head.html</span><span>12 小节</span><span class="go">读 →</span></div>
+      <div class="meta"></div>
     </a>
   </div>
 </section>
 
 <!-- 3 · 训练 -->
 <section class="group reveal" style="--acc:var(--pur)">
-  <div class="ghead"><span class="gnum">3</span><h2>最后是训练</h2></div>
+  <div class="ghead"><span class="gnum"></span><h2>最后是训练</h2></div>
   <p class="glede">给已经懂推理的人补上训练侧：一页讲一圈是怎么转的，一页讲这些名词分别落在模型的哪一段人生里。</p>
 
   <div class="grid">
-    <a class="card" href="llm-training.html">
+    <a class="card" href="llm-training.html" data-sections="13">
       <div class="chips"><span class="chip">训练机制</span></div>
       <h3>训练 = 推理<br><em>+ 两步</em></h3>
       <p class="d">你熟悉的前向传播就是训练的第一步，剩下要补的只有「算错多少」和「怎么改」。附显存账本（<b>训练 ≈ 推理的 8 倍</b>）、四种并行切法、LoRA、算力估算。</p>
-      <div class="meta"><span class="f">llm-training.html</span><span>13 小节</span><span class="go">读 →</span></div>
+      <div class="meta"></div>
     </a>
 
-    <a class="card" href="training-methods.html">
+    <a class="card" href="training-methods.html" data-sections="6">
       <div class="chips"><span class="chip">全景图</span></div>
       <h3>一个模型的<br><em>四段人生</em></h3>
       <p class="d">读书 → 学做事 → 学做人 → 学思考。四段的区别只在于<b>谁在打分</b>。你听过的所有名词都落在这四格里 —— 包括几个常被叫做「训练」其实不是的。</p>
-      <div class="meta"><span class="f">training-methods.html</span><span>6 小节</span><span class="go">读 →</span></div>
+      <div class="meta"></div>
     </a>
   </div>
 </section>
@@ -181,6 +182,26 @@ h3 em{font-style:normal; color:var(--acc)}
 </div>
 
 <script>
+/* 加一页 = 加一张 <a class="card" href data-sections>。
+   下面的数字（组序号、卡片脚注、hero 统计）全部从卡片本身算出来，不要手填。 */
+const cards = [...document.querySelectorAll('a.card')];
+
+cards.forEach(c=>{
+  const n = c.dataset.sections;
+  c.querySelector('.meta').innerHTML =
+      `<span class="f">${c.getAttribute('href')}</span>`
+    + (n ? `<span>${n} 小节</span>` : '')
+    + `<span class="go">读 →</span>`;
+});
+
+document.querySelectorAll('.group .gnum').forEach((el,i)=>{ el.textContent = i + 1; });
+
+document.getElementById('f-pages').textContent = cards.length;
+document.getElementById('f-sections').textContent =
+  cards.reduce((sum,c)=> sum + (+c.dataset.sections || 0), 0);
+document.getElementById('f-live').textContent =
+  cards.filter(c=> c.querySelector('.chip.live')).length;
+
 const io = new IntersectionObserver((es)=>{
   es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
 },{threshold:0.08});
