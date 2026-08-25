@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epoch / Step / Batch —— 用「刷题」就懂了</title>
+<style>
+  :root{
+    --paper:#FAF6EF;
+    --paper2:#F2EBE0;
+    --ink:#1E211F;
+    --muted:#8A8378;
+    --line:#DED5C6;
+    --batch:#3E6B8A;
+    --step:#C75B39;
+    --epoch:#4F7C5A;
+    --pending:#E4DCCE;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+  /* ---------- HERO ---------- */
+  header{padding:80px 0 40px;text-align:center}
+  .kicker{
+    font-size:14px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--muted);font-weight:700;margin-bottom:22px;
+  }
+  h1{
+    font-size:clamp(38px,7vw,78px);line-height:1.06;font-weight:900;
+    margin:0 0 18px;letter-spacing:-.02em;
+  }
+  h1 em{font-style:normal;color:var(--step)}
+  .sub{font-size:clamp(17px,2.4vw,22px);color:var(--muted);max-width:640px;margin:0 auto;font-weight:500}
+
+  /* ---------- 类比表 ---------- */
+  .map{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px;margin:60px 0 20px}
+  .card{
+    background:#fff;border:2px solid var(--line);border-radius:20px;
+    padding:26px 22px;position:relative;overflow:hidden;
+  }
+  .card .emoji{font-size:52px;line-height:1;display:block;margin-bottom:14px}
+  .card .real{font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .card .term{font-size:27px;font-weight:900;margin:2px 0 8px;letter-spacing:-.01em}
+  .card .life{font-size:16px;color:#4a4640;font-weight:500}
+  .card::after{content:"";position:absolute;left:0;top:0;bottom:0;width:7px}
+  .c-sample::after{background:var(--muted)}
+  .c-batch::after{background:var(--batch)}
+  .c-batch .term{color:var(--batch)}
+  .c-step::after{background:var(--step)}
+  .c-step .term{color:var(--step)}
+  .c-epoch::after{background:var(--epoch)}
+  .c-epoch .term{color:var(--epoch)}
+
+  /* ---------- 分节 ---------- */
+  section{padding:56px 0}
+  .h2{font-size:clamp(26px,4vw,40px);font-weight:900;margin:0 0 8px;letter-spacing:-.02em}
+  .h2 .num{color:var(--line);margin-right:14px}
+  .lead{color:var(--muted);font-size:18px;font-weight:500;margin:0 0 34px}
+
+  /* ---------- 动画舞台 ---------- */
+  .stage{background:#fff;border:2px solid var(--line);border-radius:26px;padding:28px}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:24px}
+  .btn{
+    border:2px solid var(--ink);background:var(--ink);color:#fff;font-family:inherit;
+    font-size:16px;font-weight:700;padding:11px 22px;border-radius:999px;cursor:pointer;
+  }
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn:active{transform:translateY(1px)}
+  .pick{display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:wrap}
+  .pick span{font-size:14px;font-weight:700;color:var(--muted)}
+  .chip{
+    border:2px solid var(--line);background:var(--paper2);border-radius:999px;
+    padding:7px 15px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:700;font-size:14px;
+    cursor:pointer;color:var(--ink)
+  }
+  .chip[aria-pressed="true"]{background:var(--batch);border-color:var(--batch);color:#fff}
+
+  .grid{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-start}
+  .group{
+    display:grid;gap:3px;padding:6px;border-radius:11px;
+    border:2px dashed var(--line);background:var(--paper);
+    transition:border-color .18s, background .18s, transform .18s;
+  }
+  .group.doing{border-color:var(--batch);border-style:solid;background:#EAF1F6;transform:translateY(-4px)}
+  .group.done{border-color:transparent;background:transparent}
+  .cell{width:13px;height:13px;border-radius:3px;background:var(--pending);transition:background .18s}
+  .group.doing .cell{background:var(--batch)}
+  .group.done .cell{background:var(--epoch);opacity:.5}
+
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:26px}
+  .stat{background:var(--paper2);border-radius:16px;padding:16px 18px}
+  .stat .lbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+  .stat .val{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:34px;font-weight:700;line-height:1.15}
+  .s-step .val{color:var(--step)}
+  .s-epoch .val{color:var(--epoch)}
+  .s-batch .val{color:var(--batch)}
+
+  .narrate{
+    margin-top:20px;background:var(--ink);color:#fff;border-radius:16px;padding:18px 22px;
+    font-size:18px;font-weight:500;min-height:62px;display:flex;align-items:center;gap:12px
+  }
+  .narrate b{color:#FFD9A8}
+
+  /* ---------- 公式 ---------- */
+  .formula{
+    background:var(--paper2);border:2px solid var(--line);border-radius:22px;padding:34px 28px;text-align:center
+  }
+  .eq{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:clamp(17px,3.2vw,30px);font-weight:700;line-height:1.9}
+  .eq .b{color:var(--batch)}
+  .eq .s{color:var(--step)}
+  .eq .e{color:var(--epoch)}
+  .eq .op{color:var(--muted)}
+
+  /* ---------- 真实例子 ---------- */
+  .real-ex{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+  .box{background:#fff;border:2px solid var(--line);border-radius:20px;padding:24px}
+  .box h3{margin:0 0 14px;font-size:19px;font-weight:900}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:15px}
+  .kv:last-child{border:0}
+  .kv b{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:700}
+
+  /* ---------- 困惑 ---------- */
+  .qa{border-top:2px solid var(--line);padding:26px 0}
+  .qa h3{margin:0 0 10px;font-size:clamp(20px,3vw,26px);font-weight:900}
+  .qa p{margin:0;font-size:17px;color:#4a4640;font-weight:500;max-width:760px}
+  .qa .tag{
+    display:inline-block;background:var(--step);color:#fff;font-size:12px;font-weight:700;
+    letter-spacing:.1em;padding:4px 10px;border-radius:999px;margin-bottom:12px
+  }
+
+  footer{padding:60px 0 90px;text-align:center;color:var(--muted);font-size:14px;font-weight:500}
+
+  @media (max-width:600px){
+    .pick{margin-left:0;width:100%}
+    header{padding:52px 0 24px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">Epoch · Step · Batch</div>
+    <h1>训练大模型，<br>就是<em>刷一本习题册</em></h1>
+    <p class="sub">这三个词，其实是「一道题 / 一叠题 / 刷完一遍」。</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="map">
+    <div class="card c-sample">
+      <span class="emoji">📄</span>
+      <div class="real">Sample</div>
+      <div class="term">一条样本</div>
+      <div class="life">= 习题册里的<b>一道题</b></div>
+    </div>
+    <div class="card c-batch">
+      <span class="emoji">📚</span>
+      <div class="real">Batch</div>
+      <div class="term">一批</div>
+      <div class="life">= 抓起来的<b>一叠题</b>，一起做</div>
+    </div>
+    <div class="card c-step">
+      <span class="emoji">✏️</span>
+      <div class="real">Step</div>
+      <div class="term">一步</div>
+      <div class="life">= 做完这叠 → 对答案 → <b>改一次脑子</b></div>
+    </div>
+    <div class="card c-epoch">
+      <span class="emoji">🔁</span>
+      <div class="real">Epoch</div>
+      <div class="term">一轮</div>
+      <div class="life">= 整本册子<b>从头到尾刷完一遍</b></div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">01</span>看它跑一遍</h2>
+    <p class="lead">100 道题（100 条数据）。改一下「一叠几道」，看 step 数怎么变。</p>
+
+    <div class="stage">
+      <div class="controls">
+        <button class="btn" id="play">▶ 开始刷题</button>
+        <button class="btn ghost" id="reset">↺ 重来</button>
+        <div class="pick">
+          <span>一叠几道 (batch size)</span>
+          <button class="chip" data-bs="5">5</button>
+          <button class="chip" data-bs="10" aria-pressed="true">10</button>
+          <button class="chip" data-bs="20">20</button>
+          <button class="chip" data-bs="50">50</button>
+        </div>
+      </div>
+
+      <div class="grid" id="grid"></div>
+
+      <div class="readout">
+        <div class="stat s-batch"><div class="lbl">Batch size</div><div class="val" id="v-bs">10</div></div>
+        <div class="stat s-step"><div class="lbl">本轮第几 step（会归零）</div><div class="val" id="v-stepin">0 / 10</div></div>
+        <div class="stat s-step"><div class="lbl">累计 step（只增不减）</div><div class="val" id="v-step">0</div></div>
+        <div class="stat s-epoch"><div class="lbl">Epoch（刷完几遍）</div><div class="val" id="v-ep">0</div></div>
+        <div class="stat"><div class="lbl">Loss（错得多少）</div><div class="val" id="v-loss">4.00</div></div>
+      </div>
+
+      <div class="narrate" id="say">🪑 坐下，习题册翻开第一页。</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">02</span>三行公式</h2>
+    <p class="lead">没有别的了，就这三行。</p>
+    <div class="formula">
+      <div class="eq">
+        <span class="s">每轮 steps</span> <span class="op">=</span> 总题数 <span class="op">÷</span> <span class="b">batch size</span><br>
+        <span class="s">总 steps</span> <span class="op">=</span> 每轮 steps <span class="op">×</span> <span class="e">epoch 数</span><br>
+        <span class="b">batch</span> 越大 <span class="op">→</span> <span class="s">step</span> 越少，但每步更稳
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">03</span>换成真实数字</h2>
+    <p class="lead">同一个模型，两种训练场景。</p>
+    <div class="real-ex">
+      <div class="box">
+        <h3>🏗️ 预训练（从零学语言）</h3>
+        <div class="kv"><span>数据</span><b>1,000,000,000,000 token</b></div>
+        <div class="kv"><span>每步吃掉</span><b>4,000,000 token</b></div>
+        <div class="kv"><span>Steps / epoch</span><b>250,000</b></div>
+        <div class="kv"><span>Epoch</span><b>≈ 1</b></div>
+        <div class="kv"><span>题太多</span><b>刷一遍都刷不完</b></div>
+      </div>
+      <div class="box">
+        <h3>🎯 微调（教它做一件事）</h3>
+        <div class="kv"><span>数据</span><b>10,000 条</b></div>
+        <div class="kv"><span>Batch size</span><b>16</b></div>
+        <div class="kv"><span>Steps / epoch</span><b>625</b></div>
+        <div class="kv"><span>Epoch</span><b>3</b></div>
+        <div class="kv"><span>总 steps</span><b>1,875</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">04</span>几个容易卡住的点</h2>
+    <p class="lead"></p>
+
+    <div class="qa">
+      <span class="tag">为什么不一道一道做</span>
+      <h3>一道题就改一次脑子，太慌了</h3>
+      <p>单题的对错很随机，可能是这题特别怪。一叠题一起看，取个平均，方向才靠得住 —— 而且 GPU 就爱一次算一大坨。</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">日志里的横轴</span>
+      <h3>你盯着看的那个数字是 step，不是 epoch</h3>
+      <p>训练曲线的横轴几乎都是 step，因为 epoch 太粗了 —— 大模型可能一个 epoch 都跑不完，那条线就只剩一个点。注意那通常是 <b>global step</b>：跨 epoch 一直往上累加，不会在新一轮归零。第 2 轮的第 1 步，global step 已经是 11 了。</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">显存不够怎么办</span>
+      <h3>梯度累积 = 攒几叠再改一次</h3>
+      <p>想要「一叠 64 道」但显存只塞得下 8 道？那就做 8 小叠、把批改意见攒起来，最后<b>只改一次</b>。对模型来说，等于一叠 64 道。</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">刷几遍好</span>
+      <h3>同一本册子刷太多遍，会背答案</h3>
+      <p>预训练数据海量，通常只刷 1 遍左右。微调数据少，刷 2–3 遍；再多，模型就开始死记训练集（过拟合），换道新题就答不出了。</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">还有个旋钮</span>
+      <h3>Learning rate = 每次改脑子的力度</h3>
+      <p>Step 决定「改几次」，learning rate 决定「每次改多狠」。太狠会改飞，太轻会几乎学不动。</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">一道题 → 一叠题 → 改一次 → 刷完一遍。就这样。</div>
+</footer>
+
+<script>
+(function(){
+  var TOTAL = 100;
+  var bs = 10;
+  var groupCount, cursor = 0, step = 0, epoch = 0, totalSteps = 0, timer = null;
+
+  var gridEl   = document.getElementById('grid');
+  var vBs      = document.getElementById('v-bs');
+  var vStep    = document.getElementById('v-step');
+  var vStepIn  = document.getElementById('v-stepin');
+  var vEp      = document.getElementById('v-ep');
+  var vLoss    = document.getElementById('v-loss');
+  var sayEl    = document.getElementById('say');
+  var playBtn  = document.getElementById('play');
+  var resetBtn = document.getElementById('reset');
+  var chips    = Array.prototype.slice.call(document.querySelectorAll('.chip'));
+
+  function say(html){ sayEl.innerHTML = html; }
+
+  function loss(){ return (2.8 * Math.exp(-totalSteps / 26) + 1.15).toFixed(2); }
+
+  function build(){
+    groupCount = TOTAL / bs;
+    gridEl.innerHTML = '';
+    var cols = bs <= 10 ? bs : (bs <= 20 ? 10 : 10);
+    for(var g = 0; g < groupCount; g++){
+      var grp = document.createElement('div');
+      grp.className = 'group';
+      grp.style.gridTemplateColumns = 'repeat(' + cols + ', 13px)';
+      for(var c = 0; c < bs; c++){
+        var cell = document.createElement('div');
+        cell.className = 'cell';
+        grp.appendChild(cell);
+      }
+      gridEl.appendChild(grp);
+    }
+    cursor = 0; step = 0;
+    vBs.textContent = bs;
+    vStep.textContent = totalSteps;
+    vStepIn.textContent = step + ' / ' + groupCount;
+    paint();
+  }
+
+  function paint(){
+    var groups = gridEl.children;
+    for(var i = 0; i < groups.length; i++){
+      groups[i].className = 'group' + (i < cursor ? ' done' : '');
+    }
+  }
+
+  function tick(){
+    var groups = gridEl.children;
+    // highlight the batch being worked on
+    paint();
+    groups[cursor].className = 'group doing';
+    say('📚 抓起第 <b>' + (cursor + 1) + '</b> 叠（' + bs + ' 道）→ 做完对答案 → ✏️ 改一次脑子 = 本轮第 <b>' + (step + 1) + '</b> step，累计第 <b>' + (totalSteps + 1) + '</b> step');
+
+    setTimeout(function(){
+      cursor++; step++; totalSteps++;
+      vStep.textContent = totalSteps;
+      vStepIn.textContent = step + ' / ' + groupCount;
+      vLoss.textContent = loss();
+      paint();
+
+      if(cursor >= groupCount){
+        epoch++;
+        vEp.textContent = epoch;
+        say('🔁 整本刷完了 —— <b>第 ' + epoch + ' 个 epoch 完成</b>（本轮走了 ' + groupCount + ' 个 step）。本轮计数归零，<b>累计 step 不归零</b>，翻回第一页继续。');
+        cursor = 0; step = 0;
+        vStepIn.textContent = step + ' / ' + groupCount;
+        setTimeout(paint, 500);
+      }
+    }, 340);
+  }
+
+  function play(){
+    if(timer){ stop(); return; }
+    playBtn.textContent = '⏸ 暂停';
+    tick();
+    timer = setInterval(tick, 820);
+  }
+  function stop(){
+    clearInterval(timer); timer = null;
+    playBtn.textContent = '▶ 继续刷题';
+  }
+
+  playBtn.addEventListener('click', play);
+
+  resetBtn.addEventListener('click', function(){
+    stop();
+    playBtn.textContent = '▶ 开始刷题';
+    epoch = 0; totalSteps = 0;
+    vEp.textContent = 0; vLoss.textContent = '4.00';
+    build();
+    say('🪑 坐下，习题册翻开第一页。');
+  });
+
+  chips.forEach(function(chip){
+    chip.addEventListener('click', function(){
+      chips.forEach(function(c){ c.setAttribute('aria-pressed','false'); });
+      chip.setAttribute('aria-pressed','true');
+      bs = parseInt(chip.dataset.bs, 10);
+      stop();
+      playBtn.textContent = '▶ 开始刷题';
+      epoch = 0; totalSteps = 0;
+      vEp.textContent = 0; vLoss.textContent = '4.00';
+      build();
+      say('📐 一叠 <b>' + bs + '</b> 道 → 100 ÷ ' + bs + ' = <b>' + (100/bs) + ' 个 step</b> 就刷完一遍（1 epoch）。');
+    });
+  });
+
+  build();
+})();
+</script>
+</body>
+</html>
