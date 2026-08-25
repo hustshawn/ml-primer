@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据并行 · 模型复制 N 份，数据切成 N 份</title>
+<style>
+:root{
+  --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B;
+  --mdl:#2E6FB7;            /* 模型 = 蓝，被复制 */
+  --d1:#E4572E; --d2:#F2B705; --d3:#1E9E62; --d4:#7B4FBF;  /* 数据 4 片 */
+  --sync:#B0453B; --ok:#1E9E62; --yel:#F2B705; --red:#B0453B;
+  --grey:#9A9188; --card:#FFFFFF;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(#00000010 1px, transparent 1px); background-size:28px 28px;
+}
+.wrap{max-width:1040px; margin:0 auto; padding:0 24px 140px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+/* ---------- hero ---------- */
+.hero{padding:100px 0 20px; text-align:center}
+.kicker{display:inline-block; font-size:13px; letter-spacing:.2em; font-weight:700;
+  border:2px solid var(--ink); padding:7px 16px; border-radius:100px; background:var(--yel)}
+h1{font-size:clamp(32px,6.2vw,70px); line-height:1.05; font-weight:900; letter-spacing:-.03em; margin:24px 0 0}
+h1 em{font-style:normal; color:var(--d1)}
+h1 span.b{color:var(--mdl)}
+.sub{font-size:clamp(16.5px,2.3vw,22px); color:var(--muted); margin-top:22px; font-weight:500}
+.sub b{color:var(--ink)}
+.herofig{margin:44px auto 0; max-width:820px}
+
+.facts{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:34px}
+.fact{background:var(--card); border:3px solid var(--ink); border-radius:16px;
+  box-shadow:5px 5px 0 var(--ink); padding:14px 20px; min-width:152px}
+.fact .n{font-size:26px; font-weight:900; letter-spacing:-.02em; line-height:1.1}
+.fact .n.b{color:var(--mdl)} .fact .n.h{color:var(--d1)} .fact .n.k{color:var(--ok)}
+.fact .t{font-size:12.5px; color:var(--muted); font-weight:700; letter-spacing:.04em; margin-top:7px}
+
+/* ---------- section shell ---------- */
+section{margin-top:100px}
+.num{display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px;
+  border-radius:50%; background:var(--ink); color:var(--bg); font-weight:900; font-size:20px; flex:0 0 46px}
+.head{display:flex; gap:18px; align-items:center; margin-bottom:10px}
+h2{font-size:clamp(23px,3.9vw,38px); font-weight:900; letter-spacing:-.02em; line-height:1.16}
+.lede{font-size:clamp(15.5px,2vw,19px); color:var(--muted); max-width:820px; margin-left:64px; font-weight:500}
+.lede b{color:var(--ink)}
+@media(max-width:640px){.lede{margin-left:0}}
+
+.card{background:var(--card); border:3px solid var(--ink); border-radius:22px;
+  box-shadow:8px 8px 0 var(--ink); padding:30px; margin-top:30px}
+.card.tight{padding:22px}
+.card.dark{background:var(--ink); color:var(--bg); box-shadow:8px 8px 0 var(--d1)}
+.card.dark p{color:#C9C2B8; margin-top:14px; font-size:16.5px}
+.card.dark b{color:#fff}
+.card.dark .mono{color:var(--yel)}
+.big{font-size:clamp(21px,3.3vw,33px); font-weight:900; letter-spacing:-.02em; line-height:1.18}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+
+h4{font-size:17.5px; font-weight:900; letter-spacing:-.01em}
+.note{font-size:15px; color:#2E2823; margin-top:12px}
+.note b{color:var(--ink)}
+.small{font-size:13.5px; color:var(--muted); font-weight:600; margin-top:14px}
+svg{display:block; width:100%; height:auto}
+
+.tag{display:inline-block; font-size:11.5px; font-weight:900; letter-spacing:.08em;
+  border:2px solid var(--ink); border-radius:100px; padding:3px 10px; background:#F3F0EA}
+.tag.no{background:#FDEDE7; color:var(--red)}
+.tag.yes{background:#E6F6EE; color:var(--ok)}
+.tag.b{background:#E8F1FA; color:var(--mdl)}
+
+.panel{background:var(--card); border:3px solid var(--ink); border-radius:18px; padding:22px}
+.panel h4{display:flex; align-items:center; gap:9px}
+.dot{width:13px; height:13px; border-radius:50%; border:2.5px solid var(--ink); flex:0 0 auto}
+.panel p{font-size:14.5px; margin-top:11px; color:#2E2823}
+.panel p b{color:var(--ink)}
+.cost{display:inline-block; margin-top:14px; font-size:12.5px; font-weight:800; color:var(--muted)}
+
+/* ---------- memory bars ---------- */
+.memrow{margin-top:18px}
+.memlab{display:flex; justify-content:space-between; align-items:baseline; font-size:14px; font-weight:800; margin-bottom:5px}
+.memlab i{font-style:normal; font-family:ui-monospace,Menlo,monospace; color:var(--muted)}
+.memwrap{position:relative}
+.membar{display:flex; height:34px; border:3px solid var(--ink); border-radius:9px; overflow:hidden; background:#F1EDE6}
+.membar span{display:flex; align-items:center; justify-content:center; font-size:11.5px;
+  font-weight:900; color:#fff; overflow:hidden; white-space:nowrap; min-width:2px; transition:width .22s ease}
+.hline{position:absolute; top:-7px; bottom:-7px; width:0; border-left:3px dashed var(--red)}
+.hline b{position:absolute; top:-21px; left:5px; font-size:11px; font-weight:900; color:var(--red); white-space:nowrap}
+
+/* ---------- table ---------- */
+.tbl{margin-top:28px; border:3px solid var(--ink); border-radius:16px; overflow:hidden; font-size:14px}
+.tbl .r{display:grid; grid-template-columns:1.05fr 1.35fr 1.35fr}
+.tbl .r>div{padding:14px 16px; border-right:2px solid #E3DCD1; border-bottom:2px solid #E3DCD1; font-weight:600}
+.tbl .r>div:last-child{border-right:0}
+.tbl .r:last-child>div{border-bottom:0}
+.tbl .hd>div{background:var(--ink); color:var(--bg); font-weight:900; font-size:12.5px; letter-spacing:.05em}
+.tbl .r>div.k{background:#F3F0EA; font-weight:900}
+.tbl .r>div.tr{background:#E8F1FA}
+.tbl .r>div.inf{background:#E6F6EE}
+@media(max-width:760px){
+  .tbl{font-size:13px}
+  .tbl .r{grid-template-columns:1fr}
+  .tbl .r>div{border-right:0}
+  .tbl .hd{display:none}
+  .tbl .r>div.tr::before{content:"训练 · "; font-weight:900; color:var(--mdl)}
+  .tbl .r>div.inf::before{content:"推理 · "; font-weight:900; color:var(--ok)}
+}
+
+/* ---------- interactive panel ---------- */
+.lab{background:#F7F4EE; border:3px dashed var(--ink); border-radius:20px; padding:26px; margin-top:30px}
+.labtitle{font-size:12px; font-weight:900; letter-spacing:.18em; color:var(--muted)}
+.ctrl{display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:16px}
+.ctrl label{font-size:14px; font-weight:900}
+input[type=range]{-webkit-appearance:none; appearance:none; flex:1 1 220px; height:8px;
+  background:#DED7CB; border:2px solid var(--ink); border-radius:100px; outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:26px; height:26px; border-radius:50%;
+  background:var(--d1); border:3px solid var(--ink); cursor:pointer}
+input[type=range]::-moz-range-thumb{width:22px; height:22px; border-radius:50%;
+  background:var(--d1); border:3px solid var(--ink); cursor:pointer}
+.pill{display:inline-flex; gap:0; border:3px solid var(--ink); border-radius:100px; overflow:hidden; flex-wrap:wrap}
+.pill button{border:0; background:#fff; padding:9px 15px; font-size:13px; font-weight:900;
+  cursor:pointer; font-family:inherit; color:var(--muted); border-right:2px solid var(--ink)}
+.pill button:last-child{border-right:0}
+.pill button.on{background:var(--ink); color:var(--bg)}
+.readout{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:22px}
+@media(max-width:700px){.readout{grid-template-columns:1fr}}
+.ro{background:#fff; border:3px solid var(--ink); border-radius:14px; padding:14px 16px}
+.ro .v{font-size:22px; font-weight:900; font-family:ui-monospace,Menlo,monospace; letter-spacing:-.02em; line-height:1.2}
+.ro .v.hot{color:var(--d1)} .ro .v.ok{color:var(--ok)} .ro .v.b{color:var(--mdl)}
+.ro .k{font-size:12px; font-weight:800; color:var(--muted); margin-top:5px}
+
+/* ---------- code ---------- */
+pre{background:var(--ink); color:#F1EDE6; border-radius:16px; padding:22px; margin-top:20px;
+  overflow-x:auto; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:13px; line-height:1.72; border:3px solid var(--ink)}
+pre b{color:var(--yel); font-weight:700}
+pre i{color:#8F877C; font-style:normal}
+pre u{color:#7FC8F8; text-decoration:none}
+
+/* ---------- list ---------- */
+ul.k{margin-top:16px; padding-left:0; list-style:none}
+ul.k li{font-size:15px; margin-top:12px; padding-left:30px; position:relative}
+ul.k li::before{content:"→"; position:absolute; left:0; font-weight:900; color:var(--d1)}
+ul.k li b{color:var(--ink)}
+ol.k{margin-top:16px; padding-left:24px}
+ol.k li{font-size:15px; margin-top:12px}
+
+/* ---------- takeaway ---------- */
+.take{display:flex; gap:16px; align-items:flex-start; border:3px solid var(--ink); border-radius:16px;
+  padding:18px 20px; background:#fff; margin-top:14px}
+.take .n2{font-family:ui-monospace,Menlo,monospace; font-size:13px; font-weight:900;
+  background:var(--ink); color:var(--bg); border-radius:100px; padding:4px 11px; flex:0 0 auto}
+.take p{font-size:15.5px}
+
+.reveal{opacity:0; transform:translateY(22px); transition:opacity .55s ease, transform .55s ease}
+.reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <span class="kicker">DATA PARALLELISM · DP</span>
+  <h1><span class="b">模型</span>复制 N 份<br><em>数据</em>切成 N 份</h1>
+  <p class="sub">名字里的「数据」，指的就是<b>被切开的那个东西</b>。<br>
+  被复制的那个从来不是数据，是模型。</p>
+
+  <div class="herofig">
+    <svg viewBox="0 0 820 300" role="img" aria-label="四张卡各放一整份模型，一个 batch 被切成四片分给它们">
+      <!-- 顶部标注 -->
+      <text x="14" y="22" font-size="13" font-weight="900" fill="#2E6FB7">↓ 每张卡都是「一整份」 —— 复制</text>
+      <text x="806" y="22" font-size="13" font-weight="900" fill="#E4572E" text-anchor="end">一个 batch 切成 4 片 —— 切开 ↓</text>
+
+      <!-- 4 张卡 -->
+      <g>
+        <!-- GPU0 -->
+        <rect x="14" y="38" width="185" height="150" rx="14" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <text x="26" y="60" font-size="11.5" font-weight="900" fill="#6E655B" font-family="monospace">GPU 0</text>
+        <rect x="26" y="70" width="161" height="60" rx="8" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="106" y="95" font-size="13" font-weight="900" fill="#fff" text-anchor="middle">整份模型</text>
+        <text x="106" y="114" font-size="10.5" fill="#CFE2F5" text-anchor="middle" font-family="monospace">全部权重 · 100%</text>
+        <rect x="26" y="140" width="161" height="34" rx="7" fill="#E4572E" stroke="#16130F" stroke-width="2.5"/>
+        <text x="106" y="162" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">数据 1/4</text>
+
+        <!-- GPU1 -->
+        <rect x="211" y="38" width="185" height="150" rx="14" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <text x="223" y="60" font-size="11.5" font-weight="900" fill="#6E655B" font-family="monospace">GPU 1</text>
+        <rect x="223" y="70" width="161" height="60" rx="8" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="303" y="95" font-size="13" font-weight="900" fill="#fff" text-anchor="middle">整份模型</text>
+        <text x="303" y="114" font-size="10.5" fill="#CFE2F5" text-anchor="middle" font-family="monospace">一模一样的副本</text>
+        <rect x="223" y="140" width="161" height="34" rx="7" fill="#F2B705" stroke="#16130F" stroke-width="2.5"/>
+        <text x="303" y="162" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">数据 2/4</text>
+
+        <!-- GPU2 -->
+        <rect x="408" y="38" width="185" height="150" rx="14" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <text x="420" y="60" font-size="11.5" font-weight="900" fill="#6E655B" font-family="monospace">GPU 2</text>
+        <rect x="420" y="70" width="161" height="60" rx="8" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="500" y="95" font-size="13" font-weight="900" fill="#fff" text-anchor="middle">整份模型</text>
+        <text x="500" y="114" font-size="10.5" fill="#CFE2F5" text-anchor="middle" font-family="monospace">一模一样的副本</text>
+        <rect x="420" y="140" width="161" height="34" rx="7" fill="#1E9E62" stroke="#16130F" stroke-width="2.5"/>
+        <text x="500" y="162" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">数据 3/4</text>
+
+        <!-- GPU3 -->
+        <rect x="605" y="38" width="185" height="150" rx="14" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <text x="617" y="60" font-size="11.5" font-weight="900" fill="#6E655B" font-family="monospace">GPU 3</text>
+        <rect x="617" y="70" width="161" height="60" rx="8" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="697" y="95" font-size="13" font-weight="900" fill="#fff" text-anchor="middle">整份模型</text>
+        <text x="697" y="114" font-size="10.5" fill="#CFE2F5" text-anchor="middle" font-family="monospace">一模一样的副本</text>
+        <rect x="617" y="140" width="161" height="34" rx="7" fill="#7B4FBF" stroke="#16130F" stroke-width="2.5"/>
+        <text x="697" y="162" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">数据 4/4</text>
+      </g>
+
+      <!-- 下面：global batch 拼回去 -->
+      <g>
+        <path d="M106 178 L106 214 M303 178 L303 214 M500 178 L500 214 M697 178 L697 214"
+              stroke="#16130F" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
+        <rect x="14" y="218" width="776" height="42" rx="10" fill="#F1EDE6" stroke="#16130F" stroke-width="3"/>
+        <rect x="17" y="221" width="192" height="36" rx="8" fill="#E4572E"/>
+        <rect x="209" y="221" width="192" height="36" rx="8" fill="#F2B705"/>
+        <rect x="401" y="221" width="192" height="36" rx="8" fill="#1E9E62"/>
+        <rect x="593" y="221" width="194" height="36" rx="8" fill="#7B4FBF"/>
+        <text x="402" y="245" font-size="14" font-weight="900" fill="#fff" text-anchor="middle" stroke="#16130F" stroke-width="3" paint-order="stroke">这四片合起来 = 一个 global batch</text>
+        <text x="402" y="284" font-size="14" font-weight="800" fill="#6E655B" text-anchor="middle">
+          没有任何一片数据被算过两次。
+        </text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="facts">
+    <div class="fact"><div class="n b">×N</div><div class="t">模型副本数</div></div>
+    <div class="fact"><div class="n h">÷N</div><div class="t">每卡拿到的数据</div></div>
+    <div class="fact"><div class="n k">1 次</div><div class="t">每步的全局同步</div></div>
+    <div class="fact"><div class="n">0 次</div><div class="t">推理时副本间通信</div></div>
+  </div>
+</div>
+
+<!-- ================= 1 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">1</span><h2>直接回答：谁复制，谁切开</h2></div>
+  <p class="lede">这个问题问得很准 —— 它是「数据并行」这个词唯一真正需要搞清楚的地方。答案不是二选一，而是<b>两件事同时发生，但发生在不同的东西上</b>。</p>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="panel" style="box-shadow:6px 6px 0 var(--mdl)">
+      <h4><span class="dot" style="background:var(--mdl)"></span>模型 → 被<b>复制</b></h4>
+      <p>每张卡上都有<b>一整份</b>权重。不是一半，不是一层，是全部。四张卡就是四份一模一样的模型。</p>
+      <p>而且它们必须<b>始终保持一样</b> —— 这是 DP 唯一的硬约束，后面第 3 节讲它是怎么被维持的。</p>
+      <span class="cost">代价：显存 × N（一份都没省）</span>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--d1)">
+      <h4><span class="dot" style="background:var(--d1)"></span>数据 → 被<b>切开</b></h4>
+      <p>一个 batch 被切成 N 段，<b>每张卡只看其中一段，而且只看一次</b>。GPU 0 看到的样本，GPU 1 永远不会看到。</p>
+      <p>所以每张卡上跑的 batch 是「小 batch」，合起来才是你在配置文件里写的那个 global batch。</p>
+      <span class="cost">收益：每步吃掉的数据量 × N</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4>那个最容易搞混的公式</h4>
+    <pre><i># 你在配置里写的三个数，乘起来才是「真正的 batch size」</i>
+global_batch = <b>per_device_batch</b> × <b>N_gpus</b> × <b>grad_accum_steps</b>
+                     ↑                  ↑              ↑
+              每张卡一次看多少      切成几份       同一张卡重复几轮
+                （空间上切）      （空间上切）      （时间上切）
+
+<i># 例：per_device=8, 8 张卡, accum=4</i>
+global_batch = 8 × 8 × 4 = <u>256</u>   <i># 优化器每 256 条样本才走一步</i></pre>
+    <p class="note">很多人调不好模型是因为只改了 <span class="mono">per_device_batch</span>，以为那就是 batch size。<b>它只是 global batch 的 1/N。</b>换机器（卡数变了）而不动这个数，等于悄悄改了 batch size —— 学习率立刻就不对了（第 10 节）。</p>
+  </div>
+</section>
+
+<!-- ================= 2 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">2</span><h2>为什么数据「不能」复制</h2></div>
+  <p class="lede">最快的理解方式，是假装它真的被复制了，然后看会发生什么 —— 会发生一件很好笑的事。</p>
+
+  <div class="card">
+    <svg viewBox="0 0 820 250" role="img" aria-label="假设四张卡拿到同一份数据，算出的梯度完全相同，平均之后毫无变化">
+      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#B0453B">假设：4 张卡拿到的是同一份数据（复制）</text>
+
+      <g font-size="12" font-weight="900" text-anchor="middle">
+        <rect x="14" y="34" width="176" height="86" rx="12" fill="#FDEDE7" stroke="#16130F" stroke-width="3"/>
+        <text x="102" y="56" fill="#16130F">GPU 0</text>
+        <text x="102" y="79" fill="#B0453B" font-family="monospace" font-size="13">样本 1–8</text>
+        <text x="102" y="103" fill="#6E655B" font-size="11">梯度 g</text>
+
+        <rect x="202" y="34" width="176" height="86" rx="12" fill="#FDEDE7" stroke="#16130F" stroke-width="3"/>
+        <text x="290" y="56" fill="#16130F">GPU 1</text>
+        <text x="290" y="79" fill="#B0453B" font-family="monospace" font-size="13">样本 1–8</text>
+        <text x="290" y="103" fill="#6E655B" font-size="11">梯度 g（一样）</text>
+
+        <rect x="390" y="34" width="176" height="86" rx="12" fill="#FDEDE7" stroke="#16130F" stroke-width="3"/>
+        <text x="478" y="56" fill="#16130F">GPU 2</text>
+        <text x="478" y="79" fill="#B0453B" font-family="monospace" font-size="13">样本 1–8</text>
+        <text x="478" y="103" fill="#6E655B" font-size="11">梯度 g（一样）</text>
+
+        <rect x="578" y="34" width="176" height="86" rx="12" fill="#FDEDE7" stroke="#16130F" stroke-width="3"/>
+        <text x="666" y="56" fill="#16130F">GPU 3</text>
+        <text x="666" y="79" fill="#B0453B" font-family="monospace" font-size="13">样本 1–8</text>
+        <text x="666" y="103" fill="#6E655B" font-size="11">梯度 g（一样）</text>
+      </g>
+
+      <path d="M102 124 L380 152 M290 124 L390 152 M478 124 L430 152 M666 124 L440 152"
+            stroke="#16130F" stroke-width="2.5" fill="none" marker-end="url(#ar2)"/>
+      <defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#16130F"/></marker></defs>
+
+      <rect x="250" y="156" width="330" height="44" rx="10" fill="#16130F"/>
+      <text x="415" y="184" font-size="14.5" font-weight="900" fill="#F2B705" text-anchor="middle" font-family="monospace">(g + g + g + g) / 4  =  g</text>
+
+      <text x="415" y="228" font-size="15" font-weight="900" fill="#B0453B" text-anchor="middle">
+        花了 4 倍的电，走出了和 1 张卡一模一样的那一步。
+      </text>
+    </svg>
+  </div>
+
+  <div class="card dark">
+    <div class="big">复制数据 = 把同一道题抄四遍，让四个人同时做。</div>
+    <p>四份答案完全相同，平均一下还是那个答案。<b>没有任何新信息进入模型</b> —— 这一步的成本变成 4 倍，效果一点没变。<br><br>
+    所以 DP 里数据<b>必须</b>切开。「每张卡看不同的数据」不是一个实现技巧，<b>它就是数据并行的定义</b>。切开数据，梯度才彼此不同；梯度彼此不同，平均起来才等于「看了 4 倍的数据」。</p>
+  </div>
+
+  <p class="note" style="max-width:820px; margin-left:64px">
+    ⚠️ 唯一的例外是<b>抄错了</b>：如果你忘了给每个 rank 设不同的 data sampler（<span class="mono">DistributedSampler</span> 没设 / seed 没错开），就会真的落到上面这张图里 —— 训练能跑、loss 会降、没有任何报错，只是你的 8 张卡在做 1 张卡的事。这是分布式训练最经典的静默 bug。
+  </p>
+</section>
+
+<!-- ================= 3 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">3</span><h2>一步里到底发生了什么</h2></div>
+  <p class="lede">DP 的一整步只有四个动作。前三个各卡各干各的，第四个是<b>唯一</b>一次全员碰面。</p>
+
+  <div class="card">
+    <svg viewBox="0 0 820 330" role="img" aria-label="数据并行一步的四个动作：切数据、各自前向反向、all-reduce 平均梯度、各自更新">
+      <!-- 步骤条 -->
+      <g font-weight="900">
+        <!-- 1 -->
+        <circle cx="30" cy="30" r="16" fill="#16130F"/><text x="30" y="36" font-size="15" fill="#FBF8F3" text-anchor="middle">1</text>
+        <text x="58" y="27" font-size="15" fill="#16130F">切数据</text>
+        <text x="58" y="46" font-size="12.5" font-weight="600" fill="#6E655B">global batch → 每卡一片，互不重叠</text>
+
+        <!-- 2 -->
+        <circle cx="30" cy="94" r="16" fill="#16130F"/><text x="30" y="100" font-size="15" fill="#FBF8F3" text-anchor="middle">2</text>
+        <text x="58" y="91" font-size="15" fill="#16130F">各自前向 + 反向</text>
+        <text x="58" y="110" font-size="12.5" font-weight="600" fill="#6E655B">完全独立，零通信 —— 每卡拿到自己的梯度 g<tspan font-size="10" dy="3">i</tspan></text>
+
+        <!-- 3 -->
+        <circle cx="30" cy="158" r="16" fill="#B0453B"/><text x="30" y="164" font-size="15" fill="#fff" text-anchor="middle">3</text>
+        <text x="58" y="155" font-size="15" fill="#B0453B">all-reduce：把 N 份梯度平均</text>
+        <text x="58" y="174" font-size="12.5" font-weight="600" fill="#6E655B">唯一的同步点。做完，每张卡手里都是同一个 ḡ</text>
+
+        <!-- 4 -->
+        <circle cx="30" cy="222" r="16" fill="#16130F"/><text x="30" y="228" font-size="15" fill="#FBF8F3" text-anchor="middle">4</text>
+        <text x="58" y="219" font-size="15" fill="#16130F">各自用 ḡ 更新</text>
+        <text x="58" y="238" font-size="12.5" font-weight="600" fill="#6E655B">同样的起点 + 同样的梯度 + 同样的优化器 → 权重仍然一样</text>
+      </g>
+
+      <path d="M30 46 L30 78 M30 110 L30 142 M30 174 L30 206" stroke="#16130F" stroke-width="2.5" stroke-dasharray="5 4"/>
+
+      <!-- 右侧循环回去 -->
+      <path d="M770 236 L790 236 L790 30 L770 30" stroke="#16130F" stroke-width="2.5" fill="none" marker-end="url(#ar3)"/>
+      <defs><marker id="ar3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#16130F"/></marker></defs>
+      <text x="784" y="140" font-size="11.5" font-weight="900" fill="#6E655B" text-anchor="middle" transform="rotate(90 784 140)">下一步</text>
+
+      <!-- 关键结论条 -->
+      <rect x="14" y="262" width="776" height="56" rx="12" fill="#E8F1FA" stroke="#2E6FB7" stroke-width="3"/>
+      <text x="402" y="286" font-size="14.5" font-weight="900" fill="#16130F" text-anchor="middle">
+        第 3+4 步合起来，保证了「N 份模型永远一模一样」。
+      </text>
+      <text x="402" y="307" font-size="13" font-weight="700" fill="#2E6FB7" text-anchor="middle">
+        所以整个训练过程中，你只有「一个」模型 —— 它只是同时躺在 N 张卡上。
+      </text>
+    </svg>
+  </div>
+
+  <div class="grid2" style="margin-top:24px">
+    <div class="panel">
+      <h4>它平均的是<b>梯度</b>，不是权重</h4>
+      <p>常见误解是「各卡各自训，最后把权重平均一下」。那是另一个东西（叫 model averaging / local SGD），收敛性质完全不同。</p>
+      <p>DP 是<b>每一步都平均梯度</b>，所以权重从来没有分叉过 —— 不需要「合回来」，因为它们从头到尾都相等。</p>
+    </div>
+    <div class="panel">
+      <h4>通信其实藏在反向里</h4>
+      <p>反向传播是从最后一层往前算的，所以<b>最后几层的梯度先算完</b>。PyTorch DDP 不等全部算完，而是把参数分成若干 bucket，<b>一个桶满了就立刻开始 all-reduce</b>。</p>
+      <p>于是通信和计算重叠，第 3 步的大部分时间被藏在第 2 步里 —— 这也是 DDP 比老式 DataParallel 快得多的原因。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <svg viewBox="0 0 820 170" role="img" aria-label="朴素做法是先算完再通信，DDP 把通信与反向重叠">
+      <text x="14" y="20" font-size="13" font-weight="900" fill="#6E655B">时间 →</text>
+
+      <text x="14" y="52" font-size="13" font-weight="900" fill="#B0453B">朴素</text>
+      <rect x="80" y="34" width="380" height="30" rx="6" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+      <text x="270" y="54" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">反向传播</text>
+      <rect x="460" y="34" width="290" height="30" rx="6" fill="#B0453B" stroke="#16130F" stroke-width="2.5"/>
+      <text x="605" y="54" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">all-reduce（干等）</text>
+      <text x="762" y="54" font-size="12" font-weight="900" fill="#B0453B">慢</text>
+
+      <text x="14" y="112" font-size="13" font-weight="900" fill="#1E9E62">DDP</text>
+      <rect x="80" y="94" width="380" height="30" rx="6" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+      <text x="270" y="114" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">反向传播（分桶）</text>
+      <g opacity="0.92">
+        <rect x="180" y="128" width="90" height="20" rx="5" fill="#B0453B" stroke="#16130F" stroke-width="2"/>
+        <rect x="275" y="128" width="90" height="20" rx="5" fill="#B0453B" stroke="#16130F" stroke-width="2"/>
+        <rect x="370" y="128" width="90" height="20" rx="5" fill="#B0453B" stroke="#16130F" stroke-width="2"/>
+        <rect x="465" y="128" width="60" height="20" rx="5" fill="#B0453B" stroke="#16130F" stroke-width="2"/>
+      </g>
+      <text x="352" y="143" font-size="10.5" font-weight="900" fill="#fff" text-anchor="middle">桶 all-reduce，与反向并行</text>
+      <rect x="460" y="94" width="65" height="30" rx="6" fill="#F1EDE6" stroke="#16130F" stroke-width="2.5" stroke-dasharray="4 3"/>
+      <text x="537" y="114" font-size="12" font-weight="900" fill="#1E9E62">快</text>
+      <path d="M525 79 L525 158" stroke="#1E9E62" stroke-width="3" stroke-dasharray="5 4"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ================= 4 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">4</span><h2>凭什么这样是对的</h2></div>
+  <p class="lede">DP 的全部合法性来自一行小学数学：<b>平均的梯度，就是平均 loss 的梯度</b>。所以「4 卡 × 每卡 8 条」和「1 卡 × 32 条」在数学上是同一件事。</p>
+
+  <div class="card">
+    <pre><i># loss 定义成 batch 内每条样本 loss 的平均值（几乎所有框架的默认）</i>
+L(θ) = (1/32) · Σ<sub>i=1..32</sub> ℓ<sub>i</sub>(θ)
+
+<i># 求导是线性的，所以可以先按卡分组求和，再合起来</i>
+∇L = (1/32) · Σ<sub>i=1..32</sub> ∇ℓ<sub>i</sub>
+   = (1/4) · [ <b>(1/8)Σ<sub>GPU0</sub>∇ℓ</b> + <b>(1/8)Σ<sub>GPU1</sub>∇ℓ</b> + <b>(1/8)Σ<sub>GPU2</sub>∇ℓ</b> + <b>(1/8)Σ<sub>GPU3</sub>∇ℓ</b> ]
+   = (1/4) · [ <u>g₀ + g₁ + g₂ + g₃</u> ]
+              ↑ 这四个正好就是每张卡自己算出来的梯度
+
+<i># 所以 all-reduce 求「平均」而不是「求和」—— 因为 loss 本身就是平均</i>
+ḡ = mean(g₀, g₁, g₂, g₃) = ∇L    ✅ <b>逐比特意义上的同一个数学量</b></pre>
+    <p class="note">这就是为什么 PyTorch DDP 默认对梯度取 <b>mean</b> 而不是 sum。如果它 sum，梯度会凭空放大 N 倍，等价于把学习率偷偷乘了 N。</p>
+  </div>
+
+  <div class="card dark">
+    <div class="big">DP 不是一种近似，是一个恒等式。</div>
+    <p>这一点很重要，因为它决定了你该怎么想 DP：<b>它不会改变训练结果</b>，只会改变你多快跑完。<br><br>
+    换句话说 —— <b>DP 唯一买到的东西是「同样的一步，更快走完」，以及「一步能吃下更多数据」</b>。它不改变优化轨迹（在第 5 节那几个例外之外），也不省显存（第 6 节）。</p>
+  </div>
+</section>
+
+<!-- ================= 5 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">5</span><h2>这个恒等式会在哪里破</h2></div>
+  <p class="lede">上面的推导有个前提：<b>每条样本的 loss 只跟它自己有关</b>。绝大多数情况成立，但有三个地方不成立 —— 而它们都不会报错，只会让你的多卡结果和单卡结果对不上。</p>
+
+  <div class="grid3" style="margin-top:26px">
+    <div class="panel" style="box-shadow:6px 6px 0 var(--red)">
+      <h4><span class="dot" style="background:var(--red)"></span>BatchNorm</h4>
+      <p>BN 的均值/方差是在 <b>batch 内跨样本</b>算的。切开数据后，每张卡只用自己那 8 条算统计量 —— 这跟单卡用 32 条算<b>不是同一个数</b>。</p>
+      <p>修法：<span class="mono">SyncBatchNorm</span>（统计量也 all-reduce），代价是多一轮通信。</p>
+      <span class="cost">CNN 时代最大的坑</span>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--ok)">
+      <h4><span class="dot" style="background:var(--ok)"></span>LayerNorm / RMSNorm</h4>
+      <p>它们只在<b>单条样本自己的特征维</b>上做归一化，压根不看 batch 里的别人。</p>
+      <p>所以 batch 怎么切都无所谓，恒等式完好。<b>这就是 Transformer 里这个坑基本消失了的原因</b> —— 不是大家变小心了，是换了 norm。</p>
+      <span class="cost">天然安全，不用管</span>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--red)">
+      <h4><span class="dot" style="background:var(--red)"></span>跨样本 loss</h4>
+      <p>对比学习（CLIP / InfoNCE）里，一条样本的 loss 分母是<b>整个 batch 的其他样本</b>当负例。切开之后，每张卡只能看到 1/N 的负例。</p>
+      <p>结果：有效负例数悄悄缩了 N 倍，效果直接掉。修法是把 embedding 先 <span class="mono">all-gather</span> 起来再算 loss。</p>
+      <span class="cost">对比学习必踩</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4>还有一个更蠢也更常见的：各卡 batch 不一样大</h4>
+    <p class="note">all-reduce 算的是<b>「各卡平均值的平均值」</b>。只有每张卡样本数相等时，它才等于「全局平均值」。<br><br>
+    所以当最后一个 batch 凑不满、或者按 token 数动态组 batch 导致各卡条数不同时，<b>样本少的那张卡上的每条样本会被赋予更大的权重</b>。这就是 <span class="mono">drop_last=True</span> 存在的理由，也是变长序列训练里要按 token 数做归一化（而不是按条数）的理由。</p>
+  </div>
+</section>
+
+<!-- ================= 6 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">6</span><h2>DP 不省显存 —— 自己拖着看</h2></div>
+  <p class="lede">这是关于 DP 最值钱的一句话。既然模型是<b>复制</b>的，那加卡对单卡显存的帮助就是：<b>零</b>。拖动下面的滑块，看着那根条一动不动。</p>
+
+  <div class="lab">
+    <div class="labtitle">可交互 · 卡数 与 显存切分策略（模型：7B，Adam，bf16 混合精度）</div>
+
+    <div class="ctrl">
+      <label for="nz">GPU 数量</label>
+      <input type="range" id="nz" min="0" max="6" step="1" value="3">
+      <span class="mono" id="nzv" style="font-weight:900; font-size:22px; min-width:48px; text-align:right">8</span>
+    </div>
+
+    <div class="ctrl" style="margin-top:18px">
+      <label>策略</label>
+      <div class="pill" id="mode">
+        <button data-m="ddp" class="on">纯 DP（DDP）</button>
+        <button data-m="z1">ZeRO-1</button>
+        <button data-m="z2">ZeRO-2</button>
+        <button data-m="z3">ZeRO-3 / FSDP</button>
+      </div>
+    </div>
+
+    <div class="memrow">
+      <div class="memlab"><b>单卡模型状态显存</b><i id="o-tot">112.0 GB</i></div>
+      <div class="memwrap">
+        <div class="membar">
+          <span id="b-w" style="width:12.5%; background:#2E6FB7">权重 14</span>
+          <span id="b-g" style="width:12.5%; background:#E4572E">梯度 14</span>
+          <span id="b-o" style="width:75%; background:#7B4FBF">优化器状态 84</span>
+        </div>
+        <div class="hline" id="hl" style="left:71.4%"><b>80 GB · 一张卡的上限</b></div>
+      </div>
+      <p class="small">条的满格 = 112 GB（纯 DP 下的单卡占用）。activation 另算，不在这条里。</p>
+    </div>
+
+    <div class="readout">
+      <div class="ro"><div class="v" id="o-mem">112.0 GB</div><div class="k">单卡装得下吗</div></div>
+      <div class="ro"><div class="v b" id="o-gb">64</div><div class="k">global batch（每卡 8 条）</div></div>
+      <div class="ro"><div class="v hot" id="o-comm">24.5 GB</div><div class="k">每步每卡通信量</div></div>
+    </div>
+
+    <div class="readout" style="grid-template-columns:1fr 1fr">
+      <div class="ro"><div class="v ok" id="o-tok">262 K</div><div class="k">每步吃掉的 token（seq 4096）</div></div>
+      <div class="ro"><div class="v" id="o-fit">放不下 ❌</div><div class="k">80 GB 卡的结论</div></div>
+    </div>
+
+    <p class="note" id="o-tip" style="margin-top:22px"></p>
+  </div>
+
+  <div class="card dark">
+    <div class="big">DP 买吞吐，ZeRO 买显存。这是两笔不同的交易。</div>
+    <p>「我加了 8 张卡，为什么还是 OOM？」—— 因为你加的是 DP。<b>DP 从来不是为了装下更大的模型</b>，它是为了让同样的模型一步吃下 8 倍的数据。<br><br>
+    要装下更大的模型，你需要的是<b>切模型</b>：ZeRO/FSDP（切状态）、TP（切矩阵）、PP（切层）。</p>
+  </div>
+</section>
+
+<!-- ================= 7 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">7</span><h2>ZeRO / FSDP：数据还是照原样切</h2></div>
+  <p class="lede">这里最容易迷路：ZeRO 和 FSDP 明明在切模型，为什么还叫「数据并行」？因为<b>它们对数据的切法跟 DP 一字不差</b> —— 变的只是「模型状态平时存在哪」。</p>
+
+  <div class="card">
+    <svg viewBox="0 0 820 300" role="img" aria-label="ZeRO 三级：逐步把优化器状态、梯度、权重也切开，但数据切法不变">
+      <text x="14" y="20" font-size="13" font-weight="900" fill="#6E655B">数据这一行，四种策略下完全相同 ↓</text>
+      <rect x="14" y="30" width="776" height="30" rx="8" fill="#F1EDE6" stroke="#16130F" stroke-width="3"/>
+      <rect x="17" y="33" width="192" height="24" rx="6" fill="#E4572E"/>
+      <rect x="209" y="33" width="192" height="24" rx="6" fill="#F2B705"/>
+      <rect x="401" y="33" width="192" height="24" rx="6" fill="#1E9E62"/>
+      <rect x="593" y="33" width="194" height="24" rx="6" fill="#7B4FBF"/>
+      <text x="402" y="50" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle" stroke="#16130F" stroke-width="3" paint-order="stroke">数据：切成 4 片，一直都是这么切的</text>
+
+      <g font-size="12" font-weight="900">
+        <!-- rows -->
+        <text x="14" y="96" fill="#16130F">DDP</text>
+        <rect x="120" y="80" width="222" height="22" rx="5" fill="#2E6FB7" stroke="#16130F" stroke-width="2"/>
+        <text x="231" y="96" fill="#fff" text-anchor="middle" font-size="10.5">权重（整份）</text>
+        <rect x="344" y="80" width="222" height="22" rx="5" fill="#E4572E" stroke="#16130F" stroke-width="2"/>
+        <text x="455" y="96" fill="#fff" text-anchor="middle" font-size="10.5">梯度（整份）</text>
+        <rect x="568" y="80" width="222" height="22" rx="5" fill="#7B4FBF" stroke="#16130F" stroke-width="2"/>
+        <text x="679" y="96" fill="#fff" text-anchor="middle" font-size="10.5">优化器（整份）</text>
+
+        <text x="14" y="140" fill="#16130F">ZeRO-1</text>
+        <rect x="120" y="124" width="222" height="22" rx="5" fill="#2E6FB7" stroke="#16130F" stroke-width="2"/>
+        <text x="231" y="140" fill="#fff" text-anchor="middle" font-size="10.5">权重（整份）</text>
+        <rect x="344" y="124" width="222" height="22" rx="5" fill="#E4572E" stroke="#16130F" stroke-width="2"/>
+        <text x="455" y="140" fill="#fff" text-anchor="middle" font-size="10.5">梯度（整份）</text>
+        <rect x="568" y="124" width="55" height="22" rx="5" fill="#7B4FBF" stroke="#16130F" stroke-width="2"/>
+        <text x="595" y="140" fill="#fff" text-anchor="middle" font-size="10">¼</text>
+        <rect x="626" y="124" width="164" height="22" rx="5" fill="#EFEAE1" stroke="#9A9188" stroke-width="2" stroke-dasharray="4 3"/>
+        <text x="708" y="140" fill="#9A9188" text-anchor="middle" font-size="10">别人拿着</text>
+
+        <text x="14" y="184" fill="#16130F">ZeRO-2</text>
+        <rect x="120" y="168" width="222" height="22" rx="5" fill="#2E6FB7" stroke="#16130F" stroke-width="2"/>
+        <text x="231" y="184" fill="#fff" text-anchor="middle" font-size="10.5">权重（整份）</text>
+        <rect x="344" y="168" width="55" height="22" rx="5" fill="#E4572E" stroke="#16130F" stroke-width="2"/>
+        <text x="371" y="184" fill="#fff" text-anchor="middle" font-size="10">¼</text>
+        <rect x="402" y="168" width="164" height="22" rx="5" fill="#EFEAE1" stroke="#9A9188" stroke-width="2" stroke-dasharray="4 3"/>
+        <rect x="568" y="168" width="55" height="22" rx="5" fill="#7B4FBF" stroke="#16130F" stroke-width="2"/>
+        <text x="595" y="184" fill="#fff" text-anchor="middle" font-size="10">¼</text>
+        <rect x="626" y="168" width="164" height="22" rx="5" fill="#EFEAE1" stroke="#9A9188" stroke-width="2" stroke-dasharray="4 3"/>
+
+        <text x="14" y="228" fill="#16130F">ZeRO-3</text>
+        <text x="14" y="244" fill="#6E655B" font-size="10">= FSDP</text>
+        <rect x="120" y="212" width="55" height="22" rx="5" fill="#2E6FB7" stroke="#16130F" stroke-width="2"/>
+        <text x="147" y="228" fill="#fff" text-anchor="middle" font-size="10">¼</text>
+        <rect x="178" y="212" width="164" height="22" rx="5" fill="#EFEAE1" stroke="#9A9188" stroke-width="2" stroke-dasharray="4 3"/>
+        <text x="260" y="228" fill="#9A9188" text-anchor="middle" font-size="10">用到时 all-gather 回来</text>
+        <rect x="344" y="212" width="55" height="22" rx="5" fill="#E4572E" stroke="#16130F" stroke-width="2"/>
+        <text x="371" y="228" fill="#fff" text-anchor="middle" font-size="10">¼</text>
+        <rect x="402" y="212" width="164" height="22" rx="5" fill="#EFEAE1" stroke="#9A9188" stroke-width="2" stroke-dasharray="4 3"/>
+        <rect x="568" y="212" width="55" height="22" rx="5" fill="#7B4FBF" stroke="#16130F" stroke-width="2"/>
+        <text x="595" y="228" fill="#fff" text-anchor="middle" font-size="10">¼</text>
+        <rect x="626" y="212" width="164" height="22" rx="5" fill="#EFEAE1" stroke="#9A9188" stroke-width="2" stroke-dasharray="4 3"/>
+      </g>
+
+      <rect x="14" y="256" width="776" height="38" rx="10" fill="#E8F1FA" stroke="#2E6FB7" stroke-width="3"/>
+      <text x="402" y="280" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">
+        四行的「数据怎么切」完全一样 —— 所以 ZeRO / FSDP 属于 DP 家族，不是模型并行。
+      </text>
+    </svg>
+  </div>
+
+  <div class="grid2" style="margin-top:24px">
+    <div class="panel">
+      <h4>为什么优化器状态最先被切</h4>
+      <p>因为它最胖。bf16 混合精度 + Adam 下，每个参数要存：</p>
+      <p class="mono" style="font-size:13px; background:#F3F0EA; padding:12px; border-radius:8px; border:2px solid #E3DCD1">
+        2 B 权重 + 2 B 梯度<br>
+        + 4 B fp32 主权重<br>
+        + 4 B 一阶动量 m<br>
+        + 4 B 二阶动量 v<br>
+        = <b>16 B / 参数</b>
+      </p>
+      <p>那 12 B 的 fp32 三件套占了 <b>四分之三</b>，而且<b>只在第 4 步（更新）用到一瞬间</b> —— 平时留在本地是纯浪费。ZeRO-1 就是把它切了，几乎不加通信。</p>
+    </div>
+    <div class="panel">
+      <h4>代价：通信从 2P 涨到 3P</h4>
+      <p>ZeRO-1 / ZeRO-2 的通信量和纯 DP <b>一样</b>（都是 2× 参数字节）—— 一次 reduce-scatter 把梯度归到各自负责的那份，一次 all-gather 把更新后的权重发回去。<b>省显存不花钱。</b></p>
+      <p>ZeRO-3 多一笔：权重平时也不在本地，<b>前向每层都要先 all-gather 拿权重</b>。总通信量约 3× 参数字节，是纯 DP 的 1.5 倍。</p>
+      <span class="cost">所以升级路线是 ZeRO-1 → 2 → 3，能停就停</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 8 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">8</span><h2>梯度累积 = 时间上的数据并行</h2></div>
+  <p class="lede">如果你只有一张卡，也想要那个「大 global batch」，可以把 DP 从空间挪到时间上 —— 一张卡连续跑 N 遍，攒够了再更新一次。<b>数学上和 N 卡 DP 完全一样</b>。</p>
+
+  <div class="card">
+    <svg viewBox="0 0 820 210" role="img" aria-label="数据并行在空间上切，梯度累积在时间上切，两者等价">
+      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#2E6FB7">DP · 空间上切：4 张卡，同时</text>
+      <g>
+        <rect x="14" y="32" width="180" height="34" rx="8" fill="#E4572E" stroke="#16130F" stroke-width="2.5"/>
+        <text x="104" y="54" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">GPU0 · 8 条</text>
+        <rect x="200" y="32" width="180" height="34" rx="8" fill="#F2B705" stroke="#16130F" stroke-width="2.5"/>
+        <text x="290" y="54" font-size="11.5" font-weight="900" fill="#16130F" text-anchor="middle">GPU1 · 8 条</text>
+        <rect x="386" y="32" width="180" height="34" rx="8" fill="#1E9E62" stroke="#16130F" stroke-width="2.5"/>
+        <text x="476" y="54" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">GPU2 · 8 条</text>
+        <rect x="572" y="32" width="180" height="34" rx="8" fill="#7B4FBF" stroke="#16130F" stroke-width="2.5"/>
+        <text x="662" y="54" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">GPU3 · 8 条</text>
+        <text x="790" y="54" font-size="12" font-weight="900" fill="#B0453B" text-anchor="end" transform="translate(28,0)">→</text>
+      </g>
+      <text x="402" y="86" font-size="12.5" font-weight="800" fill="#6E655B" text-anchor="middle">all-reduce 平均 → 更新 1 次 · 墙上时间 = 1 步</text>
+
+      <line x1="14" y1="102" x2="790" y2="102" stroke="#D9D2C7" stroke-width="3" stroke-dasharray="6 5"/>
+
+      <text x="14" y="128" font-size="13.5" font-weight="900" fill="#1E9E62">梯度累积 · 时间上切：1 张卡，依次</text>
+      <g>
+        <rect x="14" y="140" width="180" height="34" rx="8" fill="#E4572E" stroke="#16130F" stroke-width="2.5"/>
+        <text x="104" y="162" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">第1轮 · 8 条</text>
+        <rect x="200" y="140" width="180" height="34" rx="8" fill="#F2B705" stroke="#16130F" stroke-width="2.5"/>
+        <text x="290" y="162" font-size="11.5" font-weight="900" fill="#16130F" text-anchor="middle">第2轮 · 8 条</text>
+        <rect x="386" y="140" width="180" height="34" rx="8" fill="#1E9E62" stroke="#16130F" stroke-width="2.5"/>
+        <text x="476" y="162" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">第3轮 · 8 条</text>
+        <rect x="572" y="140" width="180" height="34" rx="8" fill="#7B4FBF" stroke="#16130F" stroke-width="2.5"/>
+        <text x="662" y="162" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">第4轮 · 8 条</text>
+      </g>
+      <text x="402" y="196" font-size="12.5" font-weight="800" fill="#6E655B" text-anchor="middle">梯度就地相加 → 更新 1 次 · 墙上时间 = 4 步（慢 4 倍，但显存不变）</text>
+    </svg>
+  </div>
+
+  <div class="card">
+    <pre><i># 梯度累积：唯一要小心的是那个除法</i>
+for step, batch in enumerate(loader):
+    loss = model(batch).loss / <b>ACCUM</b>   <i># ← 忘了这个，梯度就大了 ACCUM 倍</i>
+    loss.backward()                   <i># 梯度默认是「累加」到 .grad 上的</i>
+    if (step + 1) % <b>ACCUM</b> == 0:
+        optimizer.step()
+        optimizer.zero_grad()</pre>
+    <p class="note">除以 <span class="mono">ACCUM</span> 的作用，和 DP 里 all-reduce 取 mean 是<b>同一件事</b>：把「求和」变回「平均」。DP 在卡之间做，累积在时间上做。<br><br>
+    ⚠️ 两者叠加时还有个细节：多卡 + 累积的中间几轮，应该用 <span class="mono">no_sync()</span> 跳过 all-reduce，只在最后一轮才同步。否则你会为一次更新做 ACCUM 次全集群通信，白白慢一大截。</p>
+  </div>
+</section>
+
+<!-- ================= 9 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">9</span><h2>通信账：为什么加卡不加通信</h2></div>
+  <p class="lede">直觉上「N 张卡两两同步」应该是 N² 级别的灾难。ring all-reduce 的漂亮之处就是：<b>每张卡要发的字节数，跟 N 几乎无关</b>。</p>
+
+  <div class="card">
+    <svg viewBox="0 0 820 240" role="img" aria-label="ring all-reduce：梯度切成 N 块沿环传递，每卡收发量与卡数无关">
+      <text x="14" y="20" font-size="13" font-weight="900" fill="#6E655B">梯度先切成 N 块，沿着环转两圈：一圈边传边加（reduce-scatter），一圈把结果发开（all-gather）</text>
+
+      <g stroke="#16130F" stroke-width="3" fill="#fff">
+        <circle cx="230" cy="130" r="42"/><circle cx="360" cy="60" r="42"/>
+        <circle cx="490" cy="130" r="42"/><circle cx="360" cy="200" r="42"/>
+      </g>
+      <g font-size="12.5" font-weight="900" text-anchor="middle" fill="#16130F">
+        <text x="230" y="135">GPU0</text><text x="360" y="65">GPU1</text>
+        <text x="490" y="135">GPU2</text><text x="360" y="205">GPU3</text>
+      </g>
+      <g stroke="#B0453B" stroke-width="3.5" fill="none" marker-end="url(#ar9)">
+        <path d="M262 104 L328 76"/><path d="M392 76 L458 104"/>
+        <path d="M458 156 L392 184"/><path d="M328 184 L262 156"/>
+      </g>
+      <defs><marker id="ar9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#B0453B"/></marker></defs>
+      <text x="360" y="130" font-size="12" font-weight="900" fill="#B0453B" text-anchor="middle">只跟邻居说话</text>
+
+      <g>
+        <rect x="556" y="52" width="234" height="150" rx="12" fill="#F3F0EA" stroke="#16130F" stroke-width="3"/>
+        <text x="673" y="78" font-size="13" font-weight="900" fill="#16130F" text-anchor="middle">每卡发出的字节数</text>
+        <text x="673" y="112" font-size="19" font-weight="900" fill="#B0453B" text-anchor="middle" font-family="monospace">2·(N−1)/N · P</text>
+        <text x="673" y="140" font-size="12.5" font-weight="700" fill="#6E655B" text-anchor="middle">N=2 → 1.0 P</text>
+        <text x="673" y="160" font-size="12.5" font-weight="700" fill="#6E655B" text-anchor="middle">N=8 → 1.75 P</text>
+        <text x="673" y="180" font-size="12.5" font-weight="900" fill="#16130F" text-anchor="middle">N=1024 → 1.998 P</text>
+      </g>
+
+      <rect x="14" y="216" width="776" height="0" fill="none"/>
+    </svg>
+    <p class="note">P = 梯度的字节数。N 一大，<span class="mono">(N−1)/N</span> 就趴在 1 上不动了 —— 所以 <b>8 卡和 8000 卡，每张卡每步要搬的量几乎一样</b>。DP 能撑到几千卡规模，全靠这个性质。</p>
+  </div>
+
+  <div class="grid2" style="margin-top:24px">
+    <div class="panel">
+      <h4>但「总量不变」≠「不痛」</h4>
+      <p>7B 模型 bf16 梯度 = 14 GB，每步每卡要收发 ≈ <b>28 GB</b>。这一坨必须在一步之内搬完，否则 GPU 就在干等。</p>
+      <p>这就是训练集群里网络是一等公民的原因：机内 NVLink（数百 GB/s）、机间 InfiniBand / EFA。<b>把 DP 组拉到普通以太网上，通信立刻变成瓶颈。</b></p>
+    </div>
+    <div class="panel">
+      <h4>真正的杀手是「最慢那张卡」</h4>
+      <p>all-reduce 是<b>集合操作</b>：所有卡都到齐才算完。所以每一步的耗时 = <b>最慢那张卡的耗时</b>。</p>
+      <p>一张降频的卡、一条坏网线、一个 rank 上数据加载慢了 —— <b>整个集群一起等它</b>。规模越大，遇到一个慢节点的概率越高，这是大规模训练最主要的工程痛点。</p>
+      <span class="cost">DP 组越大，越怕长尾</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 10 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">10</span><h2>DP 的真上限：batch 大到没用</h2></div>
+  <p class="lede">DP 的天花板不是通信打不过，而是一件更根本的事：<b>加卡 = 加 global batch，而 batch 大到一定程度就不再换来更快的收敛</b>。</p>
+
+  <div class="card">
+    <h4>第一步：batch 变了，学习率必须跟着变</h4>
+    <p class="note">batch 大了，梯度的噪声小了，你就<b>敢也需要</b>迈更大的步子。业界的默认起点是 <b>linear scaling rule</b>：batch 乘 k，学习率也乘 k，前面配几个 epoch 的 warmup（因为训练最初期大步长会炸）。<br><br>
+    这条规则出名，是因为 Goyal 等人 2017 年用它把 ResNet-50 / ImageNet 的 minibatch 从 256 推到 <b>8192</b>，在 <b>256 张 GPU</b> 上 <b>1 小时</b>训完，精度和小 batch 基线持平，8→256 卡的扩展效率约 <b>90%</b>。<span class="small" style="display:inline">（<i>Accurate, Large Minibatch SGD</i>, arXiv:1706.02677）</span></p>
+    <p class="note"><b>推论：换机器要重新调学习率。</b>你从 8 卡挪到 64 卡、per-device batch 没动，global batch 就悄悄大了 8 倍 —— 沿用旧学习率，训练要么爆炸要么原地不动。这是「同样的代码在新集群上就是不收敛」的头号原因。</p>
+  </div>
+
+  <div class="card">
+    <h4>第二步：过了某个点，加 batch 就白加了</h4>
+    <svg viewBox="0 0 820 220" role="img" aria-label="batch size 增大时，达到目标所需步数先按比例下降，超过临界 batch 后进入平台期">
+      <line x1="70" y1="180" x2="780" y2="180" stroke="#16130F" stroke-width="3"/>
+      <line x1="70" y1="180" x2="70" y2="24" stroke="#16130F" stroke-width="3"/>
+      <text x="425" y="212" font-size="12.5" font-weight="900" fill="#6E655B" text-anchor="middle">global batch size →</text>
+      <text x="24" y="100" font-size="12.5" font-weight="900" fill="#6E655B" text-anchor="middle" transform="rotate(-90 24 100)">到达目标所需步数</text>
+
+      <path d="M92 40 C160 92 210 128 300 148 C420 168 600 174 770 176"
+            stroke="#2E6FB7" stroke-width="4" fill="none"/>
+      <path d="M92 40 C170 82 250 122 340 160" stroke="#1E9E62" stroke-width="3" stroke-dasharray="7 5" fill="none"/>
+
+      <line x1="330" y1="24" x2="330" y2="180" stroke="#B0453B" stroke-width="3" stroke-dasharray="6 5"/>
+      <text x="338" y="42" font-size="12.5" font-weight="900" fill="#B0453B">critical batch size</text>
+
+      <text x="150" y="132" font-size="12" font-weight="900" fill="#1E9E62">加卡 ≈ 线性变快</text>
+      <text x="520" y="148" font-size="12" font-weight="900" fill="#B0453B">加卡几乎不再变快</text>
+      <text x="520" y="167" font-size="11.5" font-weight="700" fill="#6E655B">（每步吃更多，但步数不再变少）</text>
+    </svg>
+    <p class="note">直觉：梯度里既有「信号」也有「噪声」。batch 小的时候噪声占主导，多看样本能显著改善梯度方向 —— 加卡真的换来更快收敛。batch 大到噪声已经被平均干净之后，再多看样本对<b>方向</b>几乎没有改善，你只是在为同一步付更多算力。这个转折点被称为 <b>critical batch size</b>。<span class="small" style="display:inline">（<i>An Empirical Model of Large-Batch Training</i>, arXiv:1812.06162）</span></p>
+  </div>
+
+  <div class="card dark">
+    <div class="big">所以超大规模训练必须叠 TP / PP，不是因为通信，是因为 DP 加不下去了。</div>
+    <p>当 DP 度数已经把 global batch 顶到临界点，你手上还有几千张卡闲着 —— <b>唯一的出路是让这些卡去切模型而不是切数据</b>。这就是 3D 并行（DP × TP × PP）的由来：<br><br>
+    <b>DP 度数被 critical batch size 卡住 → 剩下的卡拿去做 TP 和 PP。</b></p>
+  </div>
+</section>
+
+<!-- ================= 11 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">11</span><h2>推理侧：同一个词，另一件事</h2></div>
+  <p class="lede">到这里可以回答第三个问题了。答案是：<b>差别巨大，而且差别的来源只有一个</b> —— 推理没有梯度，所以没有那次 all-reduce。把第 3 步和第 4 步拿掉，DP 剩下的东西就平凡到几乎不该叫「并行」了。</p>
+
+  <div class="lab">
+    <div class="labtitle">可交互 · 同样 4 张卡，训练 vs 推理</div>
+    <div class="pill" id="ph" style="margin-top:16px">
+      <button data-p="train" class="on">训练</button>
+      <button data-p="infer">推理</button>
+    </div>
+
+    <div style="margin-top:24px">
+      <svg viewBox="0 0 820 300" role="img" aria-label="训练时四张卡每步 all-reduce 同步，推理时四个副本互不通信由负载均衡分发请求">
+        <!-- 训练视图 -->
+        <g id="g-train">
+          <text x="14" y="22" font-size="13" font-weight="900" fill="#2E6FB7">一个 batch，你自己切成 4 片</text>
+          <rect x="14" y="32" width="776" height="26" rx="7" fill="#F1EDE6" stroke="#16130F" stroke-width="3"/>
+          <rect x="17" y="35" width="192" height="20" rx="5" fill="#E4572E"/>
+          <rect x="209" y="35" width="192" height="20" rx="5" fill="#F2B705"/>
+          <rect x="401" y="35" width="192" height="20" rx="5" fill="#1E9E62"/>
+          <rect x="593" y="35" width="194" height="20" rx="5" fill="#7B4FBF"/>
+
+          <path d="M110 58 L110 84 M305 58 L305 84 M497 58 L497 84 M690 58 L690 84"
+                stroke="#16130F" stroke-width="2.5" fill="none" marker-end="url(#arT)"/>
+          <defs><marker id="arT" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#16130F"/></marker></defs>
+
+          <g>
+            <rect x="26" y="88" width="168" height="76" rx="12" fill="#fff" stroke="#16130F" stroke-width="3"/>
+            <text x="110" y="114" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">GPU0 · 整份模型</text>
+            <text x="110" y="140" font-size="11" fill="#6E655B" text-anchor="middle" font-family="monospace">前向 + 反向 → g₀</text>
+            <rect x="221" y="88" width="168" height="76" rx="12" fill="#fff" stroke="#16130F" stroke-width="3"/>
+            <text x="305" y="114" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">GPU1 · 整份模型</text>
+            <text x="305" y="140" font-size="11" fill="#6E655B" text-anchor="middle" font-family="monospace">前向 + 反向 → g₁</text>
+            <rect x="413" y="88" width="168" height="76" rx="12" fill="#fff" stroke="#16130F" stroke-width="3"/>
+            <text x="497" y="114" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">GPU2 · 整份模型</text>
+            <text x="497" y="140" font-size="11" fill="#6E655B" text-anchor="middle" font-family="monospace">前向 + 反向 → g₂</text>
+            <rect x="606" y="88" width="168" height="76" rx="12" fill="#fff" stroke="#16130F" stroke-width="3"/>
+            <text x="690" y="114" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">GPU3 · 整份模型</text>
+            <text x="690" y="140" font-size="11" fill="#6E655B" text-anchor="middle" font-family="monospace">前向 + 反向 → g₃</text>
+          </g>
+
+          <rect x="26" y="188" width="748" height="46" rx="12" fill="#B0453B" stroke="#16130F" stroke-width="3"/>
+          <text x="400" y="217" font-size="15" font-weight="900" fill="#fff" text-anchor="middle">all-reduce：把 4 份梯度平均 —— 全员必须到齐</text>
+          <path d="M110 164 L110 186 M305 164 L305 186 M497 164 L497 186 M690 164 L690 186"
+                stroke="#B0453B" stroke-width="4" fill="none"/>
+
+          <text x="400" y="266" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">
+            4 张卡被这根红条绑成「一个」逻辑设备。
+          </text>
+          <text x="400" y="288" font-size="12.5" font-weight="700" fill="#6E655B" text-anchor="middle">
+            一张卡慢 → 全部等它 · 一张卡挂 → 整个 job 挂
+          </text>
+        </g>
+
+        <!-- 推理视图 -->
+        <g id="g-infer" style="display:none">
+          <text x="14" y="22" font-size="13" font-weight="900" fill="#1E9E62">请求从四面八方来，不是一个 batch</text>
+          <rect x="266" y="30" width="288" height="40" rx="20" fill="#16130F"/>
+          <text x="410" y="55" font-size="13.5" font-weight="900" fill="#F2B705" text-anchor="middle">负载均衡 / 路由</text>
+          <g font-size="10.5" font-weight="900" fill="#6E655B">
+            <text x="60" y="24">用户A</text><text x="180" y="24">用户B</text>
+            <text x="640" y="24">用户C</text><text x="750" y="24">用户D</text>
+          </g>
+          <path d="M60 30 L280 34 M182 30 L320 32 M640 30 L520 32 M752 30 L545 34"
+                stroke="#9A9188" stroke-width="2" stroke-dasharray="4 3" fill="none"/>
+
+          <path d="M300 70 L110 92 M370 70 L305 92 M450 70 L497 92 M520 70 L690 92"
+                stroke="#1E9E62" stroke-width="3" fill="none" marker-end="url(#arI)"/>
+          <defs><marker id="arI" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#1E9E62"/></marker></defs>
+
+          <g>
+            <rect x="26" y="96" width="168" height="94" rx="12" fill="#E6F6EE" stroke="#16130F" stroke-width="3"/>
+            <text x="110" y="122" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">副本 0 · 整份模型</text>
+            <text x="110" y="146" font-size="10.5" fill="#6E655B" text-anchor="middle" font-family="monospace">自己的 KV cache</text>
+            <text x="110" y="170" font-size="10.5" fill="#1E9E62" text-anchor="middle" font-weight="900">只前向</text>
+
+            <rect x="221" y="96" width="168" height="94" rx="12" fill="#E6F6EE" stroke="#16130F" stroke-width="3"/>
+            <text x="305" y="122" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">副本 1 · 整份模型</text>
+            <text x="305" y="146" font-size="10.5" fill="#6E655B" text-anchor="middle" font-family="monospace">自己的 KV cache</text>
+            <text x="305" y="170" font-size="10.5" fill="#1E9E62" text-anchor="middle" font-weight="900">只前向</text>
+
+            <rect x="413" y="96" width="168" height="94" rx="12" fill="#E6F6EE" stroke="#16130F" stroke-width="3"/>
+            <text x="497" y="122" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">副本 2 · 整份模型</text>
+            <text x="497" y="146" font-size="10.5" fill="#6E655B" text-anchor="middle" font-family="monospace">自己的 KV cache</text>
+            <text x="497" y="170" font-size="10.5" fill="#1E9E62" text-anchor="middle" font-weight="900">只前向</text>
+
+            <rect x="606" y="96" width="168" height="94" rx="12" fill="#E6F6EE" stroke="#16130F" stroke-width="3"/>
+            <text x="690" y="122" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">副本 3 · 整份模型</text>
+            <text x="690" y="146" font-size="10.5" fill="#6E655B" text-anchor="middle" font-family="monospace">自己的 KV cache</text>
+            <text x="690" y="170" font-size="10.5" fill="#1E9E62" text-anchor="middle" font-weight="900">只前向</text>
+          </g>
+
+          <rect x="26" y="204" width="748" height="46" rx="12" fill="#F1EDE6" stroke="#9A9188" stroke-width="3" stroke-dasharray="7 5"/>
+          <text x="400" y="233" font-size="15" font-weight="900" fill="#9A9188" text-anchor="middle">这里什么都没有 —— 副本之间零通信</text>
+
+          <text x="400" y="278" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">
+            4 张卡是 4 个互不相识的独立服务。一个挂了，另外三个照常干活。
+          </text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="readout">
+      <div class="ro"><div class="v" id="p-sync">1 次 / 步</div><div class="k">全局同步</div></div>
+      <div class="ro"><div class="v" id="p-comm">≈ 28 GB</div><div class="k">卡间通信 / 步</div></div>
+      <div class="ro"><div class="v" id="p-fail">全 job 挂</div><div class="k">一张卡挂掉的后果</div></div>
+    </div>
+    <p class="note" id="p-tip" style="margin-top:22px"></p>
+  </div>
+</section>
+
+<!-- ================= 12 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">12</span><h2>推理里的 batch 是「拼」出来的</h2></div>
+  <p class="lede">还有一个更深的区别，跟同步无关：<b>训练的 batch 是你切出来的，推理的 batch 是运行时攒出来的</b>。这让「切数据」这个动作在推理侧根本不存在。</p>
+
+  <div class="tbl">
+    <div class="r hd"><div>batch 这个东西</div><div>训练</div><div>推理</div></div>
+    <div class="r"><div class="k">从哪来</div><div class="tr">你从数据集里取一批，<b>自己切</b>给各卡</div><div class="inf">不同用户的请求<b>陆续到达</b>，服务把它们攒在一起</div></div>
+    <div class="r"><div class="k">大小</div><div class="tr">固定，配置文件里写死</div><div class="inf">每个 decode step 都在变 —— 有人结束就走，有人插进来</div></div>
+    <div class="r"><div class="k">谁决定</div><div class="tr">你</div><div class="inf">调度器（continuous / in-flight batching）</div></div>
+    <div class="r"><div class="k">batch 内样本关系</div><div class="tr">同一份数据集，长度通常被 pad 齐</div><div class="inf">毫无关系：不同长度、不同 prompt、不同剩余步数</div></div>
+    <div class="r"><div class="k">为什么要 batch</div><div class="tr">梯度更稳 + 吃满算力</div><div class="inf">纯粹为了吃满算力 —— decode 是显存带宽瓶颈，攒一批一起过等于免费提速</div></div>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="panel">
+      <h4>所以推理侧一般不说「数据并行」</h4>
+      <p>说的是<b>多副本 / replica / 横向扩容</b>。因为它跟扩一个无状态 Web 服务没有本质区别：起 N 个进程，前面挂个 LB。</p>
+      <p>决定你能不能这么干的只有一件事：<b>一张卡放不放得下整个模型</b>。放得下 → 起 N 个副本（吞吐最优、故障隔离最好）。放不下 → 你需要的是 TP，那是切模型，跟数据并行无关。</p>
+      <span class="tag yes">先尽量多副本，逼不得已才 TP</span>
+    </div>
+    <div class="panel">
+      <h4>唯一的例外：MoE</h4>
+      <p>vLLM 之类的引擎确实有 <span class="mono">--data-parallel-size</span>，在 MoE 模型上它不只是起副本：<b>attention 层各 rank 处理自己的请求（DP），专家层用专家并行（EP），token 要 all-to-all 发到持有对应专家的卡上</b>。</p>
+      <p>这时候 DP rank 之间才真的有通信。但这是 MoE 的特殊结构逼出来的，不是数据并行本身的性质。</p>
+      <span class="tag b">遇到 MoE 再回来看这段</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 13 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">13</span><h2>一张表放在一起</h2></div>
+  <p class="lede">同样是「N 张卡，每张放一整份模型，各处理不同的数据」。仅仅因为一边有梯度、一边没有，它们成了两种完全不同的系统。</p>
+
+  <div class="tbl">
+    <div class="r hd"><div></div><div>训练 · 数据并行（DP）</div><div>推理 · 多副本</div></div>
+    <div class="r"><div class="k">模型</div><div class="tr">复制 N 份，<b>必须始终逐比特一致</b></div><div class="inf">复制 N 份，<b>一致与否无所谓</b>（甚至可以是不同版本）</div></div>
+    <div class="r"><div class="k">数据</div><div class="tr">一个 batch 切成 N 片，<b>严格不重叠</b>（重叠就是浪费）</div><div class="inf">请求天然就是分开的，谈不上「切」</div></div>
+    <div class="r"><div class="k">每步通信</div><div class="tr">all-reduce 梯度，≈ 2× 参数字节</div><div class="inf"><b>0</b></div></div>
+    <div class="r"><div class="k">同步点</div><div class="tr">每步 1 次，全员必须到齐</div><div class="inf">没有</div></div>
+    <div class="r"><div class="k">加卡换来什么</div><div class="tr">更大的 global batch → 更快跑完一个 epoch</div><div class="inf">更高的 QPS · 更多并发</div></div>
+    <div class="r"><div class="k">加卡省显存吗</div><div class="tr">不省（要省得上 ZeRO/FSDP）</div><div class="inf">不省（要省得上 TP / 量化）</div></div>
+    <div class="r"><div class="k">一张卡挂了</div><div class="tr"><b>整个 job 挂</b>，从 checkpoint 重启</div><div class="inf">那个副本的在途请求失败，<b>其余照常</b></div></div>
+    <div class="r"><div class="k">一张卡变慢了</div><div class="tr"><b>全集群一起等它</b></div><div class="inf">LB 少发给它就行</div></div>
+    <div class="r"><div class="k">上限来自</div><div class="tr">critical batch size（batch 大到不再换来收敛）</div><div class="inf">钱 / 卡数</div></div>
+    <div class="r"><div class="k">业内怎么叫</div><div class="tr">DP · DDP · ZeRO · FSDP</div><div class="inf">replica · 多实例 · 横向扩容</div></div>
+  </div>
+</section>
+
+<!-- ================= 14 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">14</span><h2>记住这七句</h2></div>
+  <p class="lede">如果只带走一页，带走这个。</p>
+
+  <div class="take"><span class="n2">01</span><p><b>模型被复制，数据被切开。</b>「数据并行」这个名字说的就是被切的那个东西是数据。</p></div>
+  <div class="take"><span class="n2">02</span><p><b>数据必须切开，否则毫无意义。</b>每卡同一份数据 → 梯度全一样 → 平均之后还是它 → N 倍成本换零收益。</p></div>
+  <div class="take"><span class="n2">03</span><p><b>一步只有一个同步点</b>：反向之后 all-reduce 把 N 份梯度<b>平均</b>（不是求和）。这一步保证了 N 份模型永远一模一样。</p></div>
+  <div class="take"><span class="n2">04</span><p><b>它是恒等式，不是近似。</b>4 卡 × 8 条 ≡ 1 卡 × 32 条。前提是 loss 逐样本独立 —— BatchNorm 和对比学习 loss 会破这个前提。</p></div>
+  <div class="take"><span class="n2">05</span><p><b>DP 不省显存，一个字节都不省。</b>省显存靠 ZeRO/FSDP（切状态，数据切法不变，所以它仍是 DP）、TP（切矩阵）、PP（切层）。</p></div>
+  <div class="take"><span class="n2">06</span><p><b>加卡 = 加 global batch，所以要重调学习率</b>（linear scaling + warmup）；而且过了 critical batch size，加卡就不再换来更快收敛 —— 这才是 DP 的真上限。</p></div>
+  <div class="take"><span class="n2">07</span><p><b>推理没有梯度，所以没有那次 all-reduce。</b>「数据并行」在推理侧退化成「多副本 + 负载均衡」，副本间零通信、互不影响；那里的 batch 是调度器<b>拼</b>出来的，不是你<b>切</b>出来的。</p></div>
+
+  <div class="card dark" style="margin-top:34px">
+    <div class="big">一句话版本</div>
+    <p><b>训练里，N 张卡靠每步一次 all-reduce 被绑成一个逻辑设备，一起走同一步；<br>
+    推理里，N 张卡就是 N 个互不相识的独立服务。</b><br><br>
+    中间那根把它们绑起来的绳子，叫梯度。</p>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ================= 显存 / 通信 实验台 ================= */
+(function(){
+  const Ns   = [1,2,4,8,16,32,64];
+  const W=14, G=14, O=84, TOT=112;   // 7B · bf16 权重/梯度 + Adam fp32 三件套 = 16 B/param
+  const CAP  = 80;                    // 一张 80 GB 卡
+  const PDB  = 8, SEQ = 4096;         // 每卡 8 条序列，seq 4096
+
+  const nz=document.getElementById('nz'), nzv=document.getElementById('nzv');
+  const bw=document.getElementById('b-w'), bg=document.getElementById('b-g'), bo=document.getElementById('b-o');
+  let mode='ddp';
+
+  const tips={
+    ddp:'纯 DP：<b>无论多少张卡，单卡都要背 112 GB</b>。滑块从 1 拉到 64，上面那根条一动不动 —— 这就是「DP 不省显存」的全部含义。7B 全参数微调在一张 80 GB 卡上放不下，加多少张 DP 卡都放不下。',
+    z1:'ZeRO-1 只切最胖的那块：<b>优化器状态（84 GB，占 3/4）</b>。它只在更新那一瞬间用到，平时每卡各留一份纯属浪费。<b>通信量和纯 DP 完全一样</b> —— 这是白捡的便宜，多卡训练几乎没有理由不开。',
+    z2:'ZeRO-2 再切梯度。梯度反正 all-reduce 完就只有自己负责的那块要用，留全份没意义。通信量<b>仍然</b>和纯 DP 一样（reduce-scatter + all-gather，加起来还是 2×）。',
+    z3:'ZeRO-3（= PyTorch FSDP）连权重都切了 —— 前向每层都要先 all-gather 把权重拼回来，用完立刻扔。<b>显存 ÷ N，通信涨到约 1.5 倍</b>。注意实际占用会比这条高一些：临时 all-gather buffer 和 activation 都不在这条里。'
+  };
+
+  function draw(){
+    const N = Ns[+nz.value];
+    nzv.textContent = N;
+
+    let w=W, g=G, o=O;
+    if(mode==='z1'){ o=O/N; }
+    else if(mode==='z2'){ g=G/N; o=O/N; }
+    else if(mode==='z3'){ w=W/N; g=G/N; o=O/N; }
+    const tot = w+g+o;
+
+    const pct = v => (v/TOT*100);
+    bw.style.width = pct(w)+'%'; bg.style.width = pct(g)+'%'; bo.style.width = pct(o)+'%';
+    bw.textContent = w>=6 ? '权重 '+w.toFixed(w<10?1:0) : '';
+    bg.textContent = g>=6 ? '梯度 '+g.toFixed(g<10?1:0) : '';
+    bo.textContent = o>=14 ? '优化器状态 '+o.toFixed(o<10?1:0) : (o>=6?o.toFixed(0):'');
+
+    document.getElementById('o-tot').textContent  = tot.toFixed(1)+' GB';
+    document.getElementById('o-mem').textContent  = tot.toFixed(1)+' GB';
+    document.getElementById('o-mem').className    = 'v '+(tot<=CAP?'ok':'hot');
+
+    const gb = PDB*N;
+    document.getElementById('o-gb').textContent  = gb;
+    const tok = gb*SEQ;
+    document.getElementById('o-tok').textContent = tok>=1e6 ? (tok/1e6).toFixed(2)+' M' : Math.round(tok/1e3)+' K';
+
+    // ring all-reduce：每卡收发 2·(N-1)/N·P；ZeRO-3 多一轮权重 all-gather → 3×
+    const f = N===1 ? 0 : (N-1)/N;
+    const comm = (mode==='z3' ? 3 : 2) * f * G;
+    document.getElementById('o-comm').textContent = comm===0 ? '0（单卡）' : comm.toFixed(1)+' GB';
+
+    const fit = document.getElementById('o-fit');
+    fit.textContent  = tot<=CAP ? '放得下 ✅' : '放不下 ❌';
+    fit.className    = 'v '+(tot<=CAP?'ok':'hot');
+
+    document.getElementById('o-tip').innerHTML = tips[mode];
+  }
+
+  nz.addEventListener('input', draw);
+  document.querySelectorAll('#mode button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); mode=b.dataset.m; draw();
+    });
+  });
+  document.getElementById('hl').style.left = (CAP/TOT*100)+'%';
+  draw();
+})();
+
+/* ================= 训练 vs 推理 切换 ================= */
+(function(){
+  const gT=document.getElementById('g-train'), gI=document.getElementById('g-infer');
+  const info={
+    train:{sync:'1 次 / 步', comm:'≈ 28 GB', fail:'全 job 挂', cls:'hot',
+      tip:'训练时 4 张卡不是 4 台机器，是<b>一台被绑在一起的机器</b>。每步都要为 7B 的梯度搬 ≈ 28 GB（bf16 梯度 14 GB × 2），全员到齐才能往下走。所以：<b>一张卡慢，全体等它；一张卡挂，整个 job 从 checkpoint 重来</b>。'},
+    infer:{sync:'0', comm:'0', fail:'那个副本的请求失败', cls:'ok',
+      tip:'推理时没有梯度，<b>那根把卡绑在一起的绳子不存在了</b>。4 个副本各自加载一份权重、各自维护 KV cache、各自跑自己的请求，彼此不知道对方存在 —— 这和扩一个无状态 Web 服务是同一件事。所以它一般不叫 data parallel，叫多副本。<br><br>推理里唯一需要卡间通信的是 <b>TP</b>（把一个矩阵切开算），那属于「切模型」，不是「切数据」。'}
+  };
+  document.querySelectorAll('#ph button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('#ph button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      const p=b.dataset.p, d=info[p];
+      gT.style.display = p==='train' ? '' : 'none';
+      gI.style.display = p==='infer' ? '' : 'none';
+      document.getElementById('p-sync').textContent = d.sync;
+      document.getElementById('p-comm').textContent = d.comm;
+      document.getElementById('p-fail').textContent = d.fail;
+      document.getElementById('p-sync').className = 'v '+d.cls;
+      document.getElementById('p-comm').className = 'v '+d.cls;
+      document.getElementById('p-fail').className = 'v '+d.cls;
+      document.getElementById('p-tip').innerHTML = d.tip;
+    });
+  });
+  document.querySelector('#ph button[data-p=train]').click();
+})();
+
+/* ================= reveal ================= */
+const io=new IntersectionObserver((es)=>{
+  es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:0.06});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
