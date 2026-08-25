@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>激活值 · 前向路上留下的那一堆中间结果</title>
+<style>
+:root{
+  --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B;
+  --w:#2E6FB7;              /* 权重 = 蓝，石头，定死的 */
+  --a:#E4572E;              /* 激活值 = 橙，水，流动的 */
+  --sq:#B0453B;             /* 平方项 = 深红，那个怪物 */
+  --ok:#1E9E62; --yel:#F2B705; --pur:#7B4FBF;
+  --grey:#9A9188; --card:#FFFFFF;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(#00000010 1px, transparent 1px); background-size:28px 28px;
+}
+.wrap{max-width:1040px; margin:0 auto; padding:0 24px 140px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+/* ---------- hero ---------- */
+.hero{padding:100px 0 20px; text-align:center}
+.kicker{display:inline-block; font-size:13px; letter-spacing:.2em; font-weight:700;
+  border:2px solid var(--ink); padding:7px 16px; border-radius:100px; background:var(--yel)}
+h1{font-size:clamp(32px,6.2vw,70px); line-height:1.05; font-weight:900; letter-spacing:-.03em; margin:24px 0 0}
+h1 em{font-style:normal; color:var(--a)}
+h1 span.b{color:var(--w)}
+.sub{font-size:clamp(16.5px,2.3vw,22px); color:var(--muted); margin-top:22px; font-weight:500}
+.sub b{color:var(--ink)}
+.herofig{margin:44px auto 0; max-width:830px}
+
+.facts{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:34px}
+.fact{background:var(--card); border:3px solid var(--ink); border-radius:16px;
+  box-shadow:5px 5px 0 var(--ink); padding:14px 20px; min-width:150px}
+.fact .n{font-size:26px; font-weight:900; letter-spacing:-.02em; line-height:1.1}
+.fact .n.h{color:var(--sq)} .fact .n.m{color:var(--a)} .fact .n.k{color:var(--ok)}
+.fact .t{font-size:12.5px; color:var(--muted); font-weight:700; letter-spacing:.04em; margin-top:7px}
+
+/* ---------- section shell ---------- */
+section{margin-top:100px}
+.num{display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px;
+  border-radius:50%; background:var(--ink); color:var(--bg); font-weight:900; font-size:20px; flex:0 0 46px}
+.head{display:flex; gap:18px; align-items:center; margin-bottom:10px}
+h2{font-size:clamp(23px,3.9vw,38px); font-weight:900; letter-spacing:-.02em; line-height:1.16}
+.lede{font-size:clamp(15.5px,2vw,19px); color:var(--muted); max-width:820px; margin-left:64px; font-weight:500}
+.lede b{color:var(--ink)}
+@media(max-width:640px){.lede{margin-left:0}}
+
+.card{background:var(--card); border:3px solid var(--ink); border-radius:22px;
+  box-shadow:8px 8px 0 var(--ink); padding:30px; margin-top:30px}
+.card.tight{padding:22px}
+.card.dark{background:var(--ink); color:var(--bg); box-shadow:8px 8px 0 var(--a)}
+.card.dark p{color:#C9C2B8; margin-top:14px; font-size:16.5px}
+.card.dark b{color:#fff}
+.card.dark .mono{color:var(--yel)}
+.big{font-size:clamp(21px,3.3vw,33px); font-weight:900; letter-spacing:-.02em; line-height:1.18}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+
+h4{font-size:17.5px; font-weight:900; letter-spacing:-.01em}
+.note{font-size:15px; color:#2E2823; margin-top:12px}
+.note b{color:var(--ink)}
+.small{font-size:13.5px; color:var(--muted); font-weight:600; margin-top:14px}
+.small b{color:var(--ink)}
+svg{display:block; width:100%; height:auto}
+
+.tag{display:inline-block; font-size:11.5px; font-weight:900; letter-spacing:.08em;
+  border:2px solid var(--ink); border-radius:100px; padding:3px 10px; background:#F3F0EA}
+.tag.no{background:#FDEDE7; color:var(--sq)}
+.tag.yes{background:#E6F6EE; color:var(--ok)}
+.tag.b{background:#E8F1FA; color:var(--w)}
+.tag.o{background:#FCEBE3; color:var(--a)}
+
+.panel{background:var(--card); border:3px solid var(--ink); border-radius:18px; padding:22px}
+.panel h4{display:flex; align-items:center; gap:9px}
+.dot{width:13px; height:13px; border-radius:50%; border:2.5px solid var(--ink); flex:0 0 auto}
+.panel p{font-size:14.5px; margin-top:11px; color:#2E2823}
+.panel p b{color:var(--ink)}
+.cost{display:inline-block; margin-top:14px; font-size:12.5px; font-weight:800; color:var(--muted)}
+
+/* ---------- 符号表 ---------- */
+.syms{display:grid; grid-template-columns:repeat(auto-fit,minmax(238px,1fr)); gap:12px; margin-top:20px}
+.sym{display:flex; gap:12px; align-items:flex-start; background:#F7F4EE;
+  border:2px solid #E3DCD1; border-radius:11px; padding:11px 13px}
+.sym u{font-family:ui-monospace,Menlo,monospace; font-size:15.5px; font-weight:900;
+  color:var(--w); flex:0 0 auto; min-width:36px; text-decoration:none; padding-top:1px}
+.sym div{font-size:13.5px; font-weight:700; color:var(--ink); line-height:1.4}
+.sym div i{font-style:normal; color:var(--muted); font-weight:600; display:block; font-size:12.5px; margin-top:3px}
+.sym.a u{color:var(--a)} .sym.p u{color:var(--pur)} .sym.s u{color:var(--sq)}
+
+/* ---------- 前向 trace ---------- */
+.trace{margin-top:26px; border:3px solid var(--ink); border-radius:18px; overflow:hidden; background:#fff}
+.trh{display:grid; grid-template-columns:36px 1fr 132px 78px 108px; background:var(--ink); color:var(--bg)}
+.trh>div{padding:11px 12px; font-size:11.5px; font-weight:900; letter-spacing:.05em}
+.trr{display:grid; grid-template-columns:36px 1fr 132px 78px 108px; align-items:center;
+  border-bottom:2px solid #EFEAE1}
+.trr:last-child{border-bottom:0}
+.trr>div{padding:9px 12px; font-size:13.5px}
+.trr .i{font-family:ui-monospace,Menlo,monospace; font-size:11.5px; font-weight:900; color:var(--grey); padding-right:0}
+.trr .op{font-weight:700}
+.trr .op i{font-style:normal; color:var(--muted); font-weight:600}
+.trr .sh{font-family:ui-monospace,Menlo,monospace; font-size:12px; font-weight:800; color:var(--w)}
+.trr .sz{font-family:ui-monospace,Menlo,monospace; font-size:12.5px; font-weight:900; text-align:right}
+.trr .bar{padding-left:4px}
+.trr .bar i{display:block; height:12px; border:2px solid var(--ink); border-radius:4px; background:var(--a)}
+.trr.fat{background:#FFFCF3}
+.trr.fat .sh{color:var(--pur)} .trr.fat .bar i{background:var(--pur)}
+.trr.sqr{background:#FDF1EE}
+.trr.sqr .sh{color:var(--sq)} .trr.sqr .sz{color:var(--sq)} .trr.sqr .bar i{background:var(--sq)}
+.trr.res{background:#F6F3ED}
+.trf{display:grid; grid-template-columns:1fr auto; gap:12px; background:#F3F0EA;
+  border-top:3px solid var(--ink); padding:14px 16px; font-size:13.5px; font-weight:900}
+@media(max-width:760px){
+  .trh{display:none}
+  .trr{grid-template-columns:32px 1fr 96px; row-gap:0}
+  .trr .bar{display:none}
+  .trr .sz{grid-column:3; text-align:right}
+  .trr .sh{grid-column:2; grid-row:2; padding-top:0; padding-bottom:10px}
+}
+
+/* ---------- 显存条 ---------- */
+.memrow{margin-top:20px}
+.memlab{display:flex; justify-content:space-between; align-items:baseline; font-size:14px; font-weight:800; margin-bottom:5px}
+.memlab i{font-style:normal; font-family:ui-monospace,Menlo,monospace; color:var(--muted)}
+.memwrap{position:relative}
+.membar{display:flex; height:32px; border:3px solid var(--ink); border-radius:9px; overflow:hidden; background:#F1EDE6}
+.membar span{display:flex; align-items:center; justify-content:flex-end; padding-right:8px;
+  font-size:11.5px; font-weight:900; color:#fff; overflow:hidden; white-space:nowrap;
+  min-width:2px; transition:width .2s ease}
+.hline{position:absolute; top:-7px; bottom:-7px; width:0; border-left:3px dashed var(--sq)}
+.hline b{position:absolute; top:-21px; left:5px; font-size:11px; font-weight:900; color:var(--sq); white-space:nowrap}
+.ovf{font-size:12px; font-weight:900; color:var(--sq); margin-top:6px; height:16px}
+
+/* ---------- table ---------- */
+.tbl{margin-top:28px; border:3px solid var(--ink); border-radius:16px; overflow:hidden; font-size:14px}
+.tbl .r{display:grid; grid-template-columns:.95fr 1.35fr 1.35fr}
+.tbl .r>div{padding:14px 16px; border-right:2px solid #E3DCD1; border-bottom:2px solid #E3DCD1; font-weight:600}
+.tbl .r>div:last-child{border-right:0}
+.tbl .r:last-child>div{border-bottom:0}
+.tbl .hd>div{background:var(--ink); color:var(--bg); font-weight:900; font-size:12.5px; letter-spacing:.05em}
+.tbl .r>div.k{background:#F3F0EA; font-weight:900}
+.tbl .r>div.wc{background:#E8F1FA}
+.tbl .r>div.ac{background:#FCEBE3}
+@media(max-width:760px){
+  .tbl{font-size:13px}
+  .tbl .r{grid-template-columns:1fr}
+  .tbl .r>div{border-right:0}
+  .tbl .hd{display:none}
+  .tbl .r>div.wc::before{content:"权重 · "; font-weight:900; color:var(--w)}
+  .tbl .r>div.ac::before{content:"激活值 · "; font-weight:900; color:var(--a)}
+}
+
+/* ---------- interactive ---------- */
+.lab{background:#F7F4EE; border:3px dashed var(--ink); border-radius:20px; padding:26px; margin-top:30px}
+.labtitle{font-size:12px; font-weight:900; letter-spacing:.18em; color:var(--muted)}
+.ctrl{display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:16px}
+.ctrl label{font-size:14px; font-weight:900; min-width:78px}
+input[type=range]{-webkit-appearance:none; appearance:none; flex:1 1 200px; height:8px;
+  background:#DED7CB; border:2px solid var(--ink); border-radius:100px; outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:26px; height:26px; border-radius:50%;
+  background:var(--a); border:3px solid var(--ink); cursor:pointer}
+input[type=range]::-moz-range-thumb{width:22px; height:22px; border-radius:50%;
+  background:var(--a); border:3px solid var(--ink); cursor:pointer}
+.pill{display:inline-flex; border:3px solid var(--ink); border-radius:100px; overflow:hidden; flex-wrap:wrap}
+.pill button{border:0; background:#fff; padding:9px 15px; font-size:13px; font-weight:900;
+  cursor:pointer; font-family:inherit; color:var(--muted); border-right:2px solid var(--ink)}
+.pill button:last-child{border-right:0}
+.pill button.on{background:var(--ink); color:var(--bg)}
+.readout{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:22px}
+@media(max-width:700px){.readout{grid-template-columns:1fr}}
+.ro{background:#fff; border:3px solid var(--ink); border-radius:14px; padding:14px 16px}
+.ro .v{font-size:22px; font-weight:900; font-family:ui-monospace,Menlo,monospace; letter-spacing:-.02em; line-height:1.2}
+.ro .v.hot{color:var(--sq)} .ro .v.ok{color:var(--ok)} .ro .v.b{color:var(--w)} .ro .v.m{color:var(--a)}
+.ro .k{font-size:12px; font-weight:800; color:var(--muted); margin-top:5px}
+
+/* ---------- code ---------- */
+pre{background:var(--ink); color:#F1EDE6; border-radius:16px; padding:22px; margin-top:20px;
+  overflow-x:auto; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:13px; line-height:1.72; border:3px solid var(--ink)}
+pre b{color:var(--yel); font-weight:700}
+pre i{color:#8F877C; font-style:normal}
+pre u{color:#7FC8F8; text-decoration:none}
+pre s{color:#F59E86; text-decoration:none}
+
+/* ---------- list ---------- */
+ul.k{margin-top:16px; padding-left:0; list-style:none}
+ul.k li{font-size:15px; margin-top:12px; padding-left:30px; position:relative}
+ul.k li::before{content:"→"; position:absolute; left:0; font-weight:900; color:var(--a)}
+ul.k li b{color:var(--ink)}
+
+/* ---------- takeaway ---------- */
+.take{display:flex; gap:16px; align-items:flex-start; border:3px solid var(--ink); border-radius:16px;
+  padding:18px 20px; background:#fff; margin-top:14px}
+.take .n2{font-family:ui-monospace,Menlo,monospace; font-size:13px; font-weight:900;
+  background:var(--ink); color:var(--bg); border-radius:100px; padding:4px 11px; flex:0 0 auto}
+.take p{font-size:15.5px}
+
+.reveal{opacity:0; transform:translateY(22px); transition:opacity .55s ease, transform .55s ease}
+.reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <span class="kicker">ACTIVATIONS · 激活值</span>
+  <h1><span class="b">权重</span>是石头<br><em>激活值</em>是流过它的水</h1>
+  <p class="sub">激活值 = 数据往前走的时候，<b>每一层算出来的中间结果</b>。<br>
+  它不在 checkpoint 里，输入一换全部作废 —— 但训练时它常常是最占显存的那一块。</p>
+
+  <div class="herofig">
+    <svg viewBox="0 0 820 300" role="img" aria-label="蓝色的权重固定在每一层里，橙色的激活值在层之间流动">
+      <text x="14" y="20" font-size="13" font-weight="900" fill="#2E6FB7">■ 权重：训练完就定死，checkpoint 里存的就是它</text>
+      <text x="806" y="20" font-size="13" font-weight="900" fill="#E4572E" text-anchor="end">■ 激活值：输入进来才有 ↓</text>
+
+      <!-- 层 + 层间激活值 -->
+      <g>
+        <!-- chip 0 -->
+        <rect x="14" y="112" width="66" height="52" rx="9" fill="#E4572E" stroke="#16130F" stroke-width="3"/>
+        <text x="47" y="134" font-size="10" font-weight="900" fill="#fff" text-anchor="middle">embed</text>
+        <text x="47" y="150" font-size="9" fill="#FCD9CC" text-anchor="middle" font-family="monospace">[B,S,d]</text>
+
+        <!-- 层 1 -->
+        <rect x="92" y="88" width="132" height="100" rx="14" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <rect x="104" y="100" width="108" height="34" rx="7" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="158" y="122" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">Wq Wk Wv Wo</text>
+        <rect x="104" y="140" width="108" height="34" rx="7" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="158" y="162" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">W₁ W₂ W₃</text>
+        <text x="158" y="82" font-size="11" font-weight="900" fill="#6E655B" text-anchor="middle">层 1</text>
+
+        <!-- chip 1 -->
+        <rect x="232" y="112" width="66" height="52" rx="9" fill="#E4572E" stroke="#16130F" stroke-width="3"/>
+        <text x="265" y="142" font-size="9.5" fill="#fff" text-anchor="middle" font-family="monospace" font-weight="900">[B,S,d]</text>
+
+        <!-- 层 2 -->
+        <rect x="306" y="88" width="132" height="100" rx="14" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <rect x="318" y="100" width="108" height="34" rx="7" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="372" y="122" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">Wq Wk Wv Wo</text>
+        <rect x="318" y="140" width="108" height="34" rx="7" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="372" y="162" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">W₁ W₂ W₃</text>
+        <text x="372" y="82" font-size="11" font-weight="900" fill="#6E655B" text-anchor="middle">层 2</text>
+
+        <!-- chip 2 -->
+        <rect x="446" y="112" width="66" height="52" rx="9" fill="#E4572E" stroke="#16130F" stroke-width="3"/>
+        <text x="479" y="142" font-size="9.5" fill="#fff" text-anchor="middle" font-family="monospace" font-weight="900">[B,S,d]</text>
+
+        <!-- 层 3 -->
+        <rect x="520" y="88" width="132" height="100" rx="14" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <rect x="532" y="100" width="108" height="34" rx="7" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="586" y="122" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">Wq Wk Wv Wo</text>
+        <rect x="532" y="140" width="108" height="34" rx="7" fill="#2E6FB7" stroke="#16130F" stroke-width="2.5"/>
+        <text x="586" y="162" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">W₁ W₂ W₃</text>
+        <text x="586" y="82" font-size="11" font-weight="900" fill="#6E655B" text-anchor="middle">层 3</text>
+
+        <!-- chip 3 -->
+        <rect x="660" y="112" width="66" height="52" rx="9" fill="#E4572E" stroke="#16130F" stroke-width="3"/>
+        <text x="693" y="142" font-size="9.5" fill="#fff" text-anchor="middle" font-family="monospace" font-weight="900">[B,S,d]</text>
+
+        <text x="768" y="145" font-size="20" font-weight="900" fill="#6E655B" text-anchor="middle">···</text>
+      </g>
+
+      <!-- 流动箭头 -->
+      <path d="M80 138 L88 138 M224 138 L228 138 M298 138 L302 138 M438 138 L442 138 M512 138 L516 138 M652 138 L656 138 M726 138 L744 138"
+            stroke="#E4572E" stroke-width="4" fill="none"/>
+
+      <!-- 底部两句 -->
+      <g>
+        <rect x="14" y="210" width="382" height="66" rx="12" fill="#E8F1FA" stroke="#2E6FB7" stroke-width="3"/>
+        <text x="205" y="235" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">checkpoint 的大小 = 只数蓝色的</text>
+        <text x="205" y="258" font-size="12" font-weight="700" fill="#2E6FB7" text-anchor="middle">7B 就是 70 亿个蓝色的数</text>
+
+        <rect x="408" y="210" width="398" height="66" rx="12" fill="#FCEBE3" stroke="#E4572E" stroke-width="3"/>
+        <text x="607" y="235" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">训练时 OOM = 通常是橙色的爆了</text>
+        <text x="607" y="258" font-size="12" font-weight="700" fill="#E4572E" text-anchor="middle">因为只有橙色的会随 batch 和序列长度长大</text>
+      </g>
+    </svg>
+    <p class="small" style="text-align:center; max-width:790px; margin:18px auto 0">
+      图里那个 <span class="mono" style="color:var(--a); font-weight:800">[B, S, d]</span> 是张量的<b>形状</b>：三个维度，长度分别是 B、S、d ——<br>
+      <b>B</b> = batch，这一次同时喂进去几条序列 ·
+      <b>S</b> = 序列长度，每条有几个 token ·
+      <b>d</b> = 隐藏维，每个 token 用几个数表示<br>
+      所以它一共装 B×S×d 个数。<b>后面出现的 H、f 等符号，第 2 节末尾有完整符号表。</b>
+    </p>
+  </div>
+
+  <div class="facts">
+    <div class="fact"><div class="n h">104 GB</div><div class="t">7B 训练 · 激活值</div></div>
+    <div class="fact"><div class="n m">18 GB</div><div class="t">换 FlashAttention</div></div>
+    <div class="fact"><div class="n k">1.07 GB</div><div class="t">再开全量重算</div></div>
+    <div class="fact"><div class="n">0</div><div class="t">checkpoint 里存的激活值</div></div>
+  </div>
+  <p class="small" style="text-align:center; max-width:700px; margin:16px auto 0">
+    上面三个数是同一个配置下的同一件事：7B 模型、batch 1、序列长度 4096、bf16。<br>
+    差别只在于「你选择留多少」。全页统一 1 GB = 10⁹ 字节。
+  </p>
+</div>
+
+<!-- ================= 1 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">1</span><h2>一句话：它就是「中间结果」</h2></div>
+  <p class="lede">神经网络前向传播就是一串函数套函数。<b>每套完一层，手里就多一个张量</b> —— 那个张量就叫激活值。仅此而已。</p>
+
+  <div class="card">
+    <pre><i># 一个模型的前向，本质上就是这样一串赋值</i>
+x0 = embedding[token_ids]        <s># ← 激活值</s>
+x1 = layer1(x0)                  <s># ← 激活值</s>
+x2 = layer2(x1)                  <s># ← 激活值</s>
+...
+x32 = layer32(x31)               <s># ← 激活值</s>
+logits = lm_head(x32)            <s># ← 激活值</s>
+
+<i># 而 layer1 / layer2 里那些 W，是权重。它们从 checkpoint 加载进来，整个前向一动不动。</i></pre>
+    <p class="note">所以「激活值」不是某个特殊的东西，<b>它是前向路上所有中间变量的统称</b>。上面每个 <span class="mono">x</span> 都是；每一层内部还有十几个更细的中间量（第 4 节会一个个数出来），也都是。</p>
+  </div>
+
+  <div class="card dark">
+    <div class="big">权重是模型自己的，激活值是这次输入的。</div>
+    <p>换句话说：<b>权重回答「这个模型是什么」，激活值回答「这个模型正在想什么」</b>。<br><br>
+    你把同一个模型跑两次不同的输入，权重一个比特都没变，激活值<b>全部</b>不一样。这一句话解释了后面所有的性质 —— 包括为什么它占的显存跟 batch size 有关，而权重占的显存跟 batch size 无关。</p>
+  </div>
+</section>
+
+<!-- ================= 2 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">2</span><h2>两种张量，两种命运</h2></div>
+  <p class="lede">这张表是整页的地基。往后每一节都只是它某一行的展开。</p>
+
+  <div class="tbl">
+    <div class="r hd"><div></div><div>权重（parameters / weights）</div><div>激活值（activations）</div></div>
+    <div class="r"><div class="k">哪来的</div><div class="wc">训练出来的，从 checkpoint 加载</div><div class="ac"><b>算出来的</b>，输入喂进去才存在</div></div>
+    <div class="r"><div class="k">形状里有什么</div><div class="wc"><span class="mono">[d_in, d_out]</span>（输入维 × 输出维）—— 只跟模型结构有关</div><div class="ac"><span class="mono">[B, S, d]</span> —— <b>带着 batch 和序列长度</b></div></div>
+    <div class="r"><div class="k">大小怎么变</div><div class="wc">模型定了就定了。7B 就是 7B</div><div class="ac"><b>∝ batch × 序列长度</b>，你随时能把它翻倍</div></div>
+    <div class="r"><div class="k">存在磁盘上吗</div><div class="wc">是。<span class="mono">.safetensors</span> 里全是它</div><div class="ac">不存。<b>一个字节都不存</b></div></div>
+    <div class="r"><div class="k">推理时活多久</div><div class="wc">整个进程生命周期</div><div class="ac">下一层算完就能扔（第 10 节）</div></div>
+    <div class="r"><div class="k">训练时活多久</div><div class="wc">整个进程生命周期</div><div class="ac"><b>从前向算出来，一直躺到反向来取</b>（第 5 节）</div></div>
+    <div class="r"><div class="k">有梯度吗</div><div class="wc">有，而且梯度是你要的东西</div><div class="ac">有，但只是<b>传下去的中转</b>，用完就扔</div></div>
+    <div class="r"><div class="k">量化时的代号</div><div class="wc">W（W8A8 里的 W）</div><div class="ac">A（W8A8 里的 A）—— 而且更难量化（第 12 节）</div></div>
+  </div>
+
+  <p class="note" style="max-width:820px; margin-left:64px; margin-top:24px">
+    第三行是全表最值钱的一行。<b>权重、梯度、优化器状态这三块，跟你的 batch size 和序列长度完全无关</b>；激活值是四块里<b>唯一</b>随它们增长的。所以「调小 batch 就不 OOM 了」这件事之所以成立，就是因为你调的只有激活值这一块。
+  </p>
+
+  <div class="card">
+    <h4>先把符号一次性说清楚 —— 后面每一节都在用这几个字母</h4>
+    <p class="note">形状写成 <span class="mono">[B, S, d]</span> 的意思是「这个张量有三个维度，长度分别是 B、S、d」，一共装 <span class="mono">B×S×d</span> 个数。<b>再乘上每个数占几个字节（bf16 = 2 字节），就是它占多少显存</b> —— 这一页所有的显存数字都是这么来的。</p>
+
+    <div class="syms">
+      <div class="sym a"><u>B</u><div>batch<i>这一次同时喂进去几条序列。你在配置文件里能随手改的那个数。</i></div></div>
+      <div class="sym a"><u>S</u><div>序列长度<i>每条序列有几个 token。训练时就是你设的 context 长度，比如 4096。</i></div></div>
+      <div class="sym"><u>d</u><div>隐藏维（hidden size）<i>每个 token 在模型内部用几个数表示。Llama-2 7B 是 4096。</i></div></div>
+      <div class="sym"><u>L</u><div>层数<i>同样的 Transformer 层堆几遍。7B 是 32 层，70B 是 80 层。</i></div></div>
+      <div class="sym"><u>H</u><div>注意力头数<i>把 d 维切成 H 份，各自独立算一遍 attention。7B 是 32 个头。</i></div></div>
+      <div class="sym"><u>d_h</u><div>每头维度 = d ÷ H<i>7B：4096 ÷ 32 = 128。现在的模型几乎都是 128 —— 第 6 节会用到这一点。</i></div></div>
+      <div class="sym p"><u>f</u><div>MLP 中间维<i>MLP 先把 d 升到 f 再降回 d。7B 的 f = 11008，比 d 胖 2.7 倍。</i></div></div>
+      <div class="sym s"><u>d_kv</u><div>每个 token 的 K/V 维度<i>KV cache 的大小靠它算（第 11 节）。普通 MHA 下 = d，用了 GQA 就更小。</i></div></div>
+    </div>
+
+    <p class="note">⚠️ 一个记法上的小陷阱：<b>第 6 节那个业界通用的显存公式沿用论文的小写记法</b> —— 那里的 <span class="mono">s</span> 就是这里的 <span class="mono">S</span>、<span class="mono">b</span> 就是 <span class="mono">B</span>、<span class="mono">h</span> 就是 <span class="mono">d</span>、<span class="mono">a</span> 就是 <span class="mono">H</span>。同一批东西，两套大小写，看论文时容易被绕进去。</p>
+  </div>
+</section>
+
+<!-- ================= 3 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">3</span><h2>名字别被骗了</h2></div>
+  <p class="lede">「激活值」这个名字来自远古时期「神经元被激发」的比喻。它带来一个非常常见的误解：以为激活值就是激活函数的输出。<b>不是。</b></p>
+
+  <div class="grid3" style="margin-top:26px">
+    <div class="panel" style="box-shadow:6px 6px 0 var(--pur)">
+      <h4><span class="dot" style="background:var(--pur)"></span>激活函数</h4>
+      <p>ReLU / GELU / SiLU / SwiGLU 那个<b>非线性</b>。它是一个算子，是层里的一个零件。</p>
+      <p>英文 activation <b>function</b>。</p>
+      <span class="cost">一层里只有一两个</span>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--a)">
+      <h4><span class="dot" style="background:var(--a)"></span>激活值</h4>
+      <p>前向路上<b>任何一个中间张量</b>。Q、K、V、注意力权重、LayerNorm 的输出、残差相加的结果 —— 全都是激活值，跟有没有过激活函数无关。</p>
+      <p>英文 activation<b>s</b>，或者更准确的 intermediate activations。</p>
+      <span class="cost">一层里有十几个</span>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--sq)">
+      <h4><span class="dot" style="background:var(--sq)"></span>激活值显存</h4>
+      <p>那十几个里，<b>被前向特意留下来、等着反向传播回来取用</b>的那一部分。PyTorch 内部管它叫 saved tensors。</p>
+      <p>你在显存账本里看到的 activation memory，指的是这个。</p>
+      <span class="cost">这才是花钱的那个</span>
+    </div>
+  </div>
+
+  <div class="card tight" style="margin-top:26px">
+    <p class="note"><b>顺手把一串工程术语解掉</b> —— 它们里面的 activation 全都是「激活值」这个意思，不是激活函数：<br><br>
+    <span class="tag o">activation memory</span> 激活值占的显存 &nbsp;
+    <span class="tag o">activation checkpointing</span> 少存一些、反向时重算 &nbsp;
+    <span class="tag o">activation recomputation</span> 同上，同一件事的另一个叫法 &nbsp;
+    <span class="tag o">activation offloading</span> 把激活值临时搬到 CPU 内存 &nbsp;
+    <span class="tag o">W8A8 的 A</span> 激活值也量化到 8 bit &nbsp;
+    <span class="tag o">activation outlier</span> 激活值里的离群值</p>
+  </div>
+</section>
+
+<!-- ================= 4 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">4</span><h2>怎么来的：跟着数据走完一层</h2></div>
+  <p class="lede">「怎么来的」这个问题最好的答案是把一层 Transformer 摊开，<b>把每一步产生的张量一个一个数出来</b>。下面这张表就是一层里的全部激活值，附上真实尺寸。</p>
+
+  <p class="note" style="max-width:820px; margin-left:64px">
+    参数取 Llama-2 7B 的一层（符号见第 2 节）：<span class="mono">d = 4096</span>（隐藏维）、<span class="mono">H = 32</span>（头数）、<span class="mono">d_h = 128</span>（每头维度，<span class="mono">= d ÷ H = 4096 ÷ 32</span>）、<span class="mono">f = 11008</span>（MLP 中间维）。输入一条长 4096 的序列 —— 也就是 <span class="mono">B = 1</span>（一条）、<span class="mono">S = 4096</span>（4096 个 token）。bf16 → 每个数 2 字节。
+  </p>
+
+  <div class="trace">
+    <div class="trh">
+      <div>#</div><div>这一步在算什么</div><div>形状</div><div style="text-align:right">大小</div><div>相对大小</div>
+    </div>
+
+    <div class="trr res"><div class="i">00</div><div class="op">上一层的输出，也就是本层的输入 <i>x</i></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr"><div class="i">01</div><div class="op">RMSNorm(x) <i>→ 进注意力之前先归一化</i></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr"><div class="i">02</div><div class="op">Q = x₁ · W<sub>q</sub></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr"><div class="i">03</div><div class="op">K = x₁ · W<sub>k</sub></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr"><div class="i">04</div><div class="op">V = x₁ · W<sub>v</sub></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr"><div class="i">05</div><div class="op">给 Q、K 加位置信息（RoPE）<i>→ 两个张量</i></div><div class="sh">[B, H, S, d_h] ×2</div><div class="sz">67.1 MB</div><div class="bar"><i style="width:6.3%"></i></div></div>
+    <div class="trr sqr"><div class="i">06</div><div class="op">注意力分数 = Q·Kᵀ / √d_h <i>→ 每个 token 对每个 token</i></div><div class="sh">[B, H, S, S]</div><div class="sz">1.07 GB</div><div class="bar"><i style="width:100%"></i></div></div>
+    <div class="trr sqr"><div class="i">07</div><div class="op">softmax 之后的注意力权重</div><div class="sh">[B, H, S, S]</div><div class="sz">1.07 GB</div><div class="bar"><i style="width:100%"></i></div></div>
+    <div class="trr"><div class="i">08</div><div class="op">加权求和：权重 · V</div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr"><div class="i">09</div><div class="op">输出投影 · W<sub>o</sub></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr res"><div class="i">10</div><div class="op">残差相加：x + 注意力输出</div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr"><div class="i">11</div><div class="op">RMSNorm <i>→ 进 MLP 之前再归一化</i></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr fat"><div class="i">12</div><div class="op">gate = x₂ · W<sub>gate</sub> <i>→ 升到 f 维</i></div><div class="sh">[B, S, f]</div><div class="sz">90.2 MB</div><div class="bar"><i style="width:8.4%"></i></div></div>
+    <div class="trr fat"><div class="i">13</div><div class="op">up = x₂ · W<sub>up</sub></div><div class="sh">[B, S, f]</div><div class="sz">90.2 MB</div><div class="bar"><i style="width:8.4%"></i></div></div>
+    <div class="trr fat"><div class="i">14</div><div class="op">SiLU(gate) <i>← 这一步才是「激活函数」</i></div><div class="sh">[B, S, f]</div><div class="sz">90.2 MB</div><div class="bar"><i style="width:8.4%"></i></div></div>
+    <div class="trr fat"><div class="i">15</div><div class="op">SiLU(gate) ⊙ up <i>→ 逐元素相乘，这就是 SwiGLU</i></div><div class="sh">[B, S, f]</div><div class="sz">90.2 MB</div><div class="bar"><i style="width:8.4%"></i></div></div>
+    <div class="trr"><div class="i">16</div><div class="op">降回 d 维 · W<sub>down</sub></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+    <div class="trr res"><div class="i">17</div><div class="op">残差相加 → <b>下一层的输入</b></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
+
+    <div class="trf">
+      <div>一层的激活值合计 —— 而 7B 有 32 层</div>
+      <div style="color:var(--sq)">≈ 2.95 GB &nbsp;×&nbsp;32 &nbsp;=&nbsp; ≈ 94 GB</div>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="panel" style="box-shadow:6px 6px 0 var(--sq)">
+      <h4><span class="dot" style="background:var(--sq)"></span>注意到第 06、07 行了吗</h4>
+      <p>这两个张量的形状是 <span class="mono">[B, H, S, S]</span> —— <b>序列长度出现了两次</b>。因为它要装「每个 token 对每个 token 的关注程度」。</p>
+      <p>一个这样的张量 = <b>32 个隐藏状态张量</b>（1.07 GB vs 33.6 MB）。一层里两个这样的张量，就吃掉了这一层 2.95 GB 里的 2.15 GB。</p>
+      <span class="cost">整层 73% 的激活值都在这两行</span>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--pur)">
+      <h4><span class="dot" style="background:var(--pur)"></span>第 12–15 行也不小</h4>
+      <p>MLP 会先把维度从 4096 升到 11008 再降回来，中间那一段的每个张量都比隐藏状态胖 2.7 倍。SwiGLU 一路要经过<b>四个</b>这么胖的张量。</p>
+      <p>这是「MLP 参数量占大头，激活值也占大头」的原因 —— 而且它是纯线性项，序列翻倍就翻倍，不会平方。</p>
+      <span class="cost">整层 12%</span>
+    </div>
+  </div>
+
+  <div class="card tight">
+    <p class="note">⚠️ <b>两个诚实的注脚。</b><br><br>
+    ① 上表是「这一层依次产生了哪些张量」。框架并不会把 18 个全都保存到反向 —— autograd 只保存反向真正用得到的那些（比如某些逐元素运算可以从输出反推输入，就不用存输入）。所以真实占用会比 2.95 GB 略低，<b>但数量级就是这个数量级</b>。<br><br>
+    ② 第 6 节那个业界通用的公式，对同一配置算出来是 3.25 GB/层。它比手数的略高，因为它对应的是 GPT-3 式的层（额外有 dropout mask，MLP 中间维是 4d 而不是 2.7d）。两个数互相印证。</p>
+  </div>
+</section>
+
+<!-- ================= 5 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">5</span><h2>为什么训练时不能扔</h2></div>
+  <p class="lede">既然算完就该扔，为什么训练时它会堆成几十上百 GB？因为<b>反向传播要回来取它</b>。这一节是全页的因果核心。</p>
+
+  <div class="card">
+    <h4>看一个最小的例子：一层线性变换</h4>
+    <pre><i># 前向</i>
+y = x @ W          <i>#  x 是这一层的输入（激活值），W 是权重</i>
+
+<i># 反向：我们要的是 dL/dW，好拿去更新 W</i>
+dL/dW = <b>xᵀ</b> @ (dL/dy)
+        ↑
+        <b>要用到前向时那个 x</b>
+
+<i># 顺手也把梯度往前传</i>
+dL/dx = (dL/dy) @ Wᵀ      <i># 这个只要 W，不要 x</i></pre>
+    <p class="note">链式法则的形状就是这样：<b>算权重的梯度，必须知道当时喂给它的输入是什么</b>。逐元素的非线性也一样 —— <span class="mono">y = SiLU(x)</span> 的反向是 <span class="mono">dL/dx = dL/dy · SiLU′(x)</span>，那个 <span class="mono">SiLU′(x)</span> 还得知道 x。</p>
+    <p class="note">于是前向不能算完就扔，<b>得把 x 留着，一路留到反向走回这一层的那一刻</b>。而反向是从最后一层往前走的 —— 所以第 1 层的激活值，要从前向刚开始一直活到反向快结束。<b>整个网络的激活值几乎同时在显存里。</b></p>
+  </div>
+
+  <div class="card">
+    <svg viewBox="0 0 820 260" role="img" aria-label="前向逐层产生激活值并全部留在显存里，反向从后往前逐个取用并释放">
+      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#E4572E">前向 →　每算一层，就往显存里压一个（谁都不能扔）</text>
+
+      <!-- 前向阶梯 -->
+      <g>
+        <rect x="14" y="32" width="150" height="26" rx="6" fill="#E4572E" stroke="#16130F" stroke-width="2.5"/>
+        <text x="89" y="50" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">层1 的激活值</text>
+        <rect x="14" y="62" width="300" height="26" rx="6" fill="#E4572E" stroke="#16130F" stroke-width="2.5" opacity=".82"/>
+        <text x="164" y="80" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">＋ 层2 的激活值</text>
+        <rect x="14" y="92" width="450" height="26" rx="6" fill="#E4572E" stroke="#16130F" stroke-width="2.5" opacity=".64"/>
+        <text x="239" y="110" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">＋ 层3 …</text>
+        <rect x="14" y="122" width="700" height="26" rx="6" fill="#B0453B" stroke="#16130F" stroke-width="3"/>
+        <text x="364" y="140" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">＋ … ＋ 层32 的激活值　→　显存峰值出现在这里</text>
+        <text x="730" y="141" font-size="12" font-weight="900" fill="#B0453B">峰值</text>
+      </g>
+
+      <line x1="14" y1="162" x2="806" y2="162" stroke="#D9D2C7" stroke-width="3" stroke-dasharray="6 5"/>
+
+      <text x="806" y="188" font-size="13.5" font-weight="900" fill="#1E9E62" text-anchor="end">← 反向　每走过一层，取用一个、释放一个</text>
+      <g>
+        <rect x="564" y="198" width="150" height="26" rx="6" fill="#1E9E62" stroke="#16130F" stroke-width="2.5"/>
+        <text x="639" y="216" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">用完层32，释放</text>
+        <rect x="404" y="198" width="150" height="26" rx="6" fill="#1E9E62" stroke="#16130F" stroke-width="2.5" opacity=".75"/>
+        <text x="479" y="216" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">用完层31，释放</text>
+        <rect x="244" y="198" width="150" height="26" rx="6" fill="#9A9188" stroke="#16130F" stroke-width="2.5" opacity=".6"/>
+        <text x="319" y="216" font-size="11" font-weight="900" fill="#fff" text-anchor="middle">…</text>
+        <rect x="14" y="198" width="220" height="26" rx="6" fill="#16130F"/>
+        <text x="124" y="216" font-size="11" font-weight="900" fill="#F2B705" text-anchor="middle">层1 最后才用上，最后才释放</text>
+      </g>
+      <text x="410" y="250" font-size="13" font-weight="800" fill="#6E655B" text-anchor="middle">
+        第 1 层的激活值，活得比第 32 层长得多 —— 它是最早生的，最晚死的。
+      </text>
+    </svg>
+  </div>
+
+  <div class="card dark">
+    <div class="big">推理没有反向，所以激活值用完即扔。训练有反向，所以它们全都得排队等着。</div>
+    <p>这一句就是训练显存和推理显存差那么多倍的<b>其中一个</b>原因（另一个是优化器状态）。<br><br>
+    也是「激活值显存」这个词只在训练语境里被反复提的原因 —— 推理侧它几乎不构成问题（第 10 节）。</p>
+  </div>
+</section>
+
+<!-- ================= 6 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">6</span><h2>显存账：一个线性项 ＋ 一个平方项</h2></div>
+  <p class="lede">Megatron 团队那篇讲激活值重算的论文，给出了一个业界通用的估算公式。它的形状比它的系数更重要：<b>激活值显存由两项组成，一项随序列长度线性长，一项随序列长度平方长</b>。</p>
+
+  <div class="card">
+    <pre><i># 每层激活值（字节）· 不做任何优化 · 无并行切分</i>
+每层 = s·b·h·(34 + 5·a·s/h)  =  <b>34·s·b·h</b>  +  <s>5·a·s²·b</s>
+                                   ↑ 线性项        ↑ 平方项
+       s = 序列长度   b = batch   h = 隐藏维   a = 注意力头数
+<i>       ↑ 就是第 2 节那张符号表里的 S、B、d、H —— 论文用小写，这里跟着论文写</i>
+
+<i># 34 是这么凑出来的（论文 4.1 节的逐项拆解）</i>
+注意力块      11·s·b·h  <s>+ 5·a·s²·b</s>   <i># 后者 = 两个 [B,H,S,S] 张量 + 一个 mask</i>
+MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的输入、dropout mask</i>
+两个 LayerNorm 4·s·b·h
+             ─────────
+             34·s·b·h  <s>+ 5·a·s²·b</s></pre>
+    <p class="small">来源：<i>Reducing Activation Recomputation in Large Transformer Models</i>, arXiv:2205.05198，4.1 节。公式对应 GPT-3 式的层（含 dropout、MLP 中间维 4h）；LLaMA 式的层没有 dropout、MLP 是三矩阵 SwiGLU，系数会变，但「线性项 ＋ 平方项」的结构是通用的。</p>
+  </div>
+
+  <div class="card">
+    <h4>那个平方项什么时候开始压倒线性项？算一下就好</h4>
+    <pre>5·a·s²·b &gt; 34·s·b·h
+   ⟺   s &gt; 34·h / (5·a)
+   ⟺   s &gt; 6.8 × (h/a)
+   ⟺   s &gt; 6.8 × <b>每头维度 d_h</b>
+
+<i># 现在的模型几乎都是 d_h = 128</i>
+临界序列长度 ≈ 6.8 × 128 ≈ <b>870 个 token</b></pre>
+    <p class="note">这个结论出奇地干净：<b>它只跟每头维度有关，跟模型多大无关</b>。7B（h=4096, a=32）和 70B（h=8192, a=64）算出来是同一个 870。<br><br>
+    也就是说 —— 只要你训练的序列超过大约 900 个 token（也就是<b>所有现代 LLM 训练</b>），激活值显存就由那个平方项主导。这解释了第 4 节那张表里为什么两行就吃掉 73%，也解释了为什么第 8 节那个技术是分水岭。</p>
+  </div>
+</section>
+
+<!-- ================= 7 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">7</span><h2>自己拧一下：什么会动，什么不动</h2></div>
+  <p class="lede">下面两根条用同一个刻度。<b>拖动任何一个滑块，上面那根（模型状态）一动不动，下面那根（激活值）随手就能拉爆。</b>这就是第 2 节第三行的意思。</p>
+
+  <div class="lab">
+    <div class="labtitle">可交互 · 激活值显存计算器（bf16 混合精度，Adam，单卡不切分）</div>
+
+    <div class="ctrl" style="margin-top:18px">
+      <label>模型</label>
+      <div class="pill" id="a-mk">
+        <button data-m="7b" class="on">≈7B · 32 层</button>
+        <button data-m="13b">≈13B · 40 层</button>
+        <button data-m="70b">≈70B · 80 层</button>
+      </div>
+    </div>
+
+    <div class="ctrl" style="margin-top:18px">
+      <label for="a-seq">序列长度</label>
+      <input type="range" id="a-seq" min="0" max="6" step="1" value="3">
+      <span class="mono" id="a-seqv" style="font-weight:900; font-size:21px; min-width:64px; text-align:right">4K</span>
+    </div>
+
+    <div class="ctrl">
+      <label for="a-bat">batch</label>
+      <input type="range" id="a-bat" min="0" max="5" step="1" value="0">
+      <span class="mono" id="a-batv" style="font-weight:900; font-size:21px; min-width:64px; text-align:right">1</span>
+    </div>
+
+    <div class="ctrl" style="margin-top:18px">
+      <label>attention</label>
+      <div class="pill" id="a-at">
+        <button data-t="std" class="on">标准（物化 S×S）</button>
+        <button data-t="flash">FlashAttention</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label>重计算</label>
+      <div class="pill" id="a-rc">
+        <button data-r="off" class="on">关</button>
+        <button data-r="full">全量重算</button>
+      </div>
+    </div>
+
+    <div class="memrow" style="margin-top:30px">
+      <div class="memlab"><b>模型状态：权重 ＋ 梯度 ＋ 优化器状态</b><i id="o-ms">112 GB</i></div>
+      <div class="memwrap">
+        <div class="membar">
+          <span id="b-ms" style="width:50%; background:#2E6FB7">拧滑块它不动</span>
+        </div>
+        <div class="hline" id="hl"><b>80 GB · 一张卡</b></div>
+      </div>
+      <p class="ovf" style="color:var(--w)">= 16 字节/参数 × 参数量。跟 batch、序列长度<b>完全无关</b>。</p>
+    </div>
+
+    <div class="memrow" style="margin-top:26px">
+      <div class="memlab"><b>激活值</b><i id="o-act">104 GB</i></div>
+      <div class="memwrap">
+        <div class="membar">
+          <span id="b-lin" style="width:8%; background:#E4572E">线性项</span>
+          <span id="b-sq" style="width:38%; background:#B0453B">平方项</span>
+        </div>
+      </div>
+      <p class="ovf" id="o-ovf"></p>
+    </div>
+
+    <div class="readout">
+      <div class="ro"><div class="v hot" id="o-sq">80 GB</div><div class="k">其中平方项（S×S 那两个张量）</div></div>
+      <div class="ro"><div class="v m" id="o-per">3.25 GB</div><div class="k">每层激活值</div></div>
+      <div class="ro"><div class="v" id="o-ratio">0.93×</div><div class="k">激活值 ÷ 模型状态</div></div>
+    </div>
+
+    <div class="readout" style="grid-template-columns:1fr 1fr">
+      <div class="ro"><div class="v b" id="o-base">104 GB</div><div class="k">什么都不优化时是多少（对照）</div></div>
+      <div class="ro"><div class="v" id="o-cards">3 张</div><div class="k">这一坨需要几张 80 GB 卡才装得下</div></div>
+    </div>
+
+    <p class="note" id="o-tip" style="margin-top:22px"></p>
+  </div>
+
+  <div class="card dark">
+    <div class="big">序列长度翻倍，模型状态不动，激活值涨 4 倍。</div>
+    <p>把序列从 4K 拉到 32K（8 倍），线性项涨 8 倍，平方项涨 <b>64 倍</b>。这就是「长上下文训练」难的地方 —— 难点从来不在模型变大，<b>在激活值变大</b>。<br><br>
+    反过来也成立：这四个旋钮里，<b>只有 batch 和序列长度能救激活值，而它们对模型状态毫无办法</b>。第 13 节把这件事变成一个可执行的诊断法。</p>
+  </div>
+</section>
+
+<!-- ================= 8 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">8</span><h2>FlashAttention 解决的就是那个平方项</h2></div>
+  <p class="lede">既然平方项来自「把 S×S 那个矩阵完整写进显存」，那最直接的解法就是：<b>根本别把它写下来。</b></p>
+
+  <div class="card">
+    <svg viewBox="0 0 820 250" role="img" aria-label="标准 attention 把 S×S 分数矩阵完整写入显存，FlashAttention 分块在片上算完直接输出">
+      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#B0453B">标准做法：把整个 S×S 矩阵写进显存，反向再读回来</text>
+      <g>
+        <rect x="14" y="32" width="72" height="72" rx="9" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <text x="50" y="74" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">Q,K</text>
+        <path d="M92 68 L118 68" stroke="#16130F" stroke-width="3" marker-end="url(#a8)"/>
+        <rect x="124" y="32" width="150" height="72" rx="9" fill="#B0453B" stroke="#16130F" stroke-width="3"/>
+        <text x="199" y="62" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">S × S 分数矩阵</text>
+        <text x="199" y="84" font-size="11" font-weight="900" fill="#F5C4B8" text-anchor="middle" font-family="monospace">1.07 GB / 层 / 头组</text>
+        <path d="M280 68 L306 68" stroke="#16130F" stroke-width="3" marker-end="url(#a8)"/>
+        <rect x="312" y="32" width="150" height="72" rx="9" fill="#B0453B" stroke="#16130F" stroke-width="3" opacity=".8"/>
+        <text x="387" y="62" font-size="12" font-weight="900" fill="#fff" text-anchor="middle">softmax 后又一份</text>
+        <text x="387" y="84" font-size="11" font-weight="900" fill="#F5C4B8" text-anchor="middle" font-family="monospace">再 1.07 GB</text>
+        <path d="M468 68 L494 68" stroke="#16130F" stroke-width="3" marker-end="url(#a8)"/>
+        <rect x="500" y="32" width="72" height="72" rx="9" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <text x="536" y="74" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">输出</text>
+
+        <rect x="596" y="32" width="210" height="72" rx="9" fill="#FDEDE7" stroke="#B0453B" stroke-width="3"/>
+        <text x="701" y="58" font-size="12.5" font-weight="900" fill="#B0453B" text-anchor="middle">显存 ∝ S²</text>
+        <text x="701" y="80" font-size="11.5" font-weight="700" fill="#6E655B" text-anchor="middle">序列翻倍 → 这块涨 4 倍</text>
+      </g>
+      <defs><marker id="a8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#16130F"/></marker></defs>
+
+      <line x1="14" y1="124" x2="806" y2="124" stroke="#D9D2C7" stroke-width="3" stroke-dasharray="6 5"/>
+
+      <text x="14" y="152" font-size="13.5" font-weight="900" fill="#1E9E62">FlashAttention：分块搬进片上 SRAM，算完直接吐输出，中间那两块从不落地</text>
+      <g>
+        <rect x="14" y="164" width="72" height="66" rx="9" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <text x="50" y="203" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">Q,K,V</text>
+        <path d="M92 197 L118 197" stroke="#1E9E62" stroke-width="3" marker-end="url(#a8g)"/>
+        <rect x="124" y="164" width="338" height="66" rx="9" fill="#E6F6EE" stroke="#1E9E62" stroke-width="3" stroke-dasharray="8 5"/>
+        <text x="293" y="190" font-size="12.5" font-weight="900" fill="#16130F" text-anchor="middle">一块一块地算，只在片上存在</text>
+        <text x="293" y="212" font-size="11.5" font-weight="800" fill="#1E9E62" text-anchor="middle">显存里只留下 softmax 的统计量（每行两个数）</text>
+        <path d="M468 197 L494 197" stroke="#1E9E62" stroke-width="3" marker-end="url(#a8g)"/>
+        <rect x="500" y="164" width="72" height="66" rx="9" fill="#fff" stroke="#16130F" stroke-width="3"/>
+        <text x="536" y="203" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">输出</text>
+
+        <rect x="596" y="164" width="210" height="66" rx="9" fill="#E6F6EE" stroke="#1E9E62" stroke-width="3"/>
+        <text x="701" y="190" font-size="12.5" font-weight="900" fill="#1E9E62" text-anchor="middle">显存 ∝ S</text>
+        <text x="701" y="211" font-size="11.5" font-weight="700" fill="#6E655B" text-anchor="middle">平方项直接消失</text>
+      </g>
+      <defs><marker id="a8g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#1E9E62"/></marker></defs>
+    </svg>
+    <p class="small">论文 Theorem 1 的说法是：除输入和输出之外，FlashAttention 只需要 <b>O(N) 的额外显存</b>（N 为序列长度）。反向时它不去显存里读那个矩阵，而是拿保存下来的输出和 softmax 统计量<b>在片上把它重算一遍</b>。速度上的报告是：BERT-large（512）端到端快 15%，GPT-2（1K）快 3×，Long-Range Arena（1K–4K）快 2.4×。（<i>FlashAttention</i>, arXiv:2205.14135）</p>
+  </div>
+
+  <div class="grid2" style="margin-top:24px">
+    <div class="panel" style="box-shadow:6px 6px 0 var(--ok)">
+      <h4><span class="dot" style="background:var(--ok)"></span>它是「精确」的，不是近似</h4>
+      <p>输出和标准 attention 在数学上完全一致，不像稀疏 / 线性 attention 那样改变了模型在算什么。<b>所以它没有任何精度上的取舍，是纯赚。</b></p>
+      <p>这也是它能在两年内变成默认实现的原因 —— 没有理由不开。</p>
+      <span class="cost">7B / 4K / batch 1：104 GB → 18 GB</span>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--w)">
+      <h4><span class="dot" style="background:var(--w)"></span>顺手澄清一个混淆：GQA 救不了它</h4>
+      <p>GQA / MQA 减少的是 <b>K、V 的头数</b>，它显著缩小 KV cache（第 11 节）。但分数矩阵的形状是 <span class="mono">[B, <b>查询头数</b>, S, S]</span> —— 查询头一个都没少。</p>
+      <p>所以 <b>GQA 对那个平方项几乎没有帮助</b>。省激活值靠 FlashAttention，省 KV cache 靠 GQA，两件事。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 9 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">9</span><h2>重计算：用算力把激活值买回来</h2></div>
+  <p class="lede">还有一条更暴力的路：<b>干脆不存，反向要用的时候现场再前向算一遍</b>。这是显存和算力之间一笔非常划算的交易。</p>
+
+  <div class="card">
+    <svg viewBox="0 0 820 230" role="img" aria-label="重计算只保存每层入口的张量，反向到该层时重新前向一遍恢复中间值">
+      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#B0453B">不重算：一层里 18 个中间张量全留着</text>
+      <g>
+        <rect x="14" y="30" width="792" height="34" rx="8" fill="#F1EDE6" stroke="#16130F" stroke-width="3"/>
+        <g fill="#B0453B">
+          <rect x="20" y="36" width="40" height="22" rx="4"/><rect x="64" y="36" width="40" height="22" rx="4"/>
+          <rect x="108" y="36" width="40" height="22" rx="4"/><rect x="152" y="36" width="40" height="22" rx="4"/>
+          <rect x="196" y="36" width="40" height="22" rx="4"/><rect x="240" y="36" width="40" height="22" rx="4"/>
+          <rect x="284" y="36" width="40" height="22" rx="4"/><rect x="328" y="36" width="40" height="22" rx="4"/>
+          <rect x="372" y="36" width="40" height="22" rx="4"/><rect x="416" y="36" width="40" height="22" rx="4"/>
+          <rect x="460" y="36" width="40" height="22" rx="4"/><rect x="504" y="36" width="40" height="22" rx="4"/>
+          <rect x="548" y="36" width="40" height="22" rx="4"/><rect x="592" y="36" width="40" height="22" rx="4"/>
+          <rect x="636" y="36" width="40" height="22" rx="4"/><rect x="680" y="36" width="40" height="22" rx="4"/>
+          <rect x="724" y="36" width="40" height="22" rx="4"/><rect x="768" y="36" width="32" height="22" rx="4"/>
+        </g>
+      </g>
+      <text x="14" y="86" font-size="12.5" font-weight="900" fill="#B0453B">≈ 3.25 GB / 层　（34·s·b·h + 5·a·s²·b）</text>
+
+      <line x1="14" y1="104" x2="806" y2="104" stroke="#D9D2C7" stroke-width="3" stroke-dasharray="6 5"/>
+
+      <text x="14" y="132" font-size="13.5" font-weight="900" fill="#1E9E62">全量重算：只留每层入口那一个，其余 17 个反向时重新算</text>
+      <g>
+        <rect x="14" y="142" width="792" height="34" rx="8" fill="#F1EDE6" stroke="#16130F" stroke-width="3"/>
+        <rect x="20" y="148" width="40" height="22" rx="4" fill="#1E9E62"/>
+        <g fill="none" stroke="#9A9188" stroke-width="2" stroke-dasharray="3 3">
+          <rect x="64" y="148" width="40" height="22" rx="4"/><rect x="108" y="148" width="40" height="22" rx="4"/>
+          <rect x="152" y="148" width="40" height="22" rx="4"/><rect x="196" y="148" width="40" height="22" rx="4"/>
+          <rect x="240" y="148" width="40" height="22" rx="4"/><rect x="284" y="148" width="40" height="22" rx="4"/>
+          <rect x="328" y="148" width="40" height="22" rx="4"/><rect x="372" y="148" width="40" height="22" rx="4"/>
+          <rect x="416" y="148" width="40" height="22" rx="4"/><rect x="460" y="148" width="40" height="22" rx="4"/>
+          <rect x="504" y="148" width="40" height="22" rx="4"/><rect x="548" y="148" width="40" height="22" rx="4"/>
+          <rect x="592" y="148" width="40" height="22" rx="4"/><rect x="636" y="148" width="40" height="22" rx="4"/>
+          <rect x="680" y="148" width="40" height="22" rx="4"/><rect x="724" y="148" width="40" height="22" rx="4"/>
+          <rect x="768" y="148" width="32" height="22" rx="4"/>
+        </g>
+        <text x="430" y="164" font-size="11.5" font-weight="900" fill="#6E655B" text-anchor="middle">虚线 = 扔掉了，反向路过时重新前向一遍补出来</text>
+      </g>
+      <text x="14" y="198" font-size="12.5" font-weight="900" fill="#1E9E62">≈ 0.034 GB / 层　（2·s·b·h）　—— 同配置下 32 层合计 1.07 GB</text>
+      <text x="14" y="220" font-size="12" font-weight="700" fill="#6E655B">代价：反向时多做一遍前向。经典结果是约 30% 的额外运行时间。</text>
+    </svg>
+  </div>
+
+  <div class="grid2" style="margin-top:24px">
+    <div class="panel" style="box-shadow:6px 6px 0 var(--ok)">
+      <h4><span class="dot" style="background:var(--ok)"></span>为什么这笔交易划算</h4>
+      <p>它的祖师爷论文（<i>Training Deep Nets with Sublinear Memory Cost</i>, arXiv:1604.06174）给的结论是：<b>n 层网络可以只用 O(√n) 显存，代价是每个 mini-batch 多做一遍前向</b>。他们在 1000 层 ResNet 上把显存从 48 G 压到 7 G，多花了约 30% 的运行时间。</p>
+      <p>论文还提到极端情况下显存能压到 O(log n)，代价是 O(n log n) 的额外前向计算 —— 一般没人这么干。</p>
+      <span class="cost">显存 ÷ 一大截，时间 × 1.3</span>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--yel)">
+      <h4><span class="dot" style="background:var(--yel)"></span>更聪明的做法：只重算划不来的那部分</h4>
+      <p>全量重算有点浪费 —— 有些张量很大但重算很便宜（比如那个 S×S 矩阵），有些张量不大但重算要走矩阵乘法。<b>那就只重算前一类。</b></p>
+      <p>这就是<b>选择性重算</b>（selective recomputation）。Megatron 那篇论文报告：激活值显存降到 <b>1/5</b>，而重算带来的运行时间开销比全量重算<b>减少了 90% 以上</b>。</p>
+      <span class="cost">现在框架里的默认推荐路线</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <pre><i># PyTorch 里就是一行事</i>
+model.gradient_checkpointing_enable()          <i># HF Transformers</i>
+<i># 或者手写</i>
+from torch.utils.checkpoint import checkpoint
+h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保存</i></pre>
+    <p class="note">⚠️ 两个容易踩的地方：<br>
+    ① 上面那个 1.07 GB 是「存下来的量」，<b>不是显存峰值</b>。重算某一层的时候，那一层的 18 个中间张量还是要临时占一份 —— 峰值 ≈ 1.07 GB ＋ 一层的量。<br>
+    ② 重算会让那段前向<b>跑两次</b>。如果里面有 dropout 之类带随机性的算子，两次的随机数必须一致，否则梯度就错了。框架靠保存并重放 RNG 状态来处理这件事 —— 自己手写 checkpoint 时这是头号 bug 来源。</p>
+  </div>
+
+  <div class="card tight">
+    <p class="note"><b>顺带一提第三条路：序列并行。</b>Megatron 那篇论文的另一半贡献是把激活值<b>沿序列维切开</b>，分给张量并行组里的各张卡 —— 因为 LayerNorm、dropout 这些逐位置的算子本来就不需要跨位置通信，没必要每张卡都存一整条序列的激活值。它和重计算是叠加关系，不是替代关系。</p>
+  </div>
+</section>
+
+<!-- ================= 10 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">10</span><h2>推理侧：用完即扔</h2></div>
+  <p class="lede">推理没有反向传播，所以<b>没有任何人会回来取它</b>。第 5 节那个「全网络激活值同时在显存里」的局面直接消失。</p>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="panel" style="box-shadow:6px 6px 0 var(--sq)">
+      <h4><span class="dot" style="background:var(--sq)"></span>训练：O(层数)</h4>
+      <p>第 1 层的激活值要活到反向快结束。<b>32 层的激活值几乎同时在显存里。</b></p>
+      <p class="mono" style="font-size:13px; background:#FDF1EE; padding:12px; border-radius:8px; border:2px solid #E3DCD1">
+        激活值 ≈ 每层的量 × 层数<br>
+        7B / 4K / b=1 → <b>18～104 GB</b>
+      </p>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--ok)">
+      <h4><span class="dot" style="background:var(--ok)"></span>推理：O(1 层)</h4>
+      <p>算完第 2 层，第 1 层的中间值就再也没用了，立刻释放。<b>显存里同时只有一两层的量。</b></p>
+      <p class="mono" style="font-size:13px; background:#E6F6EE; padding:12px; border-radius:8px; border:2px solid #E3DCD1">
+        激活值 ≈ 每层的量 × 1～2<br>
+        同配置 → <b>几十 MB ～ 几 GB</b>
+      </p>
+    </div>
+  </div>
+
+  <div class="card dark">
+    <div class="big">这就是为什么推理显存账里几乎不提激活值。</div>
+    <p>推理侧那本账通常只有两项：<b>权重</b> ＋ <b>KV cache</b>。激活值那点量被四舍五入掉了 —— 除非你在做超大 batch 的 prefill，那时候一层的量本身就很可观（因为 prefill 阶段 S 是整个 prompt 长度）。<br><br>
+    但推理侧有一个特例，它是<b>被特意留下来的激活值</b>。下一节就是它。</p>
+  </div>
+</section>
+
+<!-- ================= 11 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">11</span><h2>KV cache = 被特意留下来的激活值</h2></div>
+  <p class="lede">如果你已经知道 KV cache 是什么，这一节会让两个概念接上：<b>KV cache 里存的 K 和 V，本来就是第 4 节那张表里的第 03、04 行</b> —— 普普通通的激活值。它们只是被挑出来，不许扔。</p>
+
+  <div class="card">
+    <svg viewBox="0 0 820 240" role="img" aria-label="生成下一个 token 时历史 token 的 K 和 V 不会变，所以存下来复用">
+      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#16130F">自回归解码：已经生成的 token，它们的 K / V 永远不会再变</text>
+
+      <g>
+        <text x="14" y="52" font-size="12" font-weight="900" fill="#6E655B">已经算过的</text>
+        <rect x="120" y="36" width="66" height="30" rx="7" fill="#1E9E62" stroke="#16130F" stroke-width="2.5"/>
+        <text x="153" y="56" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">K,V₁</text>
+        <rect x="192" y="36" width="66" height="30" rx="7" fill="#1E9E62" stroke="#16130F" stroke-width="2.5"/>
+        <text x="225" y="56" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">K,V₂</text>
+        <rect x="264" y="36" width="66" height="30" rx="7" fill="#1E9E62" stroke="#16130F" stroke-width="2.5"/>
+        <text x="297" y="56" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">K,V₃</text>
+        <text x="352" y="56" font-size="16" font-weight="900" fill="#6E655B">···</text>
+        <rect x="380" y="36" width="72" height="30" rx="7" fill="#1E9E62" stroke="#16130F" stroke-width="2.5"/>
+        <text x="416" y="56" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">K,V₍ₙ₋₁₎</text>
+        <rect x="462" y="36" width="66" height="30" rx="7" fill="#E4572E" stroke="#16130F" stroke-width="3"/>
+        <text x="495" y="56" font-size="11.5" font-weight="900" fill="#fff" text-anchor="middle">K,Vₙ</text>
+        <text x="546" y="56" font-size="12" font-weight="900" fill="#E4572E">← 这一步新算的</text>
+      </g>
+
+      <rect x="120" y="76" width="408" height="0" fill="none"/>
+      <path d="M120 72 L528 72" stroke="#16130F" stroke-width="2.5" stroke-dasharray="5 4"/>
+      <text x="324" y="92" font-size="12.5" font-weight="900" fill="#16130F" text-anchor="middle">新 token 的 Q 要跟这一整排做 attention</text>
+
+      <g>
+        <rect x="14" y="108" width="380" height="76" rx="12" fill="#FDEDE7" stroke="#B0453B" stroke-width="3"/>
+        <text x="204" y="132" font-size="13" font-weight="900" fill="#B0453B" text-anchor="middle">不缓存：每生成一个 token</text>
+        <text x="204" y="154" font-size="12" font-weight="700" fill="#16130F" text-anchor="middle">把前面 n−1 个 token 的 K/V 全部重算一遍</text>
+        <text x="204" y="174" font-size="12" font-weight="900" fill="#B0453B" text-anchor="middle">总计算量 ∝ n²，慢到不可用</text>
+
+        <rect x="426" y="108" width="380" height="76" rx="12" fill="#E6F6EE" stroke="#1E9E62" stroke-width="3"/>
+        <text x="616" y="132" font-size="13" font-weight="900" fill="#1E9E62" text-anchor="middle">缓存：把它们留在显存里</text>
+        <text x="616" y="154" font-size="12" font-weight="700" fill="#16130F" text-anchor="middle">每步只算 1 个新 token 的 K/V，其余直接读</text>
+        <text x="616" y="174" font-size="12" font-weight="900" fill="#1E9E62" text-anchor="middle">用显存换掉那个 n²</text>
+      </g>
+
+      <rect x="14" y="196" width="792" height="36" rx="10" fill="#16130F"/>
+      <text x="410" y="220" font-size="13.5" font-weight="900" fill="#F2B705" text-anchor="middle">
+        所以 KV cache 不是一种新东西 —— 它是「拒绝被扔掉」的那两个激活值。
+      </text>
+    </svg>
+  </div>
+
+  <div class="grid2" style="margin-top:24px">
+    <div class="panel">
+      <h4>它有多大</h4>
+      <p class="mono" style="font-size:13px; background:#F3F0EA; padding:12px; border-radius:8px; border:2px solid #E3DCD1">
+        2（K 和 V）× L × S × d_kv × 2 字节 × B
+      </p>
+      <p><span class="mono">d_kv</span> = 每个 token 的 K / V 有多少维。<b>普通 MHA 下它就等于 d</b>；用了 GQA 就小一截。<span class="mono">L</span> = 层数，因为每一层都有自己的一份 K/V。</p>
+      <p>Llama-2 7B（L = 32，d_kv = 4096，MHA）、一条 4096 长的序列：<br>
+      2 × 32 × 4096 × 4096 × 2 = <b>2.15 GB</b>。</p>
+      <p>注意它<b>只随序列长度线性长</b>，没有平方项 —— 因为它存的是 K、V，不是那个 S×S 矩阵。</p>
+    </div>
+    <div class="panel">
+      <h4>GQA 就是冲着这个公式来的</h4>
+      <p>公式里唯一能砍的是 <span class="mono">d_kv</span>。GQA 让多个查询头共享一组 K/V 头，直接把它除掉一个倍数 —— Llama-2 70B 用 64 个查询头配 8 个 KV 头，<b>KV cache 缩到 1/8</b>。</p>
+      <p>而第 8 节说过：这对训练时那个平方项<b>没有帮助</b>。两个优化打的是两个靶子。</p>
+      <span class="tag b">GQA → KV cache</span> <span class="tag o">FlashAttention → 激活值</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 12 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">12</span><h2>W8A8 里的那个 A</h2></div>
+  <p class="lede">量化命名法 <span class="mono">W4A16</span> / <span class="mono">W8A8</span> 里，W 是权重、<b>A 就是激活值</b>。这里有一个很值得知道的不对称：<b>激活值比权重难量化得多</b>，而原因很具体。</p>
+
+  <div class="grid2" style="margin-top:26px">
+    <div class="panel" style="box-shadow:6px 6px 0 var(--w)">
+      <h4><span class="dot" style="background:var(--w)"></span>权重：可以慢慢挑</h4>
+      <p>训练完就定死了。你可以离线看遍每一个数、算出精确的分布、逐通道挑最优的缩放系数，试一百种方案挑最好的。<b>它不会变。</b></p>
+      <span class="tag yes">静态 · 可穷举</span>
+    </div>
+    <div class="panel" style="box-shadow:6px 6px 0 var(--sq)">
+      <h4><span class="dot" style="background:var(--sq)"></span>激活值：只能赌</h4>
+      <p>每次输入都不一样。你只能拿一个校准集跑一遍，估一个数值范围出来，然后<b>祈祷线上的输入不会超出这个范围</b>。</p>
+      <p>撞上超出范围的值，量化就崩了 —— 而 LLM 的激活值恰好<b>真的有这种值</b>。</p>
+      <span class="tag no">动态 · 只能估</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4>那些超出范围的值有个名字：activation outlier</h4>
+    <p class="note">LLM.int8() 那篇论文把这件事量化了。他们发现的现象非常干净：</p>
+    <ul class="k">
+      <li><b>它是突然出现的。</b>「跨越所有层的大幅值特征」在 <b>6B 到 6.7B 参数之间突然涌现</b> —— 不是随规模平滑变化，而是一个相变。</li>
+      <li><b>它极度集中。</b>在 6.7B 模型上，这些离群值只集中在<b>整个 transformer 的 6 个特征维度</b>里（13B 以内的模型最多 7 个）。</li>
+      <li><b>它极度离谱。</b>这些维度上的值，幅度可达其他维度的 <b>20 倍</b>。</li>
+      <li><b>它铺得很开。</b>6.7B 规模上，<b>所有层、约 75% 的序列位置</b>都受影响。</li>
+    </ul>
+    <p class="note">于是 int8 量化直接失效：为了容纳那几个 20 倍大的值，缩放系数被拉得极大，剩下 99.9% 的正常值全被压进极少几个量化格子里，信息就没了。</p>
+    <p class="note">LLM.int8() 的解法是绕开而不是解决：<b>把那几个离群维度单独拎出来用 16 bit 算</b>，其余（超过 99.9% 的值）走 8 bit。SmoothQuant 的解法更漂亮 —— 用一个<b>数学上等价</b>的变换，把量化难度从激活值离线转移到权重上（因为权重好量化，见上面左边那块），从而让 W8A8 真正可用；论文报告最高 1.56× 加速、2× 显存下降，并让 530B 模型在单节点内服务。</p>
+    <p class="small">来源：<i>LLM.int8()</i>, arXiv:2208.07339，4.2 节；<i>SmoothQuant</i>, arXiv:2211.10438。</p>
+  </div>
+
+  <div class="card dark">
+    <div class="big">「权重量化到 4 bit 很常见，激活值量化到 8 bit 就要写论文」—— 差别就在这里。</div>
+    <p>你在社区里看到的绝大多数量化格式（GPTQ、AWQ、各种 GGUF 的 Q4）都是 <b>W4A16</b> 一类：<b>只量化权重，激活值老老实实用 16 bit</b>。<br><br>
+    因为权重量化省的是<b>显存和带宽</b>，代价小收益大；而激活值量化省的是<b>算力</b>（让矩阵乘法真的跑在 int8 单元上），但它要面对上面那 6 个维度。</p>
+  </div>
+</section>
+
+<!-- ================= 13 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">13</span><h2>实用：OOM 了该拧哪个旋钮</h2></div>
+  <p class="lede">前面十二节的全部实用价值可以压缩成一个动作：<b>把 batch size 减半，再看一眼显存</b>。</p>
+
+  <div class="card">
+    <svg viewBox="0 0 820 250" role="img" aria-label="把 batch 减半后显存是否明显下降，决定你 OOM 在激活值还是模型状态上">
+      <rect x="240" y="14" width="340" height="42" rx="10" fill="#16130F"/>
+      <text x="410" y="41" font-size="14" font-weight="900" fill="#F2B705" text-anchor="middle">把 batch size 减半，跑一步看显存</text>
+
+      <path d="M340 60 L200 92 M480 60 L620 92" stroke="#16130F" stroke-width="3" fill="none" marker-end="url(#a13)"/>
+      <defs><marker id="a13" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#16130F"/></marker></defs>
+
+      <g>
+        <rect x="14" y="96" width="380" height="140" rx="14" fill="#FCEBE3" stroke="#E4572E" stroke-width="3"/>
+        <text x="204" y="122" font-size="14" font-weight="900" fill="#E4572E" text-anchor="middle">显存明显掉了</text>
+        <text x="204" y="146" font-size="13" font-weight="900" fill="#16130F" text-anchor="middle">→ 你 OOM 在<tspan font-size="14">激活值</tspan>上</text>
+        <g font-size="12" font-weight="700" fill="#2E2823">
+          <text x="34" y="172">1. 开 FlashAttention（先做这个，纯赚）</text>
+          <text x="34" y="192">2. 开 gradient checkpointing</text>
+          <text x="34" y="212">3. 缩 micro-batch，用梯度累积补回 global batch</text>
+          <text x="34" y="230">4. 缩序列长度 / 上序列并行</text>
+        </g>
+      </g>
+
+      <g>
+        <rect x="426" y="96" width="380" height="140" rx="14" fill="#E8F1FA" stroke="#2E6FB7" stroke-width="3"/>
+        <text x="616" y="122" font-size="14" font-weight="900" fill="#2E6FB7" text-anchor="middle">显存几乎没动</text>
+        <text x="616" y="146" font-size="13" font-weight="900" fill="#16130F" text-anchor="middle">→ 你 OOM 在<tspan font-size="14">模型状态</tspan>上</text>
+        <g font-size="12" font-weight="700" fill="#2E2823">
+          <text x="446" y="172">1. ZeRO / FSDP（切优化器状态、梯度、权重）</text>
+          <text x="446" y="192">2. LoRA（不给底模留梯度和优化器状态）</text>
+          <text x="446" y="212">3. 换 8-bit 优化器 / 量化底模</text>
+          <text x="446" y="230">4. 张量并行 / 流水并行</text>
+        </g>
+      </g>
+    </svg>
+    <p class="note">这个分诊法之所以有效，完全来自第 2 节那张表的第三行：<b>四块显存里，只有激活值会随 batch 变</b>。所以 batch 减半带来的下降量，就是激活值在你显存里的占比。</p>
+  </div>
+
+  <div class="card tight">
+    <p class="note">⚠️ <b>一个常见的期望落空：LoRA 不怎么省激活值。</b>LoRA 冻结底模，省掉的是<b>梯度和优化器状态</b>（那是模型状态那一块，往往是大头）。但前向照样要走完整个模型，反向照样要穿过每一层往前传梯度 —— 非线性、attention、SwiGLU 中间值该存的还得存。<br><br>
+    （被冻结的线性层确实能少存一点：不算它的权重梯度，就不必为此保留输入。但有 LoRA 旁路的层依然要留。）<br><br>
+    净效果：<b>用 LoRA 把模型状态压下去之后，你的下一个 OOM 很可能就撞在激活值上</b> —— 而这时候能救你的是 checkpointing 和 FlashAttention，不是再调 LoRA 的 rank。</p>
+  </div>
+</section>
+
+<!-- ================= 14 ================= -->
+<section class="reveal">
+  <div class="head"><span class="num">14</span><h2>记住这八句</h2></div>
+  <p class="lede">如果只带走一页，带走这个。</p>
+
+  <div class="take"><span class="n2">01</span><p><b>激活值 = 前向路上的中间结果</b>，任何一个中间张量都算。跟「激活函数」只是名字像 —— Q、K、V、注意力权重、LayerNorm 输出全都是激活值。</p></div>
+  <div class="take"><span class="n2">02</span><p><b>权重是模型的，激活值是这次输入的。</b>权重在 checkpoint 里，激活值一个字节都不存；换个输入，激活值全部作废重算。</p></div>
+  <div class="take"><span class="n2">03</span><p><b>它的形状里带着 batch 和序列长度</b>（<span class="mono">[B, S, d]</span>）。这是它和权重最根本的区别，也是后面所有性质的来源。</p></div>
+  <div class="take"><span class="n2">04</span><p><b>训练时不能扔，因为反向要用。</b><span class="mono">dL/dW = xᵀ·(dL/dy)</span> 里那个 x 就是前向时的激活值。反向从后往前走，所以第 1 层的激活值活得最久 —— 全网络的激活值几乎同时在显存里。</p></div>
+  <div class="take"><span class="n2">05</span><p><b>显存四大块里，它是唯一随 batch × 序列长度增长的那一块。</b>公式是一个线性项 ＋ 一个平方项：<span class="mono">34·s·b·h + 5·a·s²·b</span>（每层）。</p></div>
+  <div class="take"><span class="n2">06</span><p><b>那个平方项从大约 870 个 token 起就开始主导</b>（临界值 ≈ 6.8 × 每头维度，跟模型多大无关）。它来自 S×S 的注意力分数矩阵 —— FlashAttention 的全部意义就是不把它写进显存。</p></div>
+  <div class="take"><span class="n2">07</span><p><b>不够就用算力买：重计算</b>（activation checkpointing）只存每层入口，其余反向时重算一遍。经典代价约 30% 额外时间；选择性重算只重算「大而便宜」的那部分，把这个开销砍掉 90% 以上。</p></div>
+  <div class="take"><span class="n2">08</span><p><b>推理侧它用完即扔</b>，所以推理显存账只有权重 ＋ KV cache —— 而 <b>KV cache 就是被特意留下来不许扔的那两个激活值</b>。量化里 W8A8 的 A 也是它，而它比权重难量化，因为 6.7B 以上的模型里有幅度 20 倍的离群维度。</p></div>
+
+  <div class="card dark" style="margin-top:34px">
+    <div class="big">一句话版本</div>
+    <p><b>激活值是数据流过模型时留下的水痕。<br>
+    推理时它立刻蒸发；训练时它必须原地等反向传播回来取用 —— 于是整张网络的水痕同时压在显存里。</b><br><br>
+    你所有关于「训练显存」的技巧，一半在跟这滩水较劲。</p>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ================= 激活值显存计算器 ================= */
+(function(){
+  const M = {
+    '7b' :{h:4096, L:32, a:32, P:7e9 },
+    '13b':{h:5120, L:40, a:40, P:13e9},
+    '70b':{h:8192, L:80, a:64, P:70e9}
+  };
+  const SEQ = [512,1024,2048,4096,8192,16384,32768];
+  const BAT = [1,2,4,8,16,32];
+  let mk='7b', attn='std', rc='off';
+
+  const $ = id => document.getElementById(id);
+  const GB = b => b/1e9;
+  const fmt = g => g>=100 ? g.toFixed(0)+' GB'
+                 : g>=10  ? g.toFixed(1)+' GB'
+                 : g>=1   ? g.toFixed(2)+' GB'
+                 :          (g*1000).toFixed(0)+' MB';
+
+  function draw(){
+    const m = M[mk];
+    const s = SEQ[+$('a-seq').value], b = BAT[+$('a-bat').value];
+    $('a-seqv').textContent = s>=1024 ? (s/1024)+'K' : s;
+    $('a-batv').textContent = b;
+
+    const lin = 34*s*b*m.h;          // 线性项 / 层
+    const sq  = 5*m.a*s*s*b;         // 平方项 / 层
+    const base = (lin+sq)*m.L;       // 什么都不优化
+
+    let perLin, perSq;
+    if(rc==='full'){ perLin = 2*s*b*m.h; perSq = 0; }         // 只存每层入口
+    else           { perLin = lin;        perSq = attn==='flash' ? 0 : sq; }
+    const per = perLin + perSq;
+    const act = per*m.L;
+    const ms  = 16*m.P;              // 权重 2 + 梯度 2 + fp32 主权重/m/v 12 = 16 B/参数
+
+    // ---- 条：满格 = 2 × 模型状态，模型状态因此固定在 50%
+    const FULL = 2*ms;
+    const pct  = v => Math.min(100, v/FULL*100);
+    $('b-ms').style.width  = '50%';
+    $('b-lin').style.width = pct(perLin*m.L)+'%';
+    $('b-sq').style.width  = pct(perSq*m.L)+'%';
+    $('b-lin').textContent = pct(perLin*m.L) > 11 ? '线性项 '+fmt(GB(perLin*m.L)) : '';
+    $('b-sq').textContent  = pct(perSq*m.L)  > 11 ? '平方项 '+fmt(GB(perSq*m.L))  : '';
+    $('hl').style.left     = pct(80e9)+'%';
+
+    $('o-ms').textContent  = fmt(GB(ms));
+    $('o-act').textContent = fmt(GB(act));
+    $('o-ovf').innerHTML   = act > FULL
+      ? '▶ 已经冲出图外 —— 激活值是模型状态的 <b>'+(act/ms).toFixed(1)+' 倍</b>'
+      : (rc==='full' && attn==='flash'
+          ? '这是地板：只剩每层入口那一个张量（2·s·b·h × 层数）。'
+          : '');
+
+    $('o-sq').textContent    = perSq===0 ? '0（没物化）' : fmt(GB(perSq*m.L));
+    $('o-sq').className      = 'v '+(perSq===0?'ok':'hot');
+    $('o-per').textContent   = fmt(GB(per));
+    $('o-ratio').textContent = (act/ms).toFixed(2)+'×';
+    $('o-ratio').className   = 'v '+(act/ms>=1?'hot':'ok');
+    $('o-base').textContent  = fmt(GB(base));
+    $('o-cards').textContent = Math.ceil(GB(act+ms)/80)+' 张';
+
+    const shareSq = base>0 ? (sq*m.L)/base*100 : 0;
+    const tips = {
+      'std|off' :'最朴素的配置：什么都不优化。平方项占了激活值的 <b>'+shareSq.toFixed(0)+'%</b> —— 序列越长这个比例越高。2022 年之前长上下文训练卡住的地方就在这。',
+      'flash|off':'FlashAttention 把 S×S 矩阵从显存里彻底抹掉，剩下的全是 O(S) 的线性项。<b>它是精确的，输出和标准 attention 完全一致</b> —— 没有精度取舍，所以没有理由不开。',
+      'std|full' :'全量重算把每层压到只存入口那一个张量。注意这个数字是「存下来的量」，<b>不是显存峰值</b> —— 重算某一层时它的中间值（包括那个 S×S 矩阵）还要临时占一份。代价是约 30% 的额外运行时间。',
+      'flash|full':'两个开关<b>叠加</b>，不是二选一：FlashAttention 管前向不物化，重算管跨层不保存。这是显存地板 —— 再往下只能动 batch、序列长度，或者上并行切分。'
+    };
+    $('o-tip').innerHTML = tips[attn+'|'+rc];
+  }
+
+  $('a-seq').addEventListener('input', draw);
+  $('a-bat').addEventListener('input', draw);
+  const wire = (id, set) => document.querySelectorAll('#'+id+' button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));
+      btn.classList.add('on'); set(btn); draw();
+    });
+  });
+  wire('a-mk', b => mk   = b.dataset.m);
+  wire('a-at', b => attn = b.dataset.t);
+  wire('a-rc', b => rc   = b.dataset.r);
+  draw();
+})();
+
+/* ================= reveal ================= */
+const io = new IntersectionObserver((es)=>{
+  es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+},{threshold:0.06});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
