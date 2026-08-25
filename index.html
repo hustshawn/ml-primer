@@ -72,15 +72,6 @@ h3 em{font-style:normal; color:var(--acc)}
 .meta .f{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; letter-spacing:-.01em}
 .meta .go{margin-left:auto; color:var(--acc); font-weight:900; font-size:15px}
 
-/* ---------- punch ---------- */
-.punch{margin-top:100px; background:var(--ink); color:var(--bg); border-radius:26px;
-  padding:50px 34px; text-align:center; box-shadow:10px 10px 0 var(--hot)}
-.punch .big{font-size:clamp(24px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; line-height:1.15}
-.punch p{color:#C9C2B8; margin-top:22px; font-size:16.5px; max-width:660px;
-  margin-left:auto; margin-right:auto; text-align:left}
-.punch b{color:#fff}
-.punch .mono{color:var(--yel)}
-
 .reveal{opacity:0; transform:translateY(22px); transition:opacity .55s ease, transform .55s ease}
 .reveal.in{opacity:1; transform:none}
 </style>
@@ -92,7 +83,7 @@ h3 em{font-style:normal; color:var(--acc)}
 <div class="hero">
   <span class="kicker">ML PRIMER · 索引</span>
   <h1>AI / ML 基础<br><em>图解合集</em></h1>
-  <p class="sub">每页一个概念，一路读到底。<br>下面的顺序就是推荐的读法：先零件，再架构，最后训练。</p>
+  <p class="sub">每页一个概念，一路读到底。<br>下面的顺序就是推荐的读法：先基础概念，再架构，最后训练。</p>
 
   <!-- 数字全部由脚本从卡片算出，不要手填 -->
   <div class="facts">
@@ -103,10 +94,10 @@ h3 em{font-style:normal; color:var(--acc)}
   </div>
 </div>
 
-<!-- 1 · 零件 -->
+<!-- 1 · 基础概念 -->
 <section class="group reveal" style="--acc:var(--hot)">
-  <div class="ghead"><span class="gnum"></span><h2>先认零件</h2></div>
-  <p class="glede">两个到处都在用的小部件。不先弄明白这两个，后面看 attention 和训练都会卡。</p>
+  <div class="ghead"><span class="gnum"></span><h2>先认基础概念</h2></div>
+  <p class="glede">这一组都是后面会反复再碰到的东西，而它们本身不依赖后面任何一页 —— 所以放最前面。不先弄明白，看 attention 和训练都会卡。</p>
 
   <div class="grid">
     <a class="card" href="softmax.html" data-sections="6">
@@ -120,6 +111,13 @@ h3 em{font-style:normal; color:var(--acc)}
       <div class="chips"><span class="chip">Residual</span><span class="chip live">可交互 · 深度滑块</span></div>
       <h3>别重写，<br><em>只贴便签</em></h3>
       <p class="d">深网络原来是「传话游戏」，传到第 90 层原话早没了。残差连接做的事只有一件：<b>把原话留着</b>。代码上就差一个加号。</p>
+      <div class="meta"></div>
+    </a>
+
+    <a class="card" href="activations.html" data-sections="14">
+      <div class="chips"><span class="chip">激活值 / Activation</span><span class="chip live">可交互 · 显存计算器</span></div>
+      <h3>权重是石头<br><em>激活值是水</em></h3>
+      <p class="d">前向路上每一层算出来的中间结果就是激活值 —— 它不在 checkpoint 里，却常是训练时最占显存的一块。<b>四块显存里只有它随 batch × 序列长度长</b>。把一层摊开数出 18 个张量，顺带解掉 activation checkpointing、FlashAttention、KV cache、W8A8 里的那个 A。</p>
       <div class="meta"></div>
     </a>
   </div>
@@ -150,9 +148,16 @@ h3 em{font-style:normal; color:var(--acc)}
 <!-- 3 · 训练 -->
 <section class="group reveal" style="--acc:var(--pur)">
   <div class="ghead"><span class="gnum"></span><h2>最后是训练</h2></div>
-  <p class="glede">给已经懂推理的人补上训练侧：一页讲一圈是怎么转的，一页讲这些名词分别落在模型的哪一段人生里。</p>
+  <p class="glede">给已经懂推理的人补上训练侧：一页先把 epoch / step / batch 这几个计数单位掰开，一页讲一圈是怎么转的，一页讲这些名词分别落在模型的哪一段人生里，一页把最常用的那个微调方法拆开看，一页讲多卡是怎么分工的。</p>
 
   <div class="grid">
+    <a class="card" href="epoch-step-batch.html" data-sections="4">
+      <div class="chips"><span class="chip">Epoch / Step / Batch</span><span class="chip live">可交互 · batch size 切换</span></div>
+      <h3>训练就是<br><em>刷一本习题册</em></h3>
+      <p class="d">一道题 = 一条样本，一叠题 = 一个 batch，<b>做完一叠改一次参数 = 一个 step</b>，整本刷完一遍 = 一个 epoch。带一个能跑的 100 题动画：调 batch size 看 step 数怎么变，以及为什么日志横轴上的 <b>global step 跨 epoch 不归零</b>。</p>
+      <div class="meta"></div>
+    </a>
+
     <a class="card" href="llm-training.html" data-sections="13">
       <div class="chips"><span class="chip">训练机制</span></div>
       <h3>训练 = 推理<br><em>+ 两步</em></h3>
@@ -166,18 +171,22 @@ h3 em{font-style:normal; color:var(--acc)}
       <p class="d">读书 → 学做事 → 学做人 → 学思考。四段的区别只在于<b>谁在打分</b>。你听过的所有名词都落在这四格里 —— 包括几个常被叫做「训练」其实不是的。</p>
       <div class="meta"></div>
     </a>
+
+    <a class="card" href="lora.html" data-sections="14">
+      <div class="chips"><span class="chip">LoRA / QLoRA</span><span class="chip live">可交互 · rank 滑块</span></div>
+      <h3>底模一个字不改<br>只训<em>旁边那块补丁</em></h3>
+      <p class="d">LoRA 不是一个训练阶段，是<b>「哪些参数有梯度」这一层的选择</b>。机理只有一个加号；省的是优化器状态，<b>不是 activation</b>；推理要么 merge 掉换零开销，要么留旁路换热切换。</p>
+      <div class="meta"></div>
+    </a>
+
+    <a class="card" href="data-parallel.html" data-sections="14">
+      <div class="chips"><span class="chip">数据并行 / DP</span><span class="chip live">可交互 · 卡数滑块</span></div>
+      <h3>模型复制 N 份<br>数据<em>切成 N 份</em></h3>
+      <p class="d">名字里的「数据」就是<b>被切开</b>的那个东西 —— 复制的从来是模型。一步只有一个同步点（all-reduce 平均梯度），<b>DP 一个字节显存都不省</b>；推理侧没有梯度，它就退化成多副本 + 负载均衡。</p>
+      <div class="meta"></div>
+    </a>
   </div>
 </section>
-
-<!-- PUNCH -->
-<div class="punch reveal">
-  <div class="big">这个合集的规矩</div>
-  <p>
-    <b>1 ·</b> 一页一个概念，<b>每页都自包含</b> —— 内联 CSS/JS，零外部请求，双击就能看，断网也能看。<br><br>
-    <b>2 ·</b> 读者假设是<b>已经会用 API、懂推理的人</b>，所以 logits、KV cache 这类词直接用，但训练侧和数学侧一律拆到最小。<br><br>
-    <b>3 ·</b> 加新页：<span class="mono">/eli5 &lt;topic&gt;</span> → 重命名成 <span class="mono">&lt;topic&gt;.html</span> → 更新 <span class="mono">README.md</span> 的表格和本页的卡片。
-  </p>
-</div>
 
 </div>
 
