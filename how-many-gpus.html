@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>要几张卡？—— 训练资源估算的三个约束</title>
+<style>
+  :root{
+    --paper:#F6F4F0;
+    --paper2:#EDE9E2;
+    --panel:#FFFFFF;
+    --ink:#17191B;
+    --ink2:#4A4843;
+    --muted:#84807A;
+    --line:#DFD9CF;
+    --line2:#C9C1B4;
+
+    /* 三约束 —— 全页配色的脊梁 */
+    --mem:#C4682C;      /* 显存 */
+    --comp:#2C6B9E;     /* 算力 */
+    --net:#7A54A6;      /* 互联 */
+
+    /* 显存分解 */
+    --seg-w:#C4682C;
+    --seg-g:#E3A469;
+    --seg-o:#8A4418;
+    --seg-a:#3F7A57;    /* 激活 —— 另一个色系，因为 ZeRO 切不了它 */
+
+    --ok:#3F7A57;
+    --bad:#AE3527;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  code,.mono,.m{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+  /* ---------- HERO ---------- */
+  header{
+    padding:78px 0 44px;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0/100% 34px,
+      linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0/34px 100%,
+      var(--paper);
+    background-blend-mode:normal;
+    border-bottom:2px solid var(--line);
+    position:relative;
+  }
+  header::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg, rgba(246,244,240,.55), rgba(246,244,240,.93));
+    pointer-events:none;
+  }
+  header .wrap{position:relative;z-index:1}
+  .kicker{
+    font-size:13px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--muted);font-weight:700;margin-bottom:20px;
+  }
+  h1{
+    font-size:clamp(36px,6.4vw,72px);line-height:1.05;font-weight:900;
+    margin:0 0 20px;letter-spacing:-.025em;max-width:16em;
+  }
+  h1 em{font-style:normal;color:var(--mem)}
+  .sub{font-size:clamp(16px,2.2vw,21px);color:var(--ink2);max-width:44em;margin:0;font-weight:500}
+  .sub b{color:var(--ink)}
+
+  /* ---------- 三约束 band ---------- */
+  .band{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:16px;margin:-26px 0 8px;position:relative;z-index:2}
+  .con{
+    background:var(--panel);border:2px solid var(--line);border-radius:20px;
+    padding:24px 22px 22px;position:relative;overflow:hidden;
+  }
+  .con::before{content:"";position:absolute;left:0;right:0;top:0;height:6px}
+  .con .cn{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+  .con h3{margin:4px 0 12px;font-size:27px;font-weight:900;letter-spacing:-.01em}
+  .con .q{font-size:15px;font-weight:600;color:var(--ink2);margin:0 0 10px}
+  .con .d{font-size:14px;color:var(--muted);margin:0;font-weight:500}
+  .con .d b{color:var(--ink)}
+  .c-mem::before{background:var(--mem)} .c-mem h3{color:var(--mem)}
+  .c-comp::before{background:var(--comp)} .c-comp h3{color:var(--comp)}
+  .c-net::before{background:var(--net)} .c-net h3{color:var(--net)}
+
+  .verdict{
+    margin:26px 0 0;background:var(--ink);color:#fff;border-radius:20px;padding:24px 26px;
+    display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+  }
+  .verdict .eq2{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:clamp(15px,2.6vw,22px);font-weight:700;line-height:1.7}
+  .verdict .eq2 .mm{color:#F0A868} .verdict .eq2 .cc{color:#7FB6E0} .verdict .eq2 .nn{color:#BFA0EA}
+
+  /* ---------- sections ---------- */
+  section{padding:60px 0 4px}
+  .h2{font-size:clamp(25px,3.7vw,38px);font-weight:900;margin:0 0 8px;letter-spacing:-.022em}
+  .h2 .num{color:var(--line2);margin-right:14px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  .lead{color:var(--muted);font-size:17px;font-weight:500;margin:0 0 30px;max-width:52em}
+  .lead b{color:var(--ink2)}
+
+  /* ---------- 清单 ---------- */
+  .ask{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px}
+  .item{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:18px 20px;position:relative}
+  .item .p{
+    position:absolute;top:16px;right:16px;font-size:11px;font-weight:800;letter-spacing:.1em;
+    padding:3px 8px;border-radius:6px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  .item.p0 .p{background:#FBE6DA;color:var(--mem)}
+  .item.p1 .p{background:var(--paper2);color:var(--muted)}
+  .item h4{margin:0 0 6px;font-size:18px;font-weight:900;padding-right:44px}
+  .item p{margin:0;font-size:14.5px;color:var(--ink2);font-weight:500}
+  .item p b{color:var(--ink);background:#FBE6DA;padding:0 3px;border-radius:3px}
+
+  /* ---------- 估算器 ---------- */
+  .stage{background:var(--panel);border:2px solid var(--line);border-radius:24px;padding:26px}
+  .stage.acc-mem{border-color:#E8CBB4}
+  .stage.acc-comp{border-color:#C2D6E6}
+  .ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px 22px;margin-bottom:22px}
+  .cg{min-width:0}
+  .cg > label{display:block;font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:800;color:var(--muted);margin-bottom:7px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{
+    border:2px solid var(--line);background:var(--paper);border-radius:9px;
+    padding:6px 11px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-weight:700;font-size:13px;cursor:pointer;color:var(--ink2);line-height:1.2;
+  }
+  .chip:hover{border-color:var(--line2)}
+  .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+  .chips.a-mem .chip[aria-pressed="true"]{background:var(--mem);border-color:var(--mem)}
+  .chips.a-comp .chip[aria-pressed="true"]{background:var(--comp);border-color:var(--comp)}
+  .chip .u{opacity:.6;font-size:11px;margin-left:2px}
+
+  /* 卡数滑杆 */
+  .gpubar{background:var(--paper2);border-radius:16px;padding:16px 20px;margin-bottom:22px}
+  .gpubar .top{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+  .gpubar .lb{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+  .gpubar .now{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:700;font-size:20px}
+  .gpubar .now .nodes{color:var(--muted);font-size:14px;font-weight:700}
+  .gpubar input[type=range]{width:100%;margin:0;accent-color:var(--ink)}
+  .ticks{display:flex;justify-content:space-between;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--muted);font-weight:700;margin-top:2px}
+
+  /* 读数 */
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px;margin-bottom:22px}
+  .stat{background:var(--paper2);border-radius:14px;padding:14px 16px}
+  .stat .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--muted);margin-bottom:2px}
+  .stat .val{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:clamp(22px,3.4vw,31px);font-weight:700;line-height:1.15}
+  .stat .val .u{font-size:14px;color:var(--muted);margin-left:3px}
+  .stat .hint{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px}
+  .stat.hero-mem{background:#FBE6DA} .stat.hero-mem .val{color:var(--mem)}
+  .stat.hero-comp{background:#DFEAF3} .stat.hero-comp .val{color:var(--comp)}
+  .stat.good .val{color:var(--ok)} .stat.bad .val{color:var(--bad)}
+
+  /* 堆叠条 */
+  .barwrap{margin-bottom:8px}
+  .barhead{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;color:var(--muted);margin-bottom:7px}
+  .bar{
+    position:relative;height:52px;background:var(--paper2);border-radius:11px;
+    display:flex;overflow:hidden;border:2px solid var(--line);
+  }
+  .seg{height:100%;transition:width .3s ease;position:relative;min-width:0}
+  .seg.w{background:var(--seg-w)} .seg.g{background:var(--seg-g)}
+  .seg.o{background:var(--seg-o)} .seg.a{background:var(--seg-a)}
+  .cap{
+    position:absolute;top:-7px;bottom:-7px;width:0;border-left:3px dashed var(--ink);
+    transition:left .3s ease;z-index:3;
+  }
+  .cap span{
+    position:absolute;left:6px;top:-20px;white-space:nowrap;font-size:11px;font-weight:800;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--ink);
+  }
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12.5px;font-weight:700;color:var(--ink2)}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .legend .v{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--muted);margin-left:4px}
+
+  /* ZeRO 阶梯 */
+  .ladder{margin-top:24px;border-top:2px solid var(--line);padding-top:20px}
+  .ladder > .t{font-size:13px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-bottom:12px}
+  .row{
+    display:grid;grid-template-columns:132px 150px 1fr 96px;gap:14px;align-items:center;
+    padding:10px 12px;border-radius:12px;cursor:pointer;border:2px solid transparent;
+  }
+  .row:hover{background:var(--paper)}
+  .row[aria-pressed="true"]{background:#FBE6DA;border-color:#E8CBB4}
+  .row .nm{font-weight:900;font-size:15px}
+  .row .nm small{display:block;font-weight:700;font-size:11px;color:var(--muted);letter-spacing:.04em}
+  .pills{display:flex;gap:4px}
+  .pill{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;font-weight:800;
+    padding:3px 6px;border-radius:5px;background:var(--paper2);color:var(--muted);white-space:nowrap;
+  }
+  .pill.sh{background:var(--mem);color:#fff}
+  .row .mini{height:20px;background:var(--paper2);border-radius:6px;overflow:hidden;position:relative}
+  .row .mini i{display:block;height:100%;background:var(--seg-w);transition:width .3s ease}
+  .row .mini i.over{background:var(--bad)}
+  .row .rr{text-align:right;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:700;font-size:14px}
+  .row .rr small{display:block;font-size:11px;color:var(--muted)}
+
+  .narrate{
+    margin-top:20px;background:var(--ink);color:#fff;border-radius:16px;padding:17px 21px;
+    font-size:16px;font-weight:500;line-height:1.7;min-height:58px;
+  }
+  .narrate b{color:#F0A868}
+  .narrate .cc{color:#7FB6E0}
+  .narrate.warn{background:#5C1F17}
+  .narrate.warn b{color:#FFC2A8}
+
+  /* ZeRO 分片示意 */
+  .shard{background:var(--panel);border:2px solid var(--line);border-radius:24px;padding:26px}
+  .gpus{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .gpu{background:var(--paper);border:2px solid var(--line);border-radius:14px;padding:12px}
+  .gpu > .gt{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;font-weight:800;color:var(--muted);margin-bottom:9px;text-align:center}
+  .srow{display:flex;gap:3px;margin-bottom:6px}
+  .srow:last-child{margin-bottom:0}
+  .sc{flex:1;height:19px;border-radius:4px;background:var(--paper2);transition:background .28s ease,opacity .28s ease}
+  .sc.on{background:var(--seg-w)}
+  .srow.g .sc.on{background:var(--seg-g)}
+  .srow.o .sc.on{background:var(--seg-o)}
+  .srow.a .sc.on{background:var(--seg-a)}
+  .slab{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+  .slegend{display:grid;grid-template-columns:110px 1fr;gap:6px 14px;margin-top:20px;font-size:14px;font-weight:600;color:var(--ink2)}
+  .slegend .k{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:800;font-size:13px}
+  .slegend .k i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .punch{
+    margin-top:22px;background:#FBE6DA;border-left:6px solid var(--mem);border-radius:0 14px 14px 0;
+    padding:16px 20px;font-size:16px;font-weight:600;color:#5C2E0F;
+  }
+  .punch b{font-weight:900}
+  .punch.blue{background:#DFEAF3;border-color:var(--comp);color:#123A57}
+  .punch.violet{background:#EBE3F7;border-color:var(--net);color:#3A2159}
+
+  /* deadline 反算 */
+  .rev{margin-top:24px;border-top:2px solid var(--line);padding-top:20px}
+  .rev > .t{font-size:13px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-bottom:12px}
+  .revgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:10px}
+  .rv{background:var(--paper2);border-radius:12px;padding:13px 14px;text-align:center}
+  .rv .d{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;margin-bottom:4px}
+  .rv .n{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:24px;font-weight:700;color:var(--comp);line-height:1.1}
+  .rv .s{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:2px}
+
+  /* 表格 */
+  .tbl{width:100%;border-collapse:collapse;background:var(--panel);border:2px solid var(--line);border-radius:16px;overflow:hidden}
+  .tbl th,.tbl td{padding:11px 14px;text-align:left;font-size:14.5px;border-bottom:1px solid var(--line)}
+  .tbl th{background:var(--paper2);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+  .tbl tr:last-child td{border-bottom:0}
+  .tbl td.n{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:700}
+  .tbl td b{font-weight:900}
+  .tblwrap{overflow-x:auto;border-radius:16px}
+  .tbl .hi{background:#FBFAF7}
+
+  /* 带宽条 */
+  .bw{display:grid;gap:11px;margin-top:4px}
+  .bwr{display:grid;grid-template-columns:minmax(150px,210px) 1fr 92px;gap:14px;align-items:center}
+  .bwr .l{font-size:14px;font-weight:700}
+  .bwr .l small{display:block;font-size:11.5px;color:var(--muted);font-weight:600}
+  .bwr .t2{height:26px;background:var(--paper2);border-radius:7px;overflow:hidden;border:1px solid var(--line)}
+  .bwr .t2 i{display:block;height:100%;background:var(--net);border-radius:6px}
+  .bwr.out .t2 i{background:var(--line2)}
+  .bwr .v2{text-align:right;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:700;font-size:14px}
+
+  /* QA */
+  .qa{border-top:2px solid var(--line);padding:24px 0}
+  .qa .tag{
+    display:inline-block;font-size:11px;font-weight:800;letter-spacing:.1em;
+    padding:4px 10px;border-radius:999px;margin-bottom:11px;background:var(--paper2);color:var(--muted);
+  }
+  .qa h3{margin:0 0 9px;font-size:clamp(19px,2.7vw,24px);font-weight:900;letter-spacing:-.01em}
+  .qa p{margin:0;font-size:16px;color:var(--ink2);font-weight:500;max-width:58em}
+  .qa p b{color:var(--ink)}
+  .qa p code{background:var(--paper2);padding:1px 5px;border-radius:4px;font-size:14px}
+
+  details.assume{
+    margin:34px 0 0;background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:0 22px;
+  }
+  details.assume summary{
+    cursor:pointer;padding:18px 0;font-weight:900;font-size:17px;list-style:none;
+  }
+  details.assume summary::-webkit-details-marker{display:none}
+  details.assume summary::before{content:"▸ ";color:var(--muted)}
+  details.assume[open] summary::before{content:"▾ "}
+  details.assume .body{padding:0 0 22px;font-size:14.5px;color:var(--ink2);font-weight:500}
+  details.assume .body h5{margin:16px 0 6px;font-size:14px;font-weight:900;color:var(--ink)}
+  details.assume .body p{margin:0 0 8px}
+  details.assume .body code{background:var(--paper2);padding:2px 6px;border-radius:4px;font-size:13.5px}
+  details.assume .body ul{margin:0 0 8px;padding-left:20px}
+  details.assume .body li{margin-bottom:4px}
+
+  footer{padding:66px 0 96px;text-align:center;color:var(--muted);font-size:14.5px;font-weight:500}
+  footer b{color:var(--ink)}
+
+  @media (max-width:820px){
+    .row{grid-template-columns:110px 1fr 84px;gap:10px}
+    .row .pills{display:none}
+    .gpus{grid-template-columns:repeat(2,1fr)}
+    .slab{grid-template-columns:repeat(2,1fr)}
+    .bwr{grid-template-columns:130px 1fr 78px;gap:9px}
+  }
+  @media (max-width:560px){
+    header{padding:54px 0 30px}
+    .band{margin-top:20px}
+    .stage,.shard{padding:18px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">How many GPUs · 训练资源估算</div>
+    <h1>「要几张卡？」<br>这问题<em>没法直接回答</em></h1>
+    <p class="sub">因为它不是一个问题，是<b>三个独立约束的交集</b>。<br>先搞清楚要问什么，再算——顺序反了就只能瞎猜。</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="band">
+    <div class="con c-mem">
+      <div class="cn">Constraint A</div>
+      <h3>显存</h3>
+      <p class="q">能不能跑起来？</p>
+      <p class="d">硬约束。不满足就 <b>OOM</b>，一秒都跑不了。它给出卡数的<b>下限</b>。</p>
+    </div>
+    <div class="con c-comp">
+      <div class="cn">Constraint B</div>
+      <h3>算力</h3>
+      <p class="q">多久能跑完？</p>
+      <p class="d">软约束。用钱换时间。它给出卡数的<b>目标值</b>——由 deadline 倒推。</p>
+    </div>
+    <div class="con c-net">
+      <div class="cn">Constraint C</div>
+      <h3>互联</h3>
+      <p class="q">卡之间怎么切？</p>
+      <p class="d">拓扑约束。决定能不能跨机、怎么跨，以及效率会掉掉多少。</p>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <div class="eq2">
+      答案 = <b>max(</b> <span class="mm">显存下限</span> <b>,</b> <span class="cc">算力需求</span> <b>)</b>，再被 <span class="nn">互联拓扑</span> 向上取整到整机
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">01</span>先问清这几件事</h2>
+    <p class="lead">按「不知道就根本没法算」排序。<b>P0 缺一个，答案就能差一到两个数量级</b>；P1 影响 30%–3× 的系数。</p>
+
+    <div class="ask">
+      <div class="item p0"><span class="p">P0</span>
+        <h4>训练方式</h4>
+        <p>全参 + Adam / LoRA / QLoRA / 继续预训练 / DPO / PPO。这一项<b>单独就能让答案差 16 倍</b>——同一个 70B、4k 序列、<b>两边都开梯度重算</b>：全参 ZeRO-3 要 16 张 H100，QLoRA 一张就够。下面的估算器可以按这个设置切给你看。</p>
+      </div>
+      <div class="item p0"><span class="p">P0</span>
+        <h4>模型规模与架构</h4>
+        <p>参数量 N、层数 L、hidden size h、head 数 a。还必须问<b>是 dense 还是 MoE</b>——MoE 显存看总参数，算力看激活参数，两者能差 10 倍。</p>
+      </div>
+      <div class="item p0"><span class="p">P0</span>
+        <h4>序列长度 + micro batch</h4>
+        <p>激活显存的主要来源。长上下文场景下它是显存的<b>主项</b>，不是零头——70B 在 4k 序列下不开重算，激活单独就要 85 GB。</p>
+      </div>
+      <div class="item p0"><span class="p">P0</span>
+        <h4>数据量 × epoch</h4>
+        <p>总 token 数 D 决定总 FLOPs。<b>SFT 的 1 亿 token 和预训练的 1 万亿 token，差 4 个数量级</b>——分钟级 vs 半年级。</p>
+      </div>
+      <div class="item p0"><span class="p">P0</span>
+        <h4>时间预算</h4>
+        <p>一晚 / 一周 / 一个月。<b>没有 deadline，就不存在「该买多少卡」这个问题</b>——显存下限那几张卡总能跑完，只是慢。</p>
+      </div>
+      <div class="item p1"><span class="p">P1</span>
+        <h4>精度与优化器</h4>
+        <p>bf16 / fp8 / base 权重 4-bit 量化；Adam（12 B/参数的状态）vs 8-bit Adam vs Adafactor vs SGD。换优化器能省下一半状态显存。</p>
+      </div>
+      <div class="item p1"><span class="p">P1</span>
+        <h4>手上有什么硬件</h4>
+        <p>单机 8 卡还是多机？<b>NVLink 还是 PCIe</b>？跨机有没有 EFA / InfiniBand？这直接决定并行策略的可行域（见 06）。</p>
+      </div>
+      <div class="item p1"><span class="p">P1</span>
+        <h4>能接受多少额外算力开销</h4>
+        <p>gradient checkpointing 用 <b>+33% 算力</b>换掉<b>九成以上</b>的激活显存（比例只跟层数有关，本页五个模型都在 90–93%）。愿不愿意换，会改变显存下限和时长两个答案。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">02</span>约束 A：显存 —— 算出下限</h2>
+    <p class="lead">全参 + Adam + 混合精度的标准记账是 <b>16 字节 / 参数</b>（fp16 权重 2 + fp16 梯度 2 + 优化器状态 12）。再叠上激活。调下面的旋钮，看下限怎么变。</p>
+
+    <div class="stage acc-mem">
+      <div class="ctl">
+        <div class="cg">
+          <label>训练方式</label>
+          <div class="chips a-mem" id="ch-mode"></div>
+        </div>
+        <div class="cg">
+          <label>模型规模</label>
+          <div class="chips a-mem" id="ch-model"></div>
+        </div>
+        <div class="cg">
+          <label>卡型</label>
+          <div class="chips a-mem" id="ch-card"></div>
+        </div>
+        <div class="cg">
+          <label>序列长度 s</label>
+          <div class="chips a-mem" id="ch-seq"></div>
+        </div>
+        <div class="cg">
+          <label>micro batch b</label>
+          <div class="chips a-mem" id="ch-mb"></div>
+        </div>
+        <div class="cg">
+          <label>省显存开关</label>
+          <div class="chips a-mem" id="ch-opt"></div>
+        </div>
+      </div>
+
+      <div class="gpubar">
+        <div class="top">
+          <span class="lb">卡数 G（和 04 联动）</span>
+          <span class="now" id="g-now">8 <span class="nodes">= 1 台 × 8 卡</span></span>
+        </div>
+        <input type="range" id="g-slider" min="0" max="9" step="1" value="3">
+        <div class="ticks"><span>1</span><span>2</span><span>4</span><span>8</span><span>16</span><span>32</span><span>64</span><span>128</span><span>256</span><span>512</span></div>
+      </div>
+
+      <div class="readout">
+        <div class="stat hero-mem"><div class="lbl">显存下限</div><div class="val" id="v-gmin">—</div><div class="hint" id="v-gmin-h">最少几张卡才跑得起来</div></div>
+        <div class="stat" id="st-per"><div class="lbl">当前每卡占用</div><div class="val" id="v-per">—<span class="u">GB</span></div><div class="hint" id="v-per-h">—</div></div>
+        <div class="stat"><div class="lbl">全局总需求</div><div class="val" id="v-tot">—<span class="u">GB</span></div><div class="hint">状态 + 每卡激活 × G</div></div>
+        <div class="stat"><div class="lbl">激活（不可分片）</div><div class="val" id="v-act">—<span class="u">GB</span></div><div class="hint" id="v-act-h">每卡都要单独存一份</div></div>
+      </div>
+
+      <div class="barwrap">
+        <div class="barhead">
+          <span>每卡显存分解（当前 <b id="bh-g">8</b> 卡 · <span id="bh-stage">ZeRO-3</span>）</span>
+          <span id="bh-cap">可用 77 GB</span>
+        </div>
+        <div class="bar" id="bar">
+          <div class="seg w" id="sg-w"></div>
+          <div class="seg g" id="sg-g"></div>
+          <div class="seg o" id="sg-o"></div>
+          <div class="seg a" id="sg-a"></div>
+          <div class="cap" id="capline"><span id="capname">卡容量</span></div>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--seg-w)"></i>权重<span class="v" id="lg-w">—</span></span>
+          <span><i style="background:var(--seg-g)"></i>梯度<span class="v" id="lg-g">—</span></span>
+          <span><i style="background:var(--seg-o)"></i>优化器状态<span class="v" id="lg-o">—</span></span>
+          <span><i style="background:var(--seg-a)"></i>激活<span class="v" id="lg-a">—</span></span>
+        </div>
+      </div>
+
+      <div class="ladder">
+        <div class="t">ZeRO 分片阶段 —— 点一行切换（数字是当前 <b id="ld-g">8</b> 卡下的每卡占用）</div>
+        <div id="ladder"></div>
+      </div>
+
+      <div class="narrate" id="say-mem">—</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">03</span>分片：ZeRO 到底切了什么</h2>
+    <p class="lead">上面选的 stage，在 4 张卡上长这样。<b>亮的格子 = 这张卡真的持有那份数据</b>；灰的 = 别人存着，用时再传过来。</p>
+
+    <div class="shard">
+      <div class="gpus" id="shard-gpus"></div>
+      <div class="slegend">
+        <div class="k"><i style="background:var(--seg-w)"></i>权重 W</div><div id="sl-w">—</div>
+        <div class="k"><i style="background:var(--seg-g)"></i>梯度 G</div><div id="sl-g">—</div>
+        <div class="k"><i style="background:var(--seg-o)"></i>优化器 O</div><div id="sl-o">—</div>
+        <div class="k"><i style="background:var(--seg-a)"></i>激活 A</div><div>永远全亮 —— <b>stage 1/2/3 都不切激活</b></div>
+      </div>
+      <div class="punch">
+        这是最容易踩的坑：<b>加卡能摊薄状态显存，摊不薄激活显存。</b>激活是每个数据并行副本自己的，上面这三个 stage（ZeRO-DP）从头到尾没碰它。激活撑爆了只有三条路 —— 开 gradient checkpointing、上张量/序列并行、或者砍 batch 和序列长度。
+      </div>
+      <div class="punch">
+        <b>一个容易被拿来反驳的细节：</b>ZeRO 论文里确实有一个切激活的机制 —— ZeRO-R 的 <code>P_a</code>（Partitioned Activation Checkpointing），论文举的例子把 100B 模型的 33 GB 激活压到每卡约 2 GB。但它是<b>沿张量并行组切的，不是沿数据并行组</b>。也就是说：它靠的是 TP，不是靠加 DP 的卡。所以「加卡摊不薄激活」这个操作结论不变，只是别把它说成「ZeRO 完全没有切激活的手段」。
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">04</span>约束 B：算力 —— 算出时长</h2>
+    <p class="lead">总计算量 <span class="m">C ≈ 6 · N · D</span>（前向 2ND + 反向 4ND），耗时 = <span class="m">C ÷ (卡数 × 单卡峰值 × MFU)</span>。<b>峰值必须用 dense 列</b>——厂商 spec 里带 sparsity 的数字是 ×2 虚标。</p>
+
+    <div class="stage acc-comp">
+      <div class="ctl">
+        <div class="cg">
+          <label>数据量 D（token）</label>
+          <div class="chips a-comp" id="ch-tok"></div>
+        </div>
+        <div class="cg">
+          <label>MFU（见 05 怎么取）</label>
+          <div class="chips a-comp" id="ch-mfu"></div>
+        </div>
+      </div>
+
+      <div class="gpubar">
+        <div class="top">
+          <span class="lb">卡数 G（和 02 联动）</span>
+          <span class="now" id="g-now2">8 <span class="nodes">= 1 台 × 8 卡</span></span>
+        </div>
+        <input type="range" id="g-slider2" min="0" max="9" step="1" value="3">
+        <div class="ticks"><span>1</span><span>2</span><span>4</span><span>8</span><span>16</span><span>32</span><span>64</span><span>128</span><span>256</span><span>512</span></div>
+      </div>
+
+      <div class="readout">
+        <div class="stat hero-comp"><div class="lbl">预计耗时</div><div class="val" id="v-time">—</div><div class="hint" id="v-time-h">—</div></div>
+        <div class="stat"><div class="lbl">总计算量</div><div class="val" id="v-flops">—</div><div class="hint" id="v-flops-h">—</div></div>
+        <div class="stat"><div class="lbl">集群有效算力</div><div class="val" id="v-eff">—</div><div class="hint" id="v-eff-h">峰值 × MFU × G</div></div>
+        <div class="stat"><div class="lbl">GPU-hours</div><div class="val" id="v-gh">—</div><div class="hint">跟卡数无关，是任务的固有成本</div></div>
+      </div>
+
+      <div class="rev">
+        <div class="t">反过来问：要在这个时间内跑完，需要多少卡？（不足一台按 1 / 2 / 4 卡，其余取整机 8 卡的倍数；并已和 02 的显存下限取 max）</div>
+        <div class="revgrid" id="revgrid"></div>
+      </div>
+
+      <div class="narrate" id="say-comp">—</div>
+    </div>
+
+    <div class="punch blue" style="margin-top:24px">
+      <b>同一台 p5（8×H100）、同一个 7B、同样 30% MFU：</b>SFT 1 亿 token ≈ <b>30 分钟</b>；从头预训练 1 万亿 token ≈ <b>205 天</b>。差 4 个数量级。所以「训练 7B 要几张卡」这句话，在没说清是哪种训练之前，是没有答案的。
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">05</span>校准：MFU 该取多少</h2>
+    <p class="lead">MFU（Model FLOPs Utilization）是全式子里唯一靠猜的数。好在可以用<b>已公开的真实训练成本反推</b>——下面用 LLaMA-1 论文自己报的 GPU-hours 验算 <span class="m">6ND</span>。</p>
+
+    <div class="tblwrap">
+      <table class="tbl">
+        <tr>
+          <th>训练任务</th><th>参数 N</th><th>token D</th><th>论文报告的 A100-hours</th><th>6ND 反推 MFU</th>
+        </tr>
+        <tr class="hi"><td><b>LLaMA-7B</b></td><td class="n">7e9</td><td class="n">1.0T</td><td class="n">82,432</td><td class="n" style="color:var(--comp)"><b>45%</b></td></tr>
+        <tr class="hi"><td><b>LLaMA-65B</b></td><td class="n">65e9</td><td class="n">1.4T</td><td class="n">1,022,362</td><td class="n" style="color:var(--comp)"><b>48%</b></td></tr>
+        <tr><td>PaLM-540B（TPU v4，论文直接报的 MFU）</td><td class="n">540e9</td><td class="n">780B</td><td class="n">—</td><td class="n" style="color:var(--comp)"><b>46.2%</b></td></tr>
+      </table>
+    </div>
+
+    <div class="punch blue">
+      65B 那行还能<b>独立对上第二个数据</b>：论文说「2048 张 A100、约 380 token/s/GPU」，1.4T ÷ (2048×380) = 1.80e6 秒 = <b>20.8 天</b>，正好是论文里的「约 21 天」。两条路算出同一个数 —— 说明 <span class="m">6ND</span> 这个近似是靠得住的，剩下的全部不确定性都压在 MFU 上。
+    </div>
+
+    <div class="tblwrap" style="margin-top:22px">
+      <table class="tbl">
+        <tr><th>你的情况</th><th>建议取值</th><th>依据</th></tr>
+        <tr><td>Megatron-LM + 序列并行 + 选择性重算</td><td class="n"><b>51–56%</b></td><td>已发表的最好水平：同为 A100，175B → 51.4%、530B → 56.0%、1T → 56.3%</td></tr>
+        <tr><td>LLaMA-1 / PaLM 那一代的大规模预训练</td><td class="n"><b>40–48%</b></td><td>就是上面那张表反推出来的水平</td></tr>
+        <tr class="hi"><td><b>第一次跑，不确定</b></td><td class="n"><b>25–30%</b></td><td>默认用这个。真跑出来比预期快是好事</td></tr>
+        <tr><td>长序列 / 小 batch / 跨机带宽不足 / 没开 FlashAttention</td><td class="n"><b>10–15%</b></td><td>通信和 attention 开销吃掉大半算力，很常见</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">06</span>约束 C：互联 —— 为什么 TP 不能跨机</h2>
+    <p class="lead">四条都是<b>双向合计、折算到每张卡</b>，可以直接横向比。</p>
+
+    <div class="stage" style="border-color:#D6C8E8">
+      <div class="bw">
+        <div class="bwr">
+          <div class="l">机内 NVLink（H100）<small>p5 机内</small></div>
+          <div class="t2"><i style="width:100%"></i></div>
+          <div class="v2">900 GB/s</div>
+        </div>
+        <div class="bwr">
+          <div class="l">机内 NVLink（A100）<small>p4d 机内</small></div>
+          <div class="t2"><i style="width:66.7%"></i></div>
+          <div class="v2">600 GB/s</div>
+        </div>
+        <div class="bwr out">
+          <div class="l">跨机 EFA（p5）<small>3200 Gbps 折算到每卡</small></div>
+          <div class="t2"><i style="width:11.1%"></i></div>
+          <div class="v2">100 GB/s</div>
+        </div>
+        <div class="bwr out">
+          <div class="l">跨机 EFA（p4d）<small>400 Gbps 折算到每卡</small></div>
+          <div class="t2"><i style="width:1.4%"></i></div>
+          <div class="v2">12.5 GB/s</div>
+        </div>
+      </div>
+
+      <div class="punch violet">
+        同代对比：机内比跨机快 <b>9×</b>（p5）到 <b>48×</b>（p4d）。<br>
+        注意这是<b>标称峰值之间</b>的比较：两边的实际可达带宽都明显更低，所以它是个量级判断，不是实测吞吐。<br>
+        但杀死跨机 TP 的<b>不只是带宽</b>。张量并行每层的前向和反向都要 all-reduce <b>激活</b>：通信次数极多、每次的量不大、而且全部<b>挡在关键路径上</b>——这种模式对<b>延迟</b>比对带宽敏感得多。有实测数字的两侧：EFA 的单向 MPI 延迟约 <b>15.5 µs</b>，NVLink 的实测点对点延迟在 <b>1–4 µs</b> 量级。带宽差 9× 再叠上延迟差 4–15 倍，MFU 就崩了。
+      </div>
+    </div>
+
+    <div class="tblwrap" style="margin-top:22px">
+      <table class="tbl">
+        <tr><th>并行方式</th><th>每步通信什么</th><th>能不能跨机</th><th>规则</th></tr>
+        <tr class="hi"><td><b>TP</b> 张量并行</td><td>每层前向 + 反向 all-reduce <b>激活</b></td><td style="color:var(--bad);font-weight:900">绝不跨机</td><td class="n">degree ≤ 单机卡数（通常 ≤8），且必须有 NVLink；PCIe 机器上 TP&gt;2 基本白给</td></tr>
+        <tr><td><b>PP</b> 流水线并行</td><td>只传 stage 边界的激活</td><td style="color:var(--ok);font-weight:900">可以</td><td class="n">跨机首选。需要足够多 micro-batch 填 bubble</td></tr>
+        <tr><td><b>DP / ZeRO / FSDP</b></td><td>O(参数量)，可与计算 overlap</td><td style="color:var(--ok);font-weight:900">可以</td><td class="n">放最外层</td></tr>
+        <tr><td><b>SP / CP</b> 序列 / 上下文并行</td><td>attention 的 K/V 或激活切片</td><td>看实现</td><td class="n">只在长上下文撑爆激活时才引入</td></tr>
+      </table>
+    </div>
+
+    <div class="punch violet">
+      把三层拼起来的那个等式：<span class="m"><b>global batch = micro batch × 梯度累积 × DP degree</b></span>。global batch 是<b>收敛需求</b>，micro batch 是<b>显存约束</b>，梯度累积是中间那个免费的调节旋钮。搞混这三个，就会一边 OOM 一边不知道该动哪个。
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">07</span>落到机型</h2>
+    <p class="lead">显存决定「能不能」，先用它筛掉一批候选，再谈性能。下表显存数据来自 AWS 文档。</p>
+
+    <div class="tblwrap">
+      <table class="tbl">
+        <tr><th>EC2 实例族</th><th>加速器</th><th>单卡显存</th><th>bf16 dense 算力</th><th>典型定位</th></tr>
+        <tr><td class="n">g6</td><td>NVIDIA L4</td><td class="n">24 GB</td><td class="n">121 TFLOPS</td><td>小模型 QLoRA、推理</td></tr>
+        <tr><td class="n">g6e</td><td>NVIDIA L40S</td><td class="n">48 GB</td><td class="n">362 TFLOPS</td><td>7B–13B LoRA / QLoRA 的主力</td></tr>
+        <tr><td class="n">g7e</td><td>RTX PRO 6000 Blackwell</td><td class="n">96 GB</td><td class="n" style="color:var(--muted)">未核实</td><td>单卡能塞下的最大一档</td></tr>
+        <tr><td class="n">p4d / p4de</td><td>NVIDIA A100</td><td class="n">40 / 80 GB</td><td class="n">312 TFLOPS</td><td>中等规模；<b>跨机只有 400 Gbps</b></td></tr>
+        <tr class="hi"><td class="n"><b>p5</b></td><td>NVIDIA H100</td><td class="n">80 GB</td><td class="n">989 TFLOPS</td><td>全参微调主力，3200 Gbps EFA</td></tr>
+        <tr class="hi"><td class="n"><b>p5e / p5en</b></td><td>NVIDIA H200</td><td class="n">141 GB</td><td class="n">989 TFLOPS</td><td>长上下文、70B 全参</td></tr>
+        <tr><td class="n">p6-b200</td><td>NVIDIA B200</td><td class="n">179 GB</td><td class="n">2250 TFLOPS</td><td>大规模预训练</td></tr>
+        <tr><td class="n">p6-b300</td><td>NVIDIA B300</td><td class="n">268 GB</td><td class="n">2250 TFLOPS</td><td>同上，显存再翻一档</td></tr>
+      </table>
+    </div>
+
+    <div class="punch">
+      表里有<b>两对算力完全相同、只差显存</b>的卡：H100 / H200 都是 989 TFLOPS，B200 / B300 都是 2250 TFLOPS。<b>从 H100 换到 H200 不会让训练变快，只会让它塞得下。</b>缺算力和缺显存是两个不同的问题，别用同一个办法解。
+    </div>
+
+    <div class="punch">
+      <b>一句话决策：</b>先用 02 算出显存下限 → 向上取整到整机 8 卡 → 用 04 看这个规模跑完要多久 → 如果超了 deadline，加卡（DP/ZeRO 方向加，别动 TP）→ 如果还是塞不下，换更大显存的卡而不是加更多小卡，因为<b>激活显存不会被加卡摊薄</b>。
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">08</span>容易搞错的几点</h2>
+    <p class="lead"></p>
+
+    <div class="qa">
+      <span class="tag">最常见的错</span>
+      <h3>「参数量 × 2 = 显存」只对推理成立</h3>
+      <p>推理只需要权重（bf16 = 2 B/参数）加 KV cache。<b>全参训练是 16 B/参数</b>——多出来的那 14 字节是梯度（2）和 Adam 的两个动量（8）加上 fp32 master 权重（4）。把推理的经验直接套到训练上，<b>会低估 8 倍</b>。</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">LoRA 的误解</span>
+      <h3>LoRA 省显存，几乎不省算力</h3>
+      <p>反向传播的 4ND 拆成两半：「传给输入的梯度」2ND 和「权重的梯度」2ND。LoRA 只省掉冻结权重那一半，<code>6ND → ≈4ND</code>，<b>最好情况快 1.5 倍，不是 10 倍</b>。而且激活照样要算全网络的——梯度得穿过每一层才能到 adapter。QLoRA 更是因为每次用权重都要反量化，wall-clock 常常比 LoRA <b>更慢</b>。</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">加卡的边界</span>
+      <h3>ZeRO-DP 不切激活，所以加卡有天花板</h3>
+      <p>状态显存能被 G 摊薄到接近零，激活显存<b>一点不变</b>。当激活单独就超过卡容量时（70B / 4k 序列 / 不开重算 = 85 GB），加到一万张卡也照样 OOM。这时候要动的是 gradient checkpointing、TP、SP，不是卡数。上面的估算器把「激活」单独画成绿色，就是为了让这条线可见。（严格说 ZeRO-R 的 <code>P_a</code> 能切激活，但那是沿<b>张量并行</b>组切的 —— 还是不靠加 DP 的卡。）</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">MoE</span>
+      <h3>MoE 的显存和算力看两个不同的参数量</h3>
+      <p>显存要按 <b>总参数量</b> 算（所有 expert 都得驻留），算力按 <b>每 token 激活的参数量</b> 算。一个 8×7B 的 MoE，显存像 47B，算力像 13B。用同一个数字去算两边，两边都错。</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">厂商 spec</span>
+      <h3>带 sparsity 的 TFLOPS 是 ×2 虚标，而且常常还是整机数</h3>
+      <p>规格表里常常并排给「dense」和「with sparsity」两列，后者需要 2:4 结构化稀疏才能达到，常规训练用不上。<b>估算一律用 dense 列。</b>更坑的是有些表连单位都不是单卡：NVIDIA 的 HGX B300 把 FP16/BF16 写成 <code>36 PFLOPS</code>，那是<b>整机 8 卡</b>的<b>sparse</b> 值，脚注里才说「dense 是 sparse 的一半」—— 真正能用来估算的单卡 dense 峰值是 <code>36 ÷ 8 ÷ 2 = 2.25 PFLOPS</code>。<b>少除一次，时间预估就乐观 2 倍；少除两次，乐观 16 倍。</b></p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">被忽略的瓶颈</span>
+      <h3>GPU 打不满，先看 dataloader 和存储</h3>
+      <p>MFU 只有 15% 时，第一反应往往是「卡不够」，但真凶经常是数据加载跟不上、或者 checkpoint 写得太频繁。405B 存一份<b>能续训</b>的 checkpoint（权重 + 梯度 + Adam 状态，就是那 16 B/参数）= <b>6.5 TB</b>，存取会实打实地挤掉训练时间。注意别跟「只导出 bf16 权重」的 0.8 TB 混了 —— 两者差 8 倍。加卡不解决这两个问题，只会让浪费按比例放大。</p>
+    </div>
+
+    <details class="assume">
+      <summary>这一页的公式、常数和它们的出处</summary>
+      <div class="body">
+        <h5>显存</h5>
+        <ul>
+          <li>全参 Adam 混合精度 = <code>16 B/参数</code>：fp16 权重 2 + fp16 梯度 2 + 优化器 12（fp32 master 权重 4 + 一阶动量 4 + 二阶动量 4）。出自 ZeRO 论文的 <code>2Ψ + 2Ψ + KΨ, K=12</code>。</li>
+          <li>激活（单层，bf16）：<code>s·b·h·(34 + 5·a·s/h)</code>，出自 Korthikanti et al.《Reducing Activation Recomputation in Large Transformer Models》(arXiv:2205.05198) 式 (1)。系数 34 里<b>没有 fp32 项</b>（论文全程假设 16-bit，只有 dropout mask 是 1 字节），并且<b>假设没有张量并行</b>（有 TP 时变成 <code>s·b·h·(10 + 24/t + 5·a·s/(h·t))</code>）。</li>
+          <li><b>34 这个系数是按 GPT-3 式的层推的</b>：4h 的 GeLU MLP、全量 dropout、普通 MHA。本页的五个预设是 Llama / Qwen 系（SwiGLU 约 3.5h、无 dropout、GQA），真实系数大约在 30–40 之间浮动。34 是个合理的量级替身，不是这几个模型的精确常数。</li>
+          <li><code>5·a·s/h</code> 里的 <code>a</code> 是 <b>query head 数，不是 KV head 数</b> —— GQA 不会削减这一项，因为每个 query head 仍各自产生一个完整的 s×s 打分矩阵。本页三个 GQA 预设填的都是 query head 数（1.5B 填 12 而非 2、70B 填 64 而非 8、405B 填 128 而非 8）。GQA 真正省的是 K/V 投影和 KV cache。</li>
+          <li>FlashAttention 消掉 <code>5·a·s/h</code> 这一项 —— 但严格说不是「消掉」，而是<b>在反向里重算</b> attention 打分而不存它，用 FLOPs 换显存。论文给同类的选择性重算报的额外算力开销是 1.6–2.7%，很小，但<b>本页的 6ND / 4ND 没有把它计进去</b>。</li>
+          <li>开 gradient checkpointing 后按「只存每层输入 + 正在被重算的那一层」估：<code>2·s·b·h·L + 单层完整激活</code>。注意<b>「单层完整激活」跟着 FlashAttention 开关变</b> —— 关掉 FlashAttention 时，被重算的那一层照样会把 s² 的 attention 矩阵铺出来，所以那一项是 <code>s·b·h·(34 + 5·a·s/h)</code> 而不是 <code>34·s·b·h</code>。</li>
+          <li>QLoRA 的 base 权重按 <code>4.127 bit/参数</code>（NF4 的 4 bit + double quantization 的 8/64 + 32/(64·256) = 0.127 bit）= 0.516 B/参数。</li>
+          <li>LoRA / QLoRA 的可训练比例本页固定取 <b>0.5%</b>。这只是个代表值 —— rank 和作用在哪些层，能让它差好几倍。</li>
+          <li>LoRA / QLoRA 的<b>冻结 base 权重在 ZeRO-3 下也按分片算</b>（FSDP + QLoRA 那种做法）。很多简易实现是每卡各存一份完整 base，那样 stage 0–2 的下限会比本页显示的更高；stage 3 不受影响。</li>
+          <li>每卡可用显存 = 标称容量 − 3 GB（CUDA context、NCCL 通信 buffer、显存碎片）。GB 按 2³⁰ B 算。</li>
+          <li>ZeRO-3 还需要临时 all-gather 一层的完整权重，本页未计入 —— 大模型上这一项不小。</li>
+        </ul>
+        <h5>算力</h5>
+        <ul>
+          <li>总计算量 <code>C ≈ 6·N·D</code>（前向 2ND，反向 4ND）。一手来源是 <b>Kaplan et al. 2020</b>（arXiv:2001.08361）—— Chinchilla 只是引用它，不是原始出处。反向的 4ND 拆成「对输入求梯度 2ND + 对权重求梯度 2ND」，这个拆法在 Korthikanti et al. 附录 A 里有明文。</li>
+          <li>LoRA / QLoRA 跳过冻结权重的梯度，按 <code>≈4·N·D</code>，理论上限是快 <code>6/4 = 1.5</code> 倍。<b>实测远低于这个上限</b>：LoRA 原论文（arXiv:2106.09685）在 GPT-3 175B 上报的是约 25% 提速（1.33×）—— 因为梯度还是得穿过每一层才能到 adapter。</li>
+          <li>开 gradient checkpointing 多一次前向，<code>+2·N·D</code>，理论上 +33%。<b>实测更高一些</b>：Korthikanti et al. 对全层重算量到 39%，Chen et al. 2016 的原始论文量到约 30%。本页用理论值 33%。</li>
+          <li>单卡 bf16 <b>dense</b> 峰值：A100 80GB SXM = 312 TFLOPS；H100 SXM ≈ 989 TFLOPS；H200 算力与 H100 相同（差别在 141 GB 显存和 4.8 TB/s HBM3e 带宽，对比 H100 的 3.35 TB/s）；B200 / B300 = 2250 TFLOPS。</li>
+          <li>只有 A100 的 312 是 NVIDIA 直接印出来的 dense 值。<b>H100 的 989 是推出来的</b>：NVIDIA 现在的 H100 页面只印 sparse 的 1979 TFLOPS，dense 那份 PDF 已经改成留资下载，所以 989 = 1979 ÷ 2，按 NVIDIA 自己在 A100 / L4 / L40S / B200 / B300 上都明写的「dense 是 sparse 的一半」换算。p5 用的是 H100 <b>SXM</b>（不是 PCIe，也不是 94 GB 的 H100 NVL），所以取 SXM 这一档是对的。</li>
+          <li>B300 那个数是<b>换算出来的</b>：NVIDIA 的 HGX B300 规格表把 FP16/BF16 写成 36 PFLOPS，但那是<b>整机 8 卡</b>的<b>sparse</b> 值，脚注写着「Dense is ½ sparse spec shown」——所以 36 ÷ 8 ÷ 2 = 2.25 PFLOPS/卡。B200 的 BF16 也是这个数，Blackwell Ultra 提升的是 FP4（整机 dense 72 → 108 PFLOPS），BF16 没动。</li>
+          <li>B300 单卡显存本页取 <b>268 GB</b>（AWS 对 <code>p6-b300</code> 的口径）。NVIDIA 的 HGX B300 规格表给的是整机 2.1 TB，除以 8 等于 262.5 GB —— 两个来源差约 2%，对量级估算没影响。</li>
+          <li>MFU 校准数据：LLaMA-1 论文 Table 15 报的 A100-hours（7B / 1.0T = 82,432；65B / 1.4T = 1,022,362）反推得 45% 和 48%；PaLM 论文 Table 3 直接报 540B / 780B token 在 TPU v4 上 <b>MFU 46.2%</b>（同表还有 HFU 57.8%，那是把重算的 FLOPs 也算进去的另一个指标，别混）。</li>
+          <li><b>40–48% 不是天花板。</b>Korthikanti et al. Table 5 在同一代 A100 上报到 175B → 51.4%、530B → 56.0%、1T → <b>56.3% MFU</b>，靠的是序列并行 + 选择性重算。所以「调好的 Megatron 只能到 48%」是错的 —— Megatron-LM 恰恰是打破这个区间的那篇。本页把 40–48% 定位成 LLaMA-1 / PaLM 那一代的水平，51–56% 才是已发表的最好成绩。</li>
+        </ul>
+        <h5>互联</h5>
+        <ul>
+          <li>NVLink：A100 SXM 600 GB/s、H100 SXM 900 GB/s。NVIDIA 标的这两个数<b>本身就是双向合计</b>（每方向各 300 / 450 GB/s）。</li>
+          <li>跨机：AWS 对实例网络带宽的定义是<b>每个方向</b>各这么多（EC2 文档原文：「if an instance specifies up to 10 Gbps of bandwidth, that means it has up to 10 Gbps for inbound traffic <b>and, simultaneously,</b> up to 10 Gbps for outbound traffic」）。所以为了和 NVLink 同口径，本页按 <code>标称 Gbps × 2 ÷ 8 ÷ 8 卡</code> 换算成每卡双向合计 GB/s：p5 = 3200 → <b>100 GB/s</b>；p4d = 400 → <b>12.5 GB/s</b>。</li>
+          <li><b>这个对比两侧都是标称峰值，不是可达吞吐</b>，只够做量级判断：(a) 把整机带宽平均分给 8 卡，假设了每卡都能拿到均匀的一份 NIC，真实 collective 在 rail-optimized 织构上并不严格保证；(b) NVLink 的 900 GB/s 是 GPU 到 NVSwitch 的<b>端口</b>带宽，不等于 8 卡同时打满时的 all-reduce 有效带宽；(c) 两条路径的实际持续吞吐都明显低于各自峰值。另外 p5 的 3200 Gbps 里最多只有 800 Gbps 能走 IP 流量（EFA 与 IP 共享底层资源，这条是 p5/p5e 的口径，p5en 和 p6 的拆分不同）。</li>
+          <li>延迟数字的来源和局限：EFA 的 15.5 µs 单向 MPI 延迟出自 AWS 2019 年 EFA 发布博客，<b>是首代 EFA 的数字，已经旧了</b>（第二代只公布了「端点延迟降低约 30%」的相对值，没给新的绝对值）。NVLink 的 1–4 µs 出自一篇同行评审 benchmark（arXiv:1903.04611，P100/V100 时代）—— <b>NVIDIA 官方从未公布过 NVLink 的延迟数字</b>，只说「低延迟」，所以本页不再声称它是「亚微秒级」（那个说法只对裸 SerDes 单跳成立，不是软件层可观测到的延迟）。</li>
+          <li>07 节表格的显存用<b>标称单卡容量</b>。<code>p4d</code> 是 A100 40GB、<code>p4de</code> 是 A100 80GB。注意 AWS 文档把 L4 记作 22 GiB、L40S 记作 44 GiB，看着像是扣了开销，其实更可能只是<b>十进制 GB 换成二进制 GiB</b>：24e9 ÷ 2³⁰ = 22.35、48e9 ÷ 2³⁰ = 44.7，两个数都正好落在 AWS 的写法上。AWS 没有任何文档说那是给驱动或 ECC 留的余量，所以本页不作那种因果解释。</li>
+          <li>07 节的 dense 算力：L40S = 362 TFLOPS（规格表写成 <code>362.05 | 733*</code>，前者就是 dense）；L4 = 121 TFLOPS（规格表只给 <code>242*</code>，脚注写「Specifications are one-half lower without sparsity」，所以要自己除 2）。<b>这两张表用了相反的写法</b>，是同一个坑的两种形态。g7e 的 RTX PRO 6000 Blackwell 没找到可靠的 bf16 dense 数，表里留空而不是填个估计值。</li>
+        </ul>
+        <h5>这个估算器不做什么</h5>
+        <p>不建模 TP / PP 对显存和通信的影响，不算 KV cache（那是推理的事），不算 CPU offload，不算 checkpoint 的存储 IO，不考虑 MoE。它的用途是<b>在开会时 30 秒内给出正确的量级和正确的追问</b>，不是替代真机跑一次 profiling。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    对方只给了一句话时，最少追回这三个：<b>全参还是 LoRA？模型多大、序列多长？多少 token、什么时候要？</b><br>
+    有了这三个，你能给出的就不是一个数字，而是「最少 X 卡跑得起来，要 Y 天内跑完需要 Z 卡」—— 有用得多。
+  </div>
+</footer>
+
+<script>
+(function(){
+  var GiB = 1073741824;
+
+  /* ---------- 常数表 ---------- */
+  var MODELS = [
+    {k:'1.5B', N:1.5e9,  L:28,  h:1536,  a:12,  arch:'Qwen2-1.5B 架构'},
+    {k:'7B',   N:7e9,    L:32,  h:4096,  a:32,  arch:'LLaMA-7B 架构'},
+    {k:'13B',  N:13e9,   L:40,  h:5120,  a:40,  arch:'LLaMA-13B 架构'},
+    {k:'70B',  N:70e9,   L:80,  h:8192,  a:64,  arch:'Llama-2-70B 架构'},
+    {k:'405B', N:405e9,  L:126, h:16384, a:128, arch:'Llama-3.1-405B 架构'}
+  ];
+  var CARDS = [
+    {k:'A100 80G',  cap:80,  tf:312e12},
+    {k:'H100 80G',  cap:80,  tf:989e12},
+    {k:'H200 141G', cap:141, tf:989e12},
+    {k:'B300 268G', cap:268, tf:2250e12}
+  ];
+  var MODES = [
+    {k:'全参 + Adam', id:'full',  wB:2,    frac:1,     fb:6, desc:'权重 / 梯度 / Adam 状态全都要 —— 16 B/参数'},
+    {k:'LoRA',        id:'lora',  wB:2,    frac:0.005, fb:4, desc:'base 权重 bf16 冻结，只训 ~0.5% 的 adapter'},
+    {k:'QLoRA',       id:'qlora', wB:0.516, frac:0.005, fb:4, desc:'base 权重压到 NF4（4.127 bit/参数），adapter 照旧'}
+  ];
+  var SEQS  = [512, 1024, 2048, 4096, 8192, 32768];
+  var MBS   = [1, 2, 4, 8];
+  var TOKS  = [
+    {k:'10M',  D:1e7,  desc:'小 SFT'},
+    {k:'100M', D:1e8,  desc:'常规 SFT'},
+    {k:'1B',   D:1e9,  desc:'大 SFT / 领域适配'},
+    {k:'10B',  D:1e10, desc:'轻量继续预训练'},
+    {k:'100B', D:1e11, desc:'继续预训练'},
+    {k:'1T',   D:1e12, desc:'从头预训练'}
+  ];
+  var MFUS = [
+    {k:'15%', v:0.15, desc:'没调过 / 长序列 / 跨机带宽不足'},
+    {k:'30%', v:0.30, desc:'常见水平 —— 不确定就用这个'},
+    {k:'45%', v:0.45, desc:'LLaMA-1 / PaLM 那一代的水平'},
+    {k:'55%', v:0.55, desc:'Megatron-LM + 序列并行的公开最佳'}
+  ];
+  var GVALS = [1,2,4,8,16,32,64,128,256,512];
+  var SCAN  = [1,2,4,8,16,24,32,48,64,96,128,192,256,384,512,768,1024,2048];
+  var DEADLINES = [
+    {k:'8 小时', s:8*3600},
+    {k:'1 天',  s:86400},
+    {k:'3 天',  s:3*86400},
+    {k:'1 周',  s:7*86400},
+    {k:'1 个月', s:30*86400}
+  ];
+  var STAGES = [
+    {n:'ZeRO-0', sub:'DDP 全复制',  w:0,g:0,o:0},
+    {n:'ZeRO-1', sub:'切优化器',    w:0,g:0,o:1},
+    {n:'ZeRO-2', sub:'+ 切梯度',    w:0,g:1,o:1},
+    {n:'ZeRO-3', sub:'FSDP 全分片', w:1,g:1,o:1}
+  ];
+
+  /* ---------- 状态 ---------- */
+  var S = {mode:0, model:1, card:1, seq:3, mb:0, flash:true, ckpt:false, gi:3, stage:3, tok:1, mfu:1};
+
+  /* ---------- 工具 ---------- */
+  function $(id){ return document.getElementById(id); }
+  function gb(bytes){ return bytes / GiB; }
+  function fgb(bytes){
+    var v = gb(bytes);
+    if(v >= 1024) return (v/1024).toFixed(2) + ' TB';
+    if(v >= 100)  return Math.round(v) + ' GB';
+    if(v >= 10)   return v.toFixed(1) + ' GB';
+    return v.toFixed(2) + ' GB';
+  }
+  function fnum(x){
+    if(x >= 1e12) return (x/1e12).toFixed(x/1e12 >= 100 ? 0 : 1) + 'T';
+    if(x >= 1e9)  return (x/1e9).toFixed(x/1e9 >= 100 ? 0 : 1) + 'G';
+    if(x >= 1e6)  return (x/1e6).toFixed(x/1e6 >= 100 ? 0 : 1) + 'M';
+    if(x >= 1e3)  return Math.round(x/1e3) + 'k';
+    if(x >= 10)   return Math.round(x) + '';
+    if(x >= 1)    return x.toFixed(1);
+    if(x > 0)     return x.toFixed(2);   // 别把真实成本四舍五入成 0
+    return '0';
+  }
+  /* 卡数向上取整：不足一台时按 1/2/4 卡，其余取整机 8 卡的倍数 */
+  function ceilNodes(x){
+    if(x <= 1) return 1;
+    if(x <= 2) return 2;
+    if(x <= 4) return 4;
+    return Math.ceil(x / 8) * 8;
+  }
+  function sci(x){
+    var e = Math.floor(Math.log(x) / Math.LN10);
+    var m = x / Math.pow(10, e);
+    return m.toFixed(1) + 'e' + e;
+  }
+  function ftime(sec){
+    if(sec < 90)      return {v: Math.round(sec), u:'秒'};
+    if(sec < 5400)    return {v: (sec/60).toFixed(sec/60 < 10 ? 1 : 0), u:'分钟'};
+    if(sec < 172800)  return {v: (sec/3600).toFixed(sec/3600 < 10 ? 1 : 0), u:'小时'};
+    if(sec < 3.1e7)   return {v: (sec/86400).toFixed(sec/86400 < 10 ? 1 : 0), u:'天'};
+    return {v: (sec/3.1536e7).toFixed(1), u:'年'};
+  }
+  function nodes(g){ return g < 8 ? (g + ' 卡（不足一台）') : (g/8) + ' 台 × 8 卡'; }
+
+  /* ---------- 核心：显存 ---------- */
+  function memParts(G, stage){
+    var M = MODELS[S.model], mo = MODES[S.mode], st = STAGES[stage];
+    var trainable = M.N * mo.frac;
+    var w = M.N * mo.wB;
+    var g = trainable * 2;
+    var o = trainable * 12;
+    var s = SEQS[S.seq], b = MBS[S.mb];
+
+    var perLayer = s * b * M.h * (34 + (S.flash ? 0 : 5 * M.a * s / M.h));
+    var act = S.ckpt ? (2 * s * b * M.h * M.L + perLayer) : (perLayer * M.L);
+
+    return {
+      w: st.w ? w/G : w,
+      g: st.g ? g/G : g,
+      o: st.o ? o/G : o,
+      a: act,
+      statesTotal: w + g + o,
+      get per(){ return this.w + this.g + this.o + this.a; }
+    };
+  }
+  function usable(){ return CARDS[S.card].cap * GiB - 3 * GiB; }
+
+  function gmin(stage){
+    for(var i = 0; i < SCAN.length; i++){
+      if(memParts(SCAN[i], stage).per <= usable()) return SCAN[i];
+    }
+    return null;
+  }
+
+  /* ---------- 核心：算力 ---------- */
+  function totalFlops(){
+    var M = MODELS[S.model], mo = MODES[S.mode];
+    var mult = mo.fb + (S.ckpt ? 2 : 0);
+    return mult * M.N * TOKS[S.tok].D;
+  }
+  function perGpuFlops(){ return CARDS[S.card].tf * MFUS[S.mfu].v; }
+
+  /* ---------- chip 渲染 ---------- */
+  function chips(host, items, getSel, onPick){
+    host.innerHTML = '';
+    items.forEach(function(it, i){
+      var b = document.createElement('button');
+      b.className = 'chip';
+      b.type = 'button';
+      b.innerHTML = it;
+      b.setAttribute('aria-pressed', getSel() === i ? 'true' : 'false');
+      b.addEventListener('click', function(){ onPick(i); render(); });
+      host.appendChild(b);
+    });
+  }
+
+  function buildControls(){
+    chips($('ch-mode'),  MODES.map(function(m){ return m.k; }),
+      function(){ return S.mode; }, function(i){ S.mode = i; });
+    chips($('ch-model'), MODELS.map(function(m){ return m.k; }),
+      function(){ return S.model; }, function(i){ S.model = i; });
+    chips($('ch-card'),  CARDS.map(function(c){ return c.k; }),
+      function(){ return S.card; }, function(i){ S.card = i; });
+    chips($('ch-seq'),   SEQS.map(function(s){ return s >= 1024 ? (s/1024) + 'k' : '' + s; }),
+      function(){ return S.seq; }, function(i){ S.seq = i; });
+    chips($('ch-mb'),    MBS.map(function(b){ return '' + b; }),
+      function(){ return S.mb; }, function(i){ S.mb = i; });
+    chips($('ch-tok'),   TOKS.map(function(t){ return t.k; }),
+      function(){ return S.tok; }, function(i){ S.tok = i; });
+    chips($('ch-mfu'),   MFUS.map(function(m){ return m.k; }),
+      function(){ return S.mfu; }, function(i){ S.mfu = i; });
+
+    // 两个独立开关（不是单选）
+    var host = $('ch-opt');
+    host.innerHTML = '';
+    [['FlashAttention','flash'],['梯度重算','ckpt']].forEach(function(pair){
+      var b = document.createElement('button');
+      b.className = 'chip'; b.type = 'button'; b.textContent = pair[0];
+      b.addEventListener('click', function(){ S[pair[1]] = !S[pair[1]]; render(); });
+      b.dataset.key = pair[1];
+      host.appendChild(b);
+    });
+
+    // 联动滑杆
+    ['g-slider','g-slider2'].forEach(function(id){
+      $(id).addEventListener('input', function(){
+        S.gi = parseInt(this.value, 10);
+        render();
+      });
+    });
+
+    // ZeRO 阶梯 + 分片示意的骨架
+    var ld = $('ladder');
+    STAGES.forEach(function(st, i){
+      var r = document.createElement('div');
+      r.className = 'row';
+      r.setAttribute('aria-pressed', 'false');
+      r.innerHTML =
+        '<div class="nm">' + st.n + '<small>' + st.sub + '</small></div>' +
+        '<div class="pills">' +
+          '<span class="pill' + (st.w?' sh':'') + '">W' + (st.w?'÷G':'') + '</span>' +
+          '<span class="pill' + (st.g?' sh':'') + '">G' + (st.g?'÷G':'') + '</span>' +
+          '<span class="pill' + (st.o?' sh':'') + '">O' + (st.o?'÷G':'') + '</span>' +
+        '</div>' +
+        '<div class="mini"><i></i></div>' +
+        '<div class="rr"><span class="pg">—</span><small class="gm">—</small></div>';
+      r.addEventListener('click', function(){ S.stage = i; render(); });
+      ld.appendChild(r);
+    });
+
+    var gh = $('shard-gpus');
+    for(var k = 0; k < 4; k++){
+      var d = document.createElement('div');
+      d.className = 'gpu';
+      d.innerHTML = '<div class="gt">GPU ' + k + '</div>' +
+        '<div class="srow w"></div><div class="srow g"></div><div class="srow o"></div><div class="srow a"></div>';
+      gh.appendChild(d);
+      ['w','g','o','a'].forEach(function(cls){
+        var row = d.querySelector('.srow.' + cls);
+        for(var c = 0; c < 4; c++){
+          var cell = document.createElement('div');
+          cell.className = 'sc';
+          row.appendChild(cell);
+        }
+      });
+    }
+
+    var rg = $('revgrid');
+    DEADLINES.forEach(function(dl){
+      var e = document.createElement('div');
+      e.className = 'rv';
+      e.innerHTML = '<div class="d">' + dl.k + '内跑完</div><div class="n">—</div><div class="s">—</div>';
+      rg.appendChild(e);
+    });
+  }
+
+  /* ---------- 渲染 ---------- */
+  function render(){
+    var G = GVALS[S.gi];
+    var M = MODELS[S.model], C = CARDS[S.card], mo = MODES[S.mode];
+    var u = usable();
+
+    /* -- chip 选中态刷新 -- */
+    [['ch-mode','mode',MODES],['ch-model','model',MODELS],['ch-card','card',CARDS],
+     ['ch-seq','seq',SEQS],['ch-mb','mb',MBS],['ch-tok','tok',TOKS],['ch-mfu','mfu',MFUS]
+    ].forEach(function(t){
+      var kids = $(t[0]).children;
+      for(var i = 0; i < kids.length; i++) kids[i].setAttribute('aria-pressed', S[t[1]] === i ? 'true' : 'false');
+    });
+    var optKids = $('ch-opt').children;
+    for(var i = 0; i < optKids.length; i++){
+      optKids[i].setAttribute('aria-pressed', S[optKids[i].dataset.key] ? 'true' : 'false');
+    }
+
+    $('g-slider').value = S.gi;  $('g-slider2').value = S.gi;
+    var gtxt = G + ' <span class="nodes">= ' + nodes(G) + '</span>';
+    $('g-now').innerHTML = gtxt;  $('g-now2').innerHTML = gtxt;
+    $('bh-g').textContent = G;  $('ld-g').textContent = G;
+    $('bh-stage').textContent = STAGES[S.stage].n;
+    $('bh-cap').textContent = '标称 ' + C.cap + ' GB，可用 ' + Math.round(gb(u)) + ' GB';
+    $('capname').textContent = '可用上限';
+
+    /* -- 显存 -- */
+    var p = memParts(G, S.stage);
+    var per = p.per;
+    var need = gmin(S.stage);
+
+    /* 塞不下时区分两种成因：激活撑爆（加卡无效） vs 状态分不掉（换 stage 有效） */
+    var floorPer = memParts(Infinity, S.stage).per;   // G→∞ 时每卡的地板
+    var actBound = p.a > u;
+    var betterStage = null;
+    if(need === null && !actBound){
+      for(var j = S.stage + 1; j < STAGES.length; j++){
+        if(gmin(j) !== null){ betterStage = j; break; }
+      }
+    }
+
+    $('v-gmin').innerHTML = need === null
+      ? '<span style="font-size:.6em">塞不下</span>'
+      : need + '<span class="u">卡</span>';
+    $('v-gmin-h').textContent = need === null
+      ? (actBound ? '激活就超了，加卡无效'
+                  : (floorPer > u ? STAGES[S.stage].n + ' 有地板，换更高 stage'
+                                  : '超出本页扫描的卡数上限'))
+      : (need >= 8 ? '= ' + nodes(need) : '单机内即可');
+
+    $('v-per').innerHTML = fgb(per).replace(/ (GB|TB)$/, '<span class="u">$1</span>');
+    var slack = u - per;
+    $('st-per').className = 'stat ' + (slack >= 0 ? 'good' : 'bad');
+    $('v-per-h').textContent = slack >= 0
+      ? '还剩 ' + fgb(slack) + ' 余量 ✓'
+      : '超出 ' + fgb(-slack) + ' ✗ OOM';
+
+    $('v-tot').innerHTML = fgb(p.statesTotal + p.a * G).replace(/ (GB|TB)$/, '<span class="u">$1</span>');
+    $('v-act').innerHTML = fgb(p.a).replace(/ (GB|TB)$/, '<span class="u">$1</span>');
+    $('v-act-h').textContent = S.ckpt ? '已开梯度重算' : (S.flash ? '未开重算' : '未开重算，且没有 FlashAttention');
+
+    /* 堆叠条 */
+    var scale = Math.max(per, u) * 1.1;
+    $('sg-w').style.width = (p.w / scale * 100) + '%';
+    $('sg-g').style.width = (p.g / scale * 100) + '%';
+    $('sg-o').style.width = (p.o / scale * 100) + '%';
+    $('sg-a').style.width = (p.a / scale * 100) + '%';
+    $('capline').style.left = (u / scale * 100) + '%';
+    $('lg-w').textContent = fgb(p.w);
+    $('lg-g').textContent = fgb(p.g);
+    $('lg-o').textContent = fgb(p.o);
+    $('lg-a').textContent = fgb(p.a);
+
+    /* ZeRO 阶梯 */
+    var rows = $('ladder').children;
+    var maxPer = memParts(G, 0).per;
+    for(var i = 0; i < rows.length; i++){
+      var pi = memParts(G, i), fits = pi.per <= u, gi2 = gmin(i);
+      rows[i].setAttribute('aria-pressed', S.stage === i ? 'true' : 'false');
+      var bar = rows[i].querySelector('.mini i');
+      bar.style.width = Math.min(100, pi.per / maxPer * 100) + '%';
+      bar.className = fits ? '' : 'over';
+      rows[i].querySelector('.pg').textContent = fgb(pi.per);
+      rows[i].querySelector('.pg').style.color = fits ? 'var(--ok)' : 'var(--bad)';
+      rows[i].querySelector('.gm').textContent = gi2 === null ? '塞不下' : '最少 ' + gi2 + ' 卡';
+    }
+
+    /* 分片示意 */
+    var st = STAGES[S.stage];
+    var gpus = $('shard-gpus').children;
+    for(var k = 0; k < 4; k++){
+      [['w', st.w],['g', st.g],['o', st.o],['a', 0]].forEach(function(pair){
+        var cells = gpus[k].querySelector('.srow.' + pair[0]).children;
+        for(var c = 0; c < 4; c++){
+          cells[c].className = 'sc' + ((pair[1] ? (c === k) : true) ? ' on' : '');
+        }
+      });
+    }
+    $('sl-w').innerHTML = st.w ? '每卡只存 <b>1/G</b>，前反向用到时临时 all-gather' : '<b>每卡一份完整副本</b>';
+    $('sl-g').innerHTML = st.g ? '每卡只留自己负责的 <b>1/G</b>（reduce-scatter 代替 all-reduce）' : '<b>每卡一份完整副本</b>';
+    $('sl-o').innerHTML = st.o ? '每卡只更新自己那 <b>1/G</b> 参数的 Adam 状态' : '<b>每卡一份完整副本</b>（最浪费的一份，12 B/参数）';
+
+    /* narrate：显存 */
+    var sm = $('say-mem'), html, warn = false;
+    if(actBound){
+      warn = true;
+      html = '<b>激活一项就要 ' + fgb(p.a) + '</b>，已经超过单卡可用的 ' + fgb(u) +
+             '。这种情况<b>加卡和换 ZeRO stage 都没用</b> —— stage 1/2/3 都不切激活。' +
+             '只能开梯度重算' + (S.flash ? '' : '、打开 FlashAttention') + '，或者砍序列长度 / micro batch。';
+    } else if(need === null && floorPer > u){
+      warn = true;
+      var ns = [];
+      if(!STAGES[S.stage].w) ns.push('权重');
+      if(!STAGES[S.stage].g) ns.push('梯度');
+      if(!STAGES[S.stage].o) ns.push('优化器状态');
+      html = '激活只占 ' + fgb(p.a) + '，装得下。卡在<b>' + STAGES[S.stage].n + ' 不分片' + ns.join('和') +
+             '</b>：这些每卡都要存一份完整副本，于是每卡有个 <b>' + fgb(floorPer) + ' 的地板</b>，' +
+             '卡数加到多少都降不下来，而可用只有 ' + fgb(u) + '。' +
+             (betterStage !== null
+               ? '换成 <b>' + STAGES[betterStage].n + '</b> 就能跑（最少 ' + gmin(betterStage) + ' 卡）。'
+               : '四个 stage 都不够，得上张量并行或换更大显存的卡。');
+    } else if(need === null){
+      warn = true;
+      html = '每卡的地板（' + fgb(floorPer) + '）虽然装得下，但要达到它需要的卡数<b>超过了本页的扫描上限 2048 卡</b>。' +
+             '到这个规模，靠 DP / ZeRO 堆卡已经不是正确答案了 —— 该上张量并行 + 流水线并行。';
+    } else if(per > u){
+      warn = true;
+      html = '当前 <b>' + G + ' 卡</b>不够：每卡要 ' + fgb(per) + '，超了 ' + fgb(per - u) +
+             '。同样配置下 <b>' + STAGES[S.stage].n + ' 至少需要 ' + need + ' 卡</b>（' + nodes(need) + '）。';
+    } else {
+      html = M.k + ' · ' + mo.k + ' · 序列 ' + (SEQS[S.seq] >= 1024 ? SEQS[S.seq]/1024 + 'k' : SEQS[S.seq]) +
+             ' · ' + STAGES[S.stage].n + '：<b>最少 ' + need + ' 卡</b>能跑起来。' +
+             '当前 ' + G + ' 卡下每卡 ' + fgb(per) + '，其中激活占 <b>' + Math.round(p.a / per * 100) + '%</b>' +
+             (p.a / per > 0.5 ? ' —— 激活已是主项，别再往状态上省了。' : '。');
+    }
+    sm.className = 'narrate' + (warn ? ' warn' : '');
+    sm.innerHTML = html;
+
+    /* -- 算力 -- */
+    var Cf = totalFlops(), eff = perGpuFlops(), clusterEff = eff * G;
+    var t = Cf / clusterEff, ft = ftime(t);
+
+    $('v-time').innerHTML = ft.v + '<span class="u">' + ft.u + '</span>';
+    $('v-time-h').textContent = G + ' 卡 · ' + C.k + ' · MFU ' + MFUS[S.mfu].k;
+    $('v-flops').innerHTML = sci(Cf).replace('e', '<span class="u">e</span>');
+    $('v-flops-h').textContent = (mo.fb + (S.ckpt ? 2 : 0)) + '·N·D FLOPs' + (S.ckpt ? '（含重算的额外前向）' : '');
+    $('v-eff').innerHTML = (clusterEff / 1e15).toFixed(clusterEff/1e15 < 10 ? 2 : 0) + '<span class="u">PFLOPS</span>';
+    $('v-eff-h').textContent = (C.tf/1e12) + ' TFLOPS × ' + MFUS[S.mfu].k + ' × ' + G;
+    $('v-gh').innerHTML = fnum(G * t / 3600).replace(/([kMGT])$/, '<span class="u">$1</span>');
+
+    /* deadline 反算 —— 显存下限与算力需求取 max。revgrid 和下面的叙述共用这一个函数，
+       避免两处各算一遍、给出互相矛盾的答案。 */
+    function gpusFor(seconds){
+      if(need === null) return {n:null, bound:'mem'};      // 显存就不满足，卡数无从谈起
+      var g2 = ceilNodes(Cf / (seconds * eff));
+      if(g2 < need) return {n:need, bound:'mem'};
+      return {n:g2, bound:'comp'};
+    }
+
+    var rvs = $('revgrid').children;
+    DEADLINES.forEach(function(dl, i){
+      var r = gpusFor(dl.s);
+      var nEl = rvs[i].querySelector('.n'), sEl = rvs[i].querySelector('.s');
+      if(r.n === null){
+        nEl.textContent = '塞不下';
+        nEl.style.color = 'var(--bad)';
+        sEl.textContent = '先解决 02 的显存';
+      } else {
+        nEl.textContent = r.n + ' 卡';
+        nEl.style.color = '';
+        sEl.textContent = r.bound === 'mem'
+          ? '受显存下限约束'
+          : (r.n >= 8 ? (r.n/8) + ' 台' : '单机');
+      }
+    });
+
+    /* narrate：算力 */
+    var sc = $('say-comp');
+    var r7 = gpusFor(7 * 86400);
+    sc.className = 'narrate' + (r7.n === null ? ' warn' : '');
+    sc.innerHTML = '这个任务的固有成本是 <b>' + fnum(G*t/3600) + ' GPU-hours</b>，跟你用几张卡无关 —— ' +
+      '卡数只决定它被压缩成 <span class="cc">' + ft.v + ' ' + ft.u + '</span> 还是别的。' +
+      (r7.n === null
+        ? '不过<b>这个配置连显存都过不了</b>，再多卡也跑不起来 —— 时长只是个理论值，先回 02 解决显存。'
+        : '想一周内跑完需要 <b>' + r7.n + ' 卡</b>（' + nodes(r7.n) + '）' +
+          (r7.bound === 'mem' ? '，而且这个数是被<b>显存下限</b>顶上去的，不是算力要求。' : '。'));
+  }
+
+  buildControls();
+  render();
+})();
+</script>
+</body>
+</html>
