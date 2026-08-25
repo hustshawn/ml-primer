@@ -30,12 +30,6 @@ h1{font-size:clamp(38px,7.2vw,80px); line-height:1.03; font-weight:900; letter-s
 h1 em{font-style:normal; color:var(--hot)}
 .sub{font-size:clamp(17px,2.4vw,22px); color:var(--muted); margin-top:22px; font-weight:500}
 
-.facts{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:38px}
-.fact{background:var(--card); border:3px solid var(--ink); border-radius:16px;
-  box-shadow:5px 5px 0 var(--ink); padding:14px 22px; min-width:132px}
-.fact .n{font-size:30px; font-weight:900; letter-spacing:-.02em; line-height:1}
-.fact .t{font-size:12.5px; color:var(--muted); font-weight:700; letter-spacing:.06em; margin-top:6px}
-
 /* ---------- group ---------- */
 .group{margin-top:86px}
 .ghead{display:flex; align-items:center; gap:14px}
@@ -84,14 +78,6 @@ h3 em{font-style:normal; color:var(--acc)}
   <span class="kicker">ML PRIMER · 索引</span>
   <h1>AI / ML 基础<br><em>图解合集</em></h1>
   <p class="sub">每页一个概念，一路读到底。<br>下面的顺序就是推荐的读法：先基础概念，再架构，最后训练。</p>
-
-  <!-- 数字全部由脚本从卡片算出，不要手填 -->
-  <div class="facts">
-    <div class="fact"><div class="n" id="f-pages"></div><div class="t">页</div></div>
-    <div class="fact"><div class="n" id="f-sections"></div><div class="t">小节</div></div>
-    <div class="fact"><div class="n" id="f-live"></div><div class="t">页可交互</div></div>
-    <div class="fact"><div class="n">0</div><div class="t">外部依赖</div></div>
-  </div>
 </div>
 
 <!-- 1 · 基础概念 -->
@@ -199,7 +185,7 @@ h3 em{font-style:normal; color:var(--acc)}
 
 <script>
 /* 加一页 = 加一张 <a class="card" href data-sections>。
-   下面的数字（组序号、卡片脚注、hero 统计）全部从卡片本身算出来，不要手填。 */
+   下面的数字（组序号、卡片脚注）全部从卡片本身算出来，不要手填。 */
 const cards = [...document.querySelectorAll('a.card')];
 
 cards.forEach(c=>{
@@ -211,12 +197,6 @@ cards.forEach(c=>{
 });
 
 document.querySelectorAll('.group .gnum').forEach((el,i)=>{ el.textContent = i + 1; });
-
-document.getElementById('f-pages').textContent = cards.length;
-document.getElementById('f-sections').textContent =
-  cards.reduce((sum,c)=> sum + (+c.dataset.sections || 0), 0);
-document.getElementById('f-live').textContent =
-  cards.filter(c=> c.querySelector('.chip.live')).length;
 
 const io = new IntersectionObserver((es)=>{
   es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
