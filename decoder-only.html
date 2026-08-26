@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>为什么现在的 LLM 都是 decoder-only —— 一切都在那张 mask 上</title>
+<style>
+  :root{
+    --paper:#FAF7F1;
+    --paper2:#F1ECE2;
+    --ink:#191614;
+    --ink2:#403A33;
+    --muted:#7A7266;
+    --line:#DCD4C6;
+    --pending:#E6DFD2;
+
+    --enc:#2F7DA8;   /* 双向 / encoder-only */
+    --ed:#8A6BB8;    /* encoder-decoder */
+    --dec:#D2542E;   /* 因果 / decoder-only —— 主角 */
+    --ok:#3F8C5F;
+    --no:#BF3B2B;
+    --yel:#E8A81C;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    /* 全页方格纸 —— 呼应本文的主角：attention mask */
+    background-image:
+      linear-gradient(to right,#00000008 1px,transparent 1px),
+      linear-gradient(to bottom,#00000008 1px,transparent 1px);
+    background-size:32px 32px;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+  /* ---------------- HERO ---------------- */
+  header{padding:78px 0 20px;text-align:center}
+  .kicker{
+    display:inline-block;font-size:12.5px;letter-spacing:.28em;font-weight:800;
+    text-transform:uppercase;color:#fff;background:var(--ink);
+    padding:7px 16px;border-radius:999px;
+  }
+  h1{font-size:clamp(34px,6.4vw,72px);line-height:1.06;font-weight:900;margin:26px 0 0;letter-spacing:-.025em}
+  h1 em{font-style:normal;color:var(--dec)}
+  .sub{font-size:clamp(16.5px,2.3vw,21px);color:var(--muted);max-width:660px;margin:22px auto 0;font-weight:500}
+  .sub b{color:var(--ink2)}
+
+  /* hero 里的三张小 mask —— 全文论点的缩略图 */
+  .heromask{display:flex;gap:clamp(14px,4vw,44px);justify-content:center;flex-wrap:wrap;margin:52px 0 8px}
+  .hm{text-align:center}
+  .hm .g{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;width:clamp(108px,26vw,138px)}
+  .hm .c{aspect-ratio:1;border-radius:3px;background:var(--pending)}
+  .hm .t{font-size:13.5px;font-weight:800;margin-top:13px;letter-spacing:-.01em}
+  .hm .n{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:2px}
+  .hm.a .c.on{background:var(--enc)} .hm.a .t{color:var(--enc)}
+  .hm.b .c.on{background:var(--ed)}  .hm.b .t{color:var(--ed)}
+  .hm.c2 .c.on{background:var(--dec)} .hm.c2 .t{color:var(--dec)}
+  .hm.c2 .g{box-shadow:0 0 0 3px var(--dec),0 0 0 9px #D2542E22;border-radius:5px}
+
+  /* ---------------- TLDR ---------------- */
+  .tldr{margin:64px 0 0;border:2px solid var(--ink);border-radius:22px;background:#fff;overflow:hidden}
+  .tldr .top{background:var(--ink);color:#fff;padding:14px 22px;font-weight:800;font-size:15px;letter-spacing:.04em}
+  .tldr ol{margin:0;padding:8px 0;list-style:none;counter-reset:r}
+  .tldr li{
+    counter-increment:r;display:flex;gap:16px;align-items:flex-start;
+    padding:16px 22px;border-bottom:1px dashed var(--line);
+  }
+  .tldr li:last-child{border-bottom:0}
+  .tldr li::before{
+    content:counter(r);flex:0 0 auto;width:28px;height:28px;border-radius:8px;
+    background:var(--paper2);color:var(--dec);font-weight:900;font-size:15px;
+    display:grid;place-items:center;font-family:ui-monospace,Menlo,monospace;margin-top:1px;
+  }
+  .tldr strong{font-weight:900}
+  .tldr .why{color:var(--muted);font-weight:500}
+
+  /* ---------------- SECTION ---------------- */
+  section{padding:72px 0 8px}
+  .h2{font-size:clamp(25px,3.9vw,40px);font-weight:900;margin:0 0 10px;letter-spacing:-.025em;line-height:1.14}
+  .h2 .num{color:var(--line);margin-right:14px;font-family:ui-monospace,Menlo,monospace}
+  .h2 em{font-style:normal;color:var(--dec)}
+  .lead{color:var(--muted);font-size:17.5px;font-weight:500;margin:0 0 32px;max-width:780px}
+  .lead b{color:var(--ink2)}
+
+  /* ---------------- 通用盒子 ---------------- */
+  .stage{background:#fff;border:2px solid var(--line);border-radius:24px;padding:clamp(18px,3vw,30px)}
+  .note{
+    border-left:5px solid var(--yel);background:#FFF9EC;border-radius:0 16px 16px 0;
+    padding:18px 22px;margin-top:26px;font-size:16px;color:var(--ink2);font-weight:500
+  }
+  .note b{color:var(--ink)}
+  .note .tag{display:block;font-size:11.5px;letter-spacing:.16em;font-weight:800;text-transform:uppercase;color:#9A7A1C;margin-bottom:7px}
+
+  .btn{
+    border:2px solid var(--ink);background:var(--ink);color:#fff;font-family:inherit;
+    font-size:15px;font-weight:800;padding:10px 20px;border-radius:999px;cursor:pointer
+  }
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn:active{transform:translateY(1px)}
+
+  .segs{display:flex;flex-wrap:wrap;gap:9px}
+  .seg{
+    border:2px solid var(--line);background:var(--paper2);color:var(--ink);
+    border-radius:999px;padding:9px 16px;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;
+    transition:background .15s,border-color .15s,color .15s
+  }
+  .seg .dim{color:var(--muted);font-weight:600;font-size:12.5px;margin-left:5px}
+  .seg[aria-pressed="true"]{color:#fff}
+  .seg[aria-pressed="true"] .dim{color:#ffffffbb}
+  .seg[data-k="bi"][aria-pressed="true"]{background:var(--enc);border-color:var(--enc)}
+  .seg[data-k="prefix"][aria-pressed="true"]{background:var(--ed);border-color:var(--ed)}
+  .seg[data-k="causal"][aria-pressed="true"]{background:var(--dec);border-color:var(--dec)}
+  .seg[data-k="mlm"][aria-pressed="true"]{background:var(--enc);border-color:var(--enc)}
+  .seg[data-k="span"][aria-pressed="true"]{background:var(--ed);border-color:var(--ed)}
+  .seg[data-k="lm"][aria-pressed="true"]{background:var(--dec);border-color:var(--dec)}
+
+  /* ---------------- 02 · mask 实验台 ---------------- */
+  .lab{display:grid;grid-template-columns:minmax(330px,1fr) minmax(280px,340px);gap:clamp(20px,3vw,34px);align-items:start;margin-top:24px}
+  @media(max-width:840px){.lab{grid-template-columns:1fr}}
+
+  .mscroll{overflow-x:auto;padding-bottom:6px}
+  .mgrid{display:grid;grid-template-columns:64px repeat(8,minmax(34px,1fr));gap:4px;min-width:380px}
+  .mhead{font-size:11px;font-weight:800;color:var(--muted);text-align:center;line-height:1.2;padding-bottom:4px;align-self:end}
+  .mrow{font-size:12.5px;font-weight:800;text-align:right;padding-right:9px;display:flex;align-items:center;justify-content:flex-end;white-space:nowrap}
+  .mcell{aspect-ratio:1;border-radius:5px;background:var(--pending);transition:background .16s,transform .16s;cursor:default}
+  .mcell.on{background:var(--mc,var(--dec))}
+  .mcell.self{box-shadow:inset 0 0 0 2px #ffffff88}
+  .mgrid.hl .mcell{opacity:.28}
+  .mgrid.hl .mcell.lit{opacity:1;transform:scale(1.06)}
+  .mgrid.hl .mrow{opacity:.35}
+  .mgrid.hl .mrow.lit{opacity:1}
+  .axis{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);font-weight:700;margin-top:10px;letter-spacing:.04em}
+
+  .sees{margin-top:16px;background:var(--ink);color:#fff;border-radius:14px;padding:14px 18px;font-size:15.5px;font-weight:500;min-height:58px;display:flex;align-items:center}
+  .sees b{color:#FFD79A}
+
+  .rows{border:2px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}
+  .rw{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-bottom:1px dashed var(--line)}
+  .rw:last-child{border-bottom:0}
+  .rw .k{flex:0 0 96px;font-size:12.5px;font-weight:800;color:var(--muted);line-height:1.35;padding-top:2px}
+  .rw .v{font-size:15px;font-weight:700;color:var(--ink)}
+  .rw .v small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:3px}
+  .yes{color:var(--ok)} .nope{color:var(--no)}
+  .big{font-family:ui-monospace,Menlo,monospace;font-size:30px;font-weight:700;line-height:1.1;color:var(--mc,var(--dec))}
+
+  /* ---------------- 03 · 信号密度 ---------------- */
+  .dense{display:grid;grid-template-columns:repeat(25,1fr);gap:4px;margin-top:22px}
+  .dc{aspect-ratio:1;border-radius:3px;background:var(--pending);transition:background .2s}
+  .dc.hit{background:var(--dc,var(--dec))}
+  @media(max-width:620px){.dense{grid-template-columns:repeat(20,1fr);gap:3px}}
+
+  .readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:13px;margin-top:24px}
+  .stat{background:var(--paper2);border-radius:15px;padding:15px 17px}
+  .stat .lbl{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:800;color:var(--muted);line-height:1.3}
+  .stat .val{font-family:ui-monospace,Menlo,monospace;font-size:31px;font-weight:700;line-height:1.2;margin-top:4px}
+  .stat .val span{font-size:16px;color:var(--muted)}
+
+  /* ---------------- 04 · 任务 → 续写 ---------------- */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+  @media(max-width:780px){.two{grid-template-columns:1fr}}
+  .panel{border:2px solid var(--line);border-radius:20px;padding:20px;background:#fff}
+  .panel.win{border-color:var(--dec);box-shadow:0 0 0 5px #D2542E14}
+  .panel .ph{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--muted);margin-bottom:14px}
+  .panel.win .ph{color:var(--dec)}
+  .bx{background:var(--paper2);border-radius:12px;padding:13px 15px;font-size:14.5px;line-height:1.6}
+  .bx .cap{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--muted);display:block;margin-bottom:5px}
+  .wall{text-align:center;font-size:12.5px;color:var(--ed);font-weight:800;padding:9px 0;letter-spacing:.06em}
+  .strip{background:var(--paper2);border-radius:12px;padding:15px;font-size:15px;line-height:1.85}
+  .strip .p{color:var(--muted)}
+  .strip .c{color:var(--dec);font-weight:800;border-bottom:3px solid #D2542E44}
+  .pnote{font-size:13.5px;color:var(--muted);font-weight:600;margin-top:14px;line-height:1.5}
+  .pnote.bad{color:var(--no)}
+
+  /* ---------------- 05 · KV cache ---------------- */
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+  @media(max-width:780px){.kv{grid-template-columns:1fr}}
+  .kvgrid{display:grid;gap:4px;margin-top:14px}
+  .kvrow{display:grid;grid-template-columns:52px repeat(6,1fr);gap:4px;align-items:center}
+  .kvrow .lb{font-size:11px;font-weight:800;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+  .kc{aspect-ratio:1;border-radius:4px;background:transparent;border:1.5px dashed var(--line);display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff}
+  .kc.reuse{background:var(--ok);border-color:var(--ok)}
+  .kc.calc{background:var(--no);border-color:var(--no)}
+  .kvcount{font-family:ui-monospace,Menlo,monospace;font-size:34px;font-weight:700;margin-top:16px;line-height:1}
+  .kvcount small{font-family:inherit;font-size:13px;color:var(--muted);font-weight:700;display:block;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;font-family:-apple-system,system-ui,sans-serif}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;font-weight:700;color:var(--muted);margin-top:18px}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+  /* ---------------- 06/07 · 卡片列 ---------------- */
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+  @media(max-width:780px){.cmp{grid-template-columns:1fr}}
+  .blk{border:2px solid var(--line);border-radius:20px;background:#fff;padding:22px;position:relative;overflow:hidden}
+  .blk::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--bc,var(--line))}
+  .blk h3{margin:0 0 4px;font-size:19px;font-weight:900}
+  .blk .who{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--muted);margin-bottom:14px}
+  .kvl{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px dashed var(--line);font-size:14.5px}
+  .kvl:last-child{border:0}
+  .kvl b{font-family:ui-monospace,Menlo,monospace;font-weight:700;text-align:right}
+
+  /* 层堆叠图 */
+  .stackwrap{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:24px}
+  @media(max-width:680px){.stackwrap{grid-template-columns:1fr}}
+  .stack{text-align:center}
+  .stack .cap{font-size:12.5px;font-weight:800;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+  .lay{border-radius:9px;padding:8px 6px;margin-bottom:5px;font-size:12.5px;font-weight:800;color:#fff}
+  .lay.s{background:var(--enc)} .lay.x{background:var(--ed)} .lay.f{background:#5F5A52}
+  .lay.cz{background:var(--dec)}
+  .stack .tot{font-size:13px;font-weight:700;color:var(--muted);margin-top:10px}
+
+  /* ---------------- 08/09 ---------------- */
+  .qa{border-top:2px solid var(--line);padding:26px 0}
+  .qa:first-of-type{border-top:0}
+  .qa .tag{display:inline-block;background:var(--ink);color:#fff;font-size:11.5px;font-weight:800;letter-spacing:.11em;padding:4px 11px;border-radius:999px;margin-bottom:11px;text-transform:uppercase}
+  .qa h3{margin:0 0 10px;font-size:clamp(19px,2.9vw,25px);font-weight:900;letter-spacing:-.015em;line-height:1.25}
+  .qa p{margin:0 0 10px;font-size:16.5px;color:var(--ink2);font-weight:500;max-width:790px}
+  .qa p:last-child{margin-bottom:0}
+  .qa .src{font-size:13px;color:var(--muted);font-weight:700;font-family:ui-monospace,Menlo,monospace}
+
+  .final{margin:78px 0 0;border:3px solid var(--ink);border-radius:26px;background:var(--ink);color:#fff;padding:clamp(26px,4vw,42px);text-align:center}
+  .final .k{font-size:11.5px;letter-spacing:.24em;text-transform:uppercase;font-weight:800;color:#ffffff88}
+  .final p{margin:16px 0 0;font-size:clamp(19px,3vw,29px);font-weight:800;line-height:1.4;letter-spacing:-.015em}
+  .final p em{font-style:normal;color:#FFB185}
+  .final .s{margin-top:18px;font-size:15.5px;font-weight:500;color:#ffffffaa;max-width:640px;margin-left:auto;margin-right:auto}
+
+  footer{padding:56px 0 90px;text-align:center;color:var(--muted);font-size:14px;font-weight:600}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">Decoder-only</div>
+    <h1>为什么现在的 LLM<br>清一色是 <em>decoder-only</em></h1>
+    <p class="sub">2018 年还有三条路在跑。到现在，<b>你能叫得出名字的生成式大模型基本只剩一种架构</b>。<br>不是审美收敛 —— 是一堆约束把路收窄了。而所有约束都能追到同一张图上。</p>
+
+    <div class="heromask">
+      <div class="hm a"><div class="g" id="hm-a"></div><div class="t">双向</div><div class="n">BERT 一路</div></div>
+      <div class="hm b"><div class="g" id="hm-b"></div><div class="t">前缀双向</div><div class="n">T5 / UL2 一路</div></div>
+      <div class="hm c2"><div class="g" id="hm-c"></div><div class="t">因果</div><div class="n">GPT 一路 · 赢了</div></div>
+    </div>
+    <p class="sub" style="margin-top:26px;font-size:15.5px">↑ 这三张格子图叫 <b>attention mask</b>：谁能看见谁。<br>整篇文章都只是在讲：<b>右边这个三角形，为什么把另外两个赢了。</b></p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tldr">
+    <div class="top">五个理由 · 先看结论</div>
+    <ol>
+      <li><div><strong>每个 token 都是一道题。</strong><span class="why"> 同一段文本，因果 mask 能出 7 道题，双向只能出 1 道 —— 同样的算力，训练信号差 6 倍多。</span></div></li>
+      <li><div><strong>所有任务都能写成「接着写」。</strong><span class="why"> 翻译、分类、摘要、多轮对话，全塌进同一个格式，不用给每个任务定「哪一半是输入」。</span></div></li>
+      <li><div><strong>算过的永远不用再算。</strong><span class="why"> 因果 mask 保证前面的 token 不会因为后面来了新词而改变 —— 这就是 KV cache 成立的唯一前提。</span></div></li>
+      <li><div><strong>一种零件，堆 N 层。</strong><span class="why"> 没有 cross-attention、没有 encoder/decoder 参数分配问题。越简单的东西越好往上堆、越好切到几千张卡上。</span></div></li>
+      <li><div><strong>网上的数据本来就是一条流。</strong><span class="why"> 不是 (输入, 输出) 对。「猜下一个词」直接吃原始语料，零加工。</span></div></li>
+    </ol>
+  </div>
+</div>
+
+<!-- ======================= 01 ======================= -->
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">01</span>先把三种架构分清</h2>
+    <p class="lead">Transformer 原论文（2017）交付的是一个 <b>encoder + decoder</b> 的翻译模型。后面的人把它拆开，各拿走一半。</p>
+
+    <div class="cmp" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+      <div class="blk" style="--bc:var(--enc)">
+        <h3>只留 encoder</h3>
+        <div class="who">Encoder-only · BERT 2018</div>
+        <div class="kvl"><span>看得到</span><b>左右都看</b></div>
+        <div class="kvl"><span>怎么出题</span><b>完形填空</b></div>
+        <div class="kvl"><span>擅长</span><b>理解 / 分类</b></div>
+        <div class="kvl"><span>不会</span><b>往下写</b></div>
+      </div>
+      <div class="blk" style="--bc:var(--ed)">
+        <h3>两半都留</h3>
+        <div class="who">Encoder-decoder · T5 2019</div>
+        <div class="kvl"><span>看得到</span><b>输入全看，输出只往前</b></div>
+        <div class="kvl"><span>怎么出题</span><b>涂掉片段再复原</b></div>
+        <div class="kvl"><span>擅长</span><b>输入→输出 的转换</b></div>
+        <div class="kvl"><span>代价</span><b>要先划一刀边界</b></div>
+      </div>
+      <div class="blk" style="--bc:var(--dec)">
+        <h3>只留 decoder</h3>
+        <div class="who">Decoder-only · GPT 2018 →</div>
+        <div class="kvl"><span>看得到</span><b>只能往前看</b></div>
+        <div class="kvl"><span>怎么出题</span><b>猜下一个词</b></div>
+        <div class="kvl"><span>擅长</span><b>接着写 = 什么都能干</b></div>
+        <div class="kvl"><span>现状</span><b>你听过的那些都是它</b></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="tag">名字很误导，先纠正一下</span>
+      「decoder-only」<b>不是「只有解码器」</b>。原论文的 decoder 块有三个子层：因果自注意力 + <b>cross-attention</b>（看 encoder 的输出）+ FFN。而 decoder-only 模型<b>把 cross-attention 删了</b> —— 剩下的两个子层（自注意力 + FFN）跟 encoder 块<b>结构完全一样</b>。<br><br>
+      所以 encoder-only 和 decoder-only 的真实差别，只剩<b>一件事</b>：自注意力那一步允不允许往后看。<b>整个架构之争，就是一张 mask 之争。</b>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 02 ======================= -->
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">02</span>一切都从<em>这张 mask</em> 开始</h2>
+    <p class="lead">下面这句话切成 8 个 token。方格图的意思：<b>第 i 行 = 第 i 个 token 在算自己的表示时，能看见哪些 token</b>。点上面的按钮换 mask，右边所有结论会跟着变 —— 那三条结论就是后面三节的全部内容。</p>
+
+    <div class="stage">
+      <div class="segs" id="mask-segs">
+        <button class="seg" data-k="bi">双向 <span class="dim">BERT</span></button>
+        <button class="seg" data-k="prefix">前缀双向 <span class="dim">T5 / UL2</span></button>
+        <button class="seg" data-k="causal" aria-pressed="true">因果 <span class="dim">GPT</span></button>
+      </div>
+
+      <div class="lab">
+        <div>
+          <div class="mscroll"><div class="mgrid" id="mgrid"></div></div>
+          <div class="axis"><span>← 行：谁在看</span><span>列：被看的 token →</span></div>
+          <div class="sees" id="sees">把鼠标放到某一行上试试。</div>
+        </div>
+
+        <div class="rows" id="rows">
+          <div class="rw">
+            <div class="k">看得见未来吗</div>
+            <div class="v" id="r-future"></div>
+          </div>
+          <div class="rw">
+            <div class="k">那怎么出题</div>
+            <div class="v" id="r-task"></div>
+          </div>
+          <div class="rw">
+            <div class="k">这 8 个 token<br>能出几道题</div>
+            <div class="v"><span class="big" id="r-n"></span><small id="r-nwhy"></small></div>
+          </div>
+          <div class="rw">
+            <div class="k">推理能用<br>KV cache 吗</div>
+            <div class="v" id="r-kv"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="tag">为什么双向就只能涂掉一部分</span>
+      因为双向看得见答案。你问它「下一个词是什么」，它往右一瞄就抄到了 —— 这道题不产生任何学习。<b>想出题，必须先把答案涂掉</b>，而涂掉的地方就没法当上下文用了。这就是 BERT 只涂 15% 的原因：涂太多，剩下的上下文不够；涂太少，一次前向就没几道题。<b>这个两难，因果 mask 根本不存在。</b>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 03 ======================= -->
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">03</span>理由一 · 每个 token 都是一道题</h2>
+    <p class="lead">下面 100 个格子 = 一段 100 token 的文本。一次前向传播的<b>成本</b>是固定的（100 个格子都得算），区别在于<b>其中有几个格子真的产生了 loss</b>。</p>
+
+    <div class="stage">
+      <div class="segs" id="obj-segs">
+        <button class="seg" data-k="mlm">完形填空 <span class="dim">BERT · 涂 15%</span></button>
+        <button class="seg" data-k="span">片段复原 <span class="dim">T5 · 涂 15%</span></button>
+        <button class="seg" data-k="lm" aria-pressed="true">猜下一个 <span class="dim">GPT</span></button>
+      </div>
+
+      <div class="dense" id="dense"></div>
+
+      <div class="readout">
+        <div class="stat"><div class="lbl">这一遍的成本</div><div class="val">100 <span>token</span></div></div>
+        <div class="stat"><div class="lbl">产生 loss 的位置</div><div class="val" id="d-hit" style="color:var(--dc)">99</div></div>
+        <div class="stat"><div class="lbl">信号利用率</div><div class="val" id="d-rate" style="color:var(--dc)">99%</div></div>
+        <div class="stat"><div class="lbl">相对「猜下一个」</div><div class="val" id="d-rel">1.0×</div></div>
+      </div>
+
+      <div class="sees" id="d-say" style="margin-top:22px"></div>
+    </div>
+
+    <div class="note">
+      <span class="tag">公平起见</span>
+      完形填空的每道题<b>质量更高</b> —— 它能同时用上左右两边的上下文，比只能往前看信息更足。这是真的优势。<br><br>
+      但 <b>6.6 倍不是「每题更好」能补回来的</b>。当你要烧的是几万张卡、几万亿 token，「同样一遍前向能不能榨出 6 倍的题」就成了压倒性的因素。规模越大，这一条越致命。
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 04 ======================= -->
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">04</span>理由二 · 所有任务都能写成<em>「接着写」</em></h2>
+    <p class="lead">encoder-decoder 要求你<b>先回答一个问题：哪一半是输入，哪一半是输出？</b>decoder-only 不问 —— 全部拼成一条流，让它接着写。选一个任务看看差别。</p>
+
+    <div class="stage">
+      <div class="segs" id="task-segs">
+        <button class="seg" data-k="t0" aria-pressed="true">翻译</button>
+        <button class="seg" data-k="t1">情感分类</button>
+        <button class="seg" data-k="t2">摘要</button>
+        <button class="seg" data-k="t3">多轮对话</button>
+      </div>
+
+      <div class="two">
+        <div class="panel">
+          <div class="ph">Encoder-decoder · 要划一刀</div>
+          <div class="bx"><span class="cap">编码器读这一半</span><span id="p-in"></span></div>
+          <div class="wall">▼ ▼ ▼ &nbsp;跨过这道墙 (cross-attention)&nbsp; ▼ ▼ ▼</div>
+          <div class="bx"><span class="cap">解码器写这一半</span><span id="p-out"></span></div>
+          <div class="pnote" id="p-note"></div>
+        </div>
+        <div class="panel win">
+          <div class="ph">Decoder-only · 一条流</div>
+          <div class="strip" id="p-strip"></div>
+          <div class="pnote">墙没了。灰色是喂进去的，<b style="color:var(--dec)">橙色是它自己往下写的</b> —— 而模型内部完全不区分这两段，它只是在一直「猜下一个」。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="tag">这条解锁了一件更大的事</span>
+      既然任务只是「换一段前文」，那<b>换任务就不用动参数了</b> —— 直接在 prompt 里写清要求、塞几个例子。这就是 in-context learning / few-shot prompting，GPT-3（2020，175B 参数）把它变成了主流用法。<br><br>
+      而 encoder-decoder 的那道墙在多轮对话里<b>根本划不出来</b>：第 3 轮的时候，前两轮的「模型输出」到底算输入还是输出？decoder-only 不用回答这个问题 —— 全是同一条流上的 token。
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 05 ======================= -->
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">05</span>理由三 · 算过的<em>永远不用再算</em></h2>
+    <p class="lead">因果 mask 有一个白送的性质：<b>第 i 个 token 的表示，永远不会受到 i 之后任何东西的影响。</b>所以它算一次就永久有效，可以存起来 —— 这就是 KV cache。双向没有这个性质：来了新词，前面所有表示全变，只能全部重算。</p>
+
+    <div class="stage">
+      <div class="segs">
+        <button class="btn" id="kv-play">▶ 逐个生成</button>
+        <button class="btn ghost" id="kv-reset">↺ 重来</button>
+      </div>
+
+      <div class="kv">
+        <div class="panel">
+          <div class="ph" style="color:var(--enc)">双向 · 存不住</div>
+          <div class="kvgrid" id="kv-bi"></div>
+          <div class="kvcount" style="color:var(--no)"><small>累计算 K/V 次数</small><span id="kv-nbi">0</span></div>
+        </div>
+        <div class="panel win">
+          <div class="ph">因果 · 每个只算一次</div>
+          <div class="kvgrid" id="kv-ca"></div>
+          <div class="kvcount" style="color:var(--ok)"><small>累计算 K/V 次数</small><span id="kv-nca">0</span></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:var(--no)"></i>本步现算</span>
+        <span><i style="background:var(--ok)"></i>直接读缓存</span>
+        <span><i style="border:1.5px dashed var(--line)"></i>还没出现</span>
+      </div>
+
+      <div class="readout" style="margin-top:24px">
+        <div class="stat"><div class="lbl">生成 6 个 token</div><div class="val">6 <span>vs</span> 21</div></div>
+        <div class="stat"><div class="lbl">生成 100 个</div><div class="val">100 <span>vs</span> 5,050</div></div>
+        <div class="stat"><div class="lbl">生成 1000 个</div><div class="val" style="font-size:24px">1,000 <span>vs</span> 500,500</div></div>
+        <div class="stat"><div class="lbl">差距</div><div class="val" style="color:var(--dec)">500×</div></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="tag">诚实一点：这条不是打 encoder-decoder 的</span>
+      encoder-decoder 的 decoder <b>也是因果的</b>，它照样能用 KV cache，cross-attention 的 K/V 也能缓存。这条真正打死的是<b>「让 prompt 部分双向可见」这个念头</b>（encoder-only，以及 prefix-LM 的前缀那一段）。<br><br>
+      decoder-only 额外多赚的是 <b>prefix 复用</b>：system prompt、前几轮对话，因为跟生成部分在同一条因果流里，可以整段缓存下来，下一轮直接往后接。encoder-decoder 那边输入一改，双向的 encoder 就得整个重跑。
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 06 ======================= -->
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">06</span>理由四 · 一种零件，堆 N 层</h2>
+    <p class="lead">这条听起来很虚，但在「几千张卡跑几个月」这个尺度上，它是最实在的一条。</p>
+
+    <div class="stackwrap">
+      <div class="stack">
+        <div class="cap">Encoder-decoder · 一层里三种注意力</div>
+        <div class="lay s">自注意力（双向）</div>
+        <div class="lay f">FFN</div>
+        <div class="lay s">自注意力（因果）</div>
+        <div class="lay x">Cross-attention ← 看 encoder</div>
+        <div class="lay f">FFN</div>
+        <div class="tot">三种注意力，两个栈，各自决定层数和宽度</div>
+      </div>
+      <div class="stack">
+        <div class="cap">Decoder-only · 一层里一种</div>
+        <div class="lay cz">自注意力（因果）</div>
+        <div class="lay f">FFN</div>
+        <div class="lay cz">自注意力（因果）</div>
+        <div class="lay f">FFN</div>
+        <div class="lay cz" style="opacity:.55">…… × N</div>
+        <div class="tot">一种块，复制 N 遍。结构超参只剩一个数字：N</div>
+      </div>
+    </div>
+
+    <div class="cmp">
+      <div class="blk" style="--bc:var(--ed)">
+        <h3>两个栈要回答的问题</h3>
+        <div class="who">每一个都得调，都可能调错</div>
+        <div class="kvl"><span>参数怎么分给两边</span><b>?</b></div>
+        <div class="kvl"><span>encoder 几层 / decoder 几层</span><b>?</b></div>
+        <div class="kvl"><span>流水线并行怎么切这个不对称的图</span><b>?</b></div>
+        <div class="kvl"><span>三种注意力要几套 kernel</span><b>3</b></div>
+      </div>
+      <div class="blk" style="--bc:var(--dec)">
+        <h3>一个栈要回答的问题</h3>
+        <div class="who">少一个旋钮，就少一个错法</div>
+        <div class="kvl"><span>参数怎么分</span><b>不用分</b></div>
+        <div class="kvl"><span>几层</span><b>N</b></div>
+        <div class="kvl"><span>流水线并行怎么切</span><b>N ÷ 段数</b></div>
+        <div class="kvl"><span>要几套 kernel</span><b>1</b></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="tag">复利效应</span>
+      同构的层还带来一个滚雪球：<b>整个生态都能围着这一种块去优化</b>。FlashAttention、PagedAttention、各家推理引擎、量化方案、并行策略 —— 全都先支持纯因果 decoder。<b>后来者不是「效果差」输掉的，是「没人给它写 kernel」输掉的。</b>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 07 ======================= -->
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">07</span>理由五 · 网上的数据本来就是<em>一条流</em></h2>
+    <p class="lead">预训练语料是网页、书、代码。它<b>不是</b>成对的 (输入, 输出)。目标函数越贴近数据原本的形状，加工损耗就越小。</p>
+
+    <div class="cmp">
+      <div class="blk" style="--bc:var(--dec)">
+        <h3>猜下一个词</h3>
+        <div class="who">Decoder-only · 零加工</div>
+        <div class="kvl"><span>要做什么预处理</span><b>切 token，拼接</b></div>
+        <div class="kvl"><span>「任务」从哪来</span><b>数据自带</b></div>
+        <div class="kvl"><span>有没有人为发明的部分</span><b>没有</b></div>
+      </div>
+      <div class="blk" style="--bc:var(--ed)">
+        <h3>片段复原（span corruption）</h3>
+        <div class="who">T5 · 得先造一个任务</div>
+        <div class="kvl"><span>要做什么预处理</span><b>随机涂掉片段</b></div>
+        <div class="kvl"><span>涂多少 / 多长</span><b>15% / 平均 3 token</b></div>
+        <div class="kvl"><span>有没有人为发明的部分</span><b>涂法、比例、哨兵符号</b></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="tag">这里有几个新旋钮</span>
+      「涂 15%」「平均长度 3」「用什么哨兵符号」—— 这些都是<b>人拍出来的超参</b>，是为了把一条流硬掰成「输入 / 输出」而发明的。它们全都可能拍错，而且都得靠实验去调。<br><br>
+      「猜下一个词」一个这样的旋钮都没有。<b>它不是一个更聪明的目标函数，它是一个不需要发明的目标函数。</b>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 08 ======================= -->
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">08</span>白送的礼物 · mask 自己就带着位置信息</h2>
+    <p class="lead">这条不是设计目标，是撞出来的副作用，但它很能说明因果结构有多「自然」。</p>
+
+    <div class="stage">
+      <div class="cmp" style="margin-top:0">
+        <div class="blk" style="--bc:var(--dec)">
+          <h3>因果：能数出自己是第几个</h3>
+          <div class="who">Decoder-only</div>
+          <p style="margin:8px 0 0;font-size:15.5px;color:var(--ink2);font-weight:500">第 1 个 token 只能看见 1 个东西，第 5 个能看见 5 个。<b>「我能看见几个」= 「我前面有几个」= 我的绝对位置。</b>位置信息从 mask 的形状里免费漏出来了。</p>
+        </div>
+        <div class="blk" style="--bc:var(--enc)">
+          <h3>双向：每个位置看到的都一样多</h3>
+          <div class="who">Encoder-only</div>
+          <p style="margin:8px 0 0;font-size:15.5px;color:var(--ink2);font-weight:500">全都看见全部 8 个。<b>没有任何可数的锚点</b> —— 位置信息必须从外面显式喂进去，否则这个模型眼里的句子就是一个词袋。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="tag">有实验支撑</span>
+      Haviv 等（2022）《Transformer Language Models without Positional Encodings Still Learn Positional Information》发现：因果语言模型<b>完全不加位置编码</b>也能训得不错，探针能在网络内部读出「绝对位置」的表示。作者的解释正是——<b>因果注意力让每个 token 能推断出自己前面有多少个前驱，从而近似出自己的绝对位置。</b><br><br>
+      注意：这不代表实际模型不用位置编码（现在都用 RoPE 之类）。它只说明<b>因果 mask 本身就在做一部分位置编码的活</b>。
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 09 ======================= -->
+<section>
+  <div class="wrap">
+    <h2 class="h2"><span class="num">09</span>说点不那么爽的</h2>
+    <p class="lead">「decoder-only 更强」这句话，收窄到能站住脚的版本是：<b>在「预训练到极大、然后靠 prompt 使用」这条路线上，它更强。</b>换掉路线，结论就会翻。</p>
+
+    <div class="qa">
+      <span class="tag">同规模对照实验</span>
+      <h3>换成「多任务微调」，赢的就不是它了</h3>
+      <p>Wang 等（ICML 2022）做过一次干净的对照：三种架构 × 两种预训练目标，模型<b>超过 50 亿参数、训了超过 1700 亿 token</b>。结论是分岔的 ——</p>
+      <p>纯无监督预训练之后比 zero-shot：<b>因果 decoder-only + 自回归目标最强</b>（跟现实一致）。<br>但加上<b>多任务微调</b>之后：<b>非因果可见性 + 掩码语言建模的组合反而最好。</b></p>
+      <p>所以 decoder-only 赢的不是「架构本身绝对更优」这场比赛，而是「谁最适合被无监督地喂到极大、然后靠 prompt 驱动」这场比赛。恰好这场比赛才是过去几年真正在跑的那场。</p>
+      <p class="src">arXiv:2204.05832</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">Encoder-only 没死</span>
+      <h3>它只是不再叫「LLM」了</h3>
+      <p>向量检索的 embedding 模型、重排序器、各种文本分类和内容审核 —— BERT 系的双向编码器在这些地方仍是主力，因为这些任务<b>要的就是「读懂整句」，不需要往下写</b>，双向看两边的优势可以完整吃到。</p>
+      <p>「现在的 LLM 都是 decoder-only」这句话，主语其实是<b>生成式</b> LLM。</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">Encoder-decoder 也没死</span>
+      <h3>输入和输出是「两种东西」的时候，它依然合理</h3>
+      <p>语音转文字（Whisper 就是 encoder-decoder：encoder 吃音频，decoder 写文字）、专用机器翻译、以及不少多模态模型用 cross-attention 把图像/音频注入语言模型 —— 这些场景里输入根本不是同一条 token 流，那道「墙」不是负担，是结构上本来就该有的东西。</p>
+    </div>
+
+    <div class="qa">
+      <span class="tag">混合体存在过</span>
+      <h3>prefix-LM 不是输在效果，是输在复杂度</h3>
+      <p>UL2、GLM 这类做法把前缀设为双向可见、后半段保持因果，想把两边的好处都拿到，效果也确实不差。但它多了一个「前缀边界在哪」的问题、多了一种 mask 形状、KV cache 和各种推理优化都要额外照顾。</p>
+      <p>而对面是一个<b>只有一种块、只有一种 mask、全世界的 kernel 都为它写好了</b>的方案。这不是一场公平的比较 —— 但工程上的胜负就是这么定的。</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="final">
+      <div class="k">如果只记一句</div>
+      <p>decoder-only 赢的不是「更聪明」，<br>是<em>「更省、更简单、更好堆」</em>。</p>
+      <p class="s">往后看一眼就能作弊 → 所以必须涂掉答案 → 所以一遍前向只出得了 15% 的题 → 所以省不下算力；而且前面的表示会被后面改写 → 所以存不住缓存。<br><br>因果 mask 一刀切掉「往后看」，上面这一串问题全部消失。代价是每道题的上下文少了一半 —— 在足够大的规模面前，这个代价便宜得离谱。</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">一张下三角形的 mask，撑起了现在几乎所有的生成式大模型。</div>
+</footer>
+
+<script>
+(function(){
+  /* =========================================================
+     hero · 三张静态小 mask (6×6)
+     ========================================================= */
+  function heroMask(id, fn){
+    var el = document.getElementById(id);
+    var h = '';
+    for(var i=0;i<6;i++) for(var j=0;j<6;j++){
+      h += '<div class="c'+(fn(i,j)?' on':'')+'"></div>';
+    }
+    el.innerHTML = h;
+  }
+  heroMask('hm-a', function(){ return true; });
+  heroMask('hm-b', function(i,j){ return i<3 ? j<3 : j<=i; });
+  heroMask('hm-c', function(i,j){ return j<=i; });
+
+
+  /* =========================================================
+     02 · mask 实验台
+     ========================================================= */
+  var TOK = ['今天','天气','真','不错','，','我们','出去','走走'];
+  var N = TOK.length, PREFIX = 4;
+
+  var MODES = {
+    bi: {
+      color:'var(--enc)',
+      can:function(i,j){ return true; },
+      future:'<span class="nope">能 ✗</span>',
+      task:'先把一部分词涂掉，再让它填回来<small>不涂就没题可出 —— 答案就在右边</small>',
+      n:'1 道',
+      nwhy:'BERT 涂 15%，8 个 token 里大约就 1 个',
+      kv:'<span class="nope">不能 ✗</span><small>来一个新词，前面每个 token 的表示都变了，只能全部重算</small>'
+    },
+    prefix: {
+      color:'var(--ed)',
+      can:function(i,j){ return i<PREFIX ? j<PREFIX : j<=i; },
+      future:'<span style="color:var(--ed)">前缀内部能，后半段不能</span>',
+      task:'前缀只当上下文读，后半段猜下一个<small>还得先决定：边界划在第几个</small>',
+      n:'4 道',
+      nwhy:'前 4 个 token 不出题，只有后半段出',
+      kv:'<span style="color:var(--ed)">部分可以</span><small>前缀算完可以缓存，但前缀一改就得整段重跑</small>'
+    },
+    causal: {
+      color:'var(--dec)',
+      can:function(i,j){ return j<=i; },
+      future:'<span class="yes">不能 ✓</span>',
+      task:'原文照喂，每个位置都问「下一个是什么」<small>不用任何加工</small>',
+      n:'7 道',
+      nwhy:'每个位置一道，最后一个的答案在下一段里',
+      kv:'<span class="yes">全程能用 ✓</span><small>第 i 个 token 的表示永远不受后面影响 → 算一次就永久有效</small>'
+    }
+  };
+
+  var mgrid = document.getElementById('mgrid');
+  var sees  = document.getElementById('sees');
+  var curMode = 'causal';
+
+  function buildGrid(){
+    var h = '<div></div>';                                  // 左上角空格
+    for(var j=0;j<N;j++) h += '<div class="mhead">'+TOK[j]+'</div>';
+    for(var i=0;i<N;i++){
+      h += '<div class="mrow" data-r="'+i+'">'+TOK[i]+'</div>';
+      for(var j2=0;j2<N;j2++){
+        h += '<div class="mcell'+(i===j2?' self':'')+'" data-r="'+i+'" data-c="'+j2+'"></div>';
+      }
+    }
+    mgrid.innerHTML = h;
+
+    mgrid.addEventListener('mouseover', function(e){
+      var r = e.target.getAttribute && e.target.getAttribute('data-r');
+      if(r === null || r === undefined) return;
+      highlight(parseInt(r,10));
+    });
+    mgrid.addEventListener('mouseleave', function(){
+      mgrid.classList.remove('hl');
+      var els = mgrid.querySelectorAll('.lit');
+      for(var k=0;k<els.length;k++) els[k].classList.remove('lit');
+      sees.innerHTML = '把鼠标放到某一行上试试。';
+    });
+  }
+
+  function highlight(row){
+    mgrid.classList.add('hl');
+    var can = MODES[curMode].can;
+    var els = mgrid.querySelectorAll('.mcell, .mrow');
+    for(var k=0;k<els.length;k++){
+      var r = parseInt(els[k].getAttribute('data-r'),10);
+      els[k].classList.toggle('lit', r === row);
+    }
+    var vis = [];
+    for(var j=0;j<N;j++) if(can(row,j)) vis.push(TOK[j]);
+    sees.innerHTML = '第 <b>'+(row+1)+'</b> 个 token「<b>'+TOK[row]+'</b>」算自己的表示时，'
+                   + '能看见 <b>'+vis.length+'</b> 个：'+vis.join(' · ');
+  }
+
+  function paintMask(){
+    var m = MODES[curMode];
+    mgrid.style.setProperty('--mc', m.color);
+    document.getElementById('rows').style.setProperty('--mc', m.color);
+    var cells = mgrid.querySelectorAll('.mcell');
+    for(var k=0;k<cells.length;k++){
+      var i = parseInt(cells[k].getAttribute('data-r'),10);
+      var j = parseInt(cells[k].getAttribute('data-c'),10);
+      cells[k].classList.toggle('on', m.can(i,j));
+    }
+    document.getElementById('r-future').innerHTML = m.future;
+    document.getElementById('r-task').innerHTML   = m.task;
+    document.getElementById('r-n').textContent    = m.n;
+    document.getElementById('r-nwhy').textContent = m.nwhy;
+    document.getElementById('r-kv').innerHTML     = m.kv;
+  }
+
+  function wireSegs(containerId, onPick){
+    var box = document.getElementById(containerId);
+    var segs = box.querySelectorAll('.seg');
+    for(var k=0;k<segs.length;k++){
+      segs[k].addEventListener('click', function(){
+        for(var m=0;m<segs.length;m++) segs[m].setAttribute('aria-pressed','false');
+        this.setAttribute('aria-pressed','true');
+        onPick(this.getAttribute('data-k'));
+      });
+    }
+  }
+
+  buildGrid();
+  paintMask();
+  wireSegs('mask-segs', function(k){ curMode = k; paintMask(); });
+
+
+  /* =========================================================
+     03 · 训练信号密度
+     ========================================================= */
+  var denseEl = document.getElementById('dense');
+  for(var d=0; d<100; d++) denseEl.innerHTML += '<div class="dc"></div>';
+  var dcs = denseEl.children;
+
+  // BERT 的 15 个被涂位置：固定一组，看起来随机但每次一样
+  var MLM = [3,9,12,20,27,34,41,45,52,58,66,71,79,88,94];
+  // T5 片段复原：5 段 × 平均 3 token = 15
+  var SPAN = [];
+  [[7,3],[24,2],[41,4],[62,3],[83,3]].forEach(function(s){
+    for(var t=0;t<s[1];t++) SPAN.push(s[0]+t);
+  });
+
+  var OBJ = {
+    lm:  { color:'var(--dec)', hit:function(i){ return i<99; }, n:99,
+           say:'每个位置都直接问「下一个是什么」。<b>99 个位置全部产生 loss</b>（最后一个的答案在下一段里）。一遍前向 = 99 道题。' },
+    mlm: { color:'var(--enc)', hit:function(i){ return MLM.indexOf(i)>=0; }, n:15,
+           say:'涂掉 15 个词，只有<b>被涂的那 15 个位置</b>产生 loss。另外 85 个位置也算了，但没出题 —— 它们只是上下文。' },
+    span:{ color:'var(--ed)',  hit:function(i){ return SPAN.indexOf(i)>=0; }, n:15,
+           say:'涂掉 5 个连续片段（平均 3 token），一共 15 个。<b>整体还是 15%</b> —— 换了涂法，密度没变。' }
+  };
+
+  function paintDense(k){
+    var o = OBJ[k];
+    denseEl.style.setProperty('--dc', o.color);
+    for(var i=0;i<100;i++) dcs[i].classList.toggle('hit', o.hit(i));
+    var rate = o.n;
+    document.getElementById('d-hit').textContent  = o.n;
+    document.getElementById('d-hit').style.color  = o.color;
+    document.getElementById('d-rate').textContent = rate + '%';
+    document.getElementById('d-rate').style.color = o.color;
+    var rel = (o.n / 99);
+    document.getElementById('d-rel').innerHTML = k === 'lm'
+      ? '1.0×'
+      : '<span style="color:var(--no)">' + rel.toFixed(2) + '×</span>';
+    document.getElementById('d-say').innerHTML = o.say;
+  }
+  paintDense('lm');
+  wireSegs('obj-segs', paintDense);
+
+
+  /* =========================================================
+     04 · 任务 → 一条流
+     ========================================================= */
+  var TASKS = {
+    t0: {
+      inp:'The cat sat on the mat.',
+      out:'猫坐在垫子上。',
+      strip:'<span class="p">把下面这句翻成中文。<br>The cat sat on the mat. →</span> <span class="c">猫坐在垫子上。</span>',
+      note:'边界很清楚：源语言进 encoder，目标语言出 decoder。这类任务 encoder-decoder 天生合适。'
+    },
+    t1: {
+      inp:'这家店的菜等了四十分钟才上。',
+      out:'负面',
+      strip:'<span class="p">这家店的菜等了四十分钟才上。<br>这条评论的情绪是</span> <span class="c">负面</span>',
+      note:'能划，但很别扭：输出只有两个字，专门为它养一个 decoder 栈，参数全浪费了。'
+    },
+    t2: {
+      inp:'（一篇 3000 字的长文……）',
+      out:'（一段 100 字摘要）',
+      strip:'<span class="p">（一篇 3000 字的长文……）<br>用一段话总结上面的内容：</span> <span class="c">（一段 100 字摘要）</span>',
+      note:'也能划。但注意：encoder 要一次性双向读完 3000 字，这段算力在输入一改之后<b>完全没法复用</b>。'
+    },
+    t3: {
+      inp:'用户：帮我想个标题<br>助手：「三种架构，一张 mask」<br>用户：再短一点',
+      out:'「一张 mask」',
+      strip:'<span class="p">用户：帮我想个标题<br>助手：「三种架构，一张 mask」<br>用户：再短一点<br>助手：</span> <span class="c">「一张 mask」</span>',
+      note:'这里划不出来了 —— 第 2 轮「助手」说的那句话，它算输入还是输出？上一轮它是模型生成的输出，这一轮它又变成了上下文。硬塞进 encoder 就等于每轮重跑一遍整段历史。'
+    }
+  };
+
+  function paintTask(k){
+    var t = TASKS[k];
+    document.getElementById('p-in').innerHTML   = t.inp;
+    document.getElementById('p-out').innerHTML  = t.out;
+    document.getElementById('p-strip').innerHTML= t.strip;
+    var noteEl = document.getElementById('p-note');
+    noteEl.innerHTML = t.note;
+    noteEl.className = 'pnote' + (k === 't3' ? ' bad' : '');
+  }
+  paintTask('t0');
+  wireSegs('task-segs', paintTask);
+
+
+  /* =========================================================
+     05 · KV cache
+     ========================================================= */
+  var STEPS = 6;
+  var biEl = document.getElementById('kv-bi');
+  var caEl = document.getElementById('kv-ca');
+  var nBi = document.getElementById('kv-nbi');
+  var nCa = document.getElementById('kv-nca');
+  var kvStep = 0, kvTimer = null;
+
+  function buildKv(el){
+    var h = '';
+    for(var s=0;s<STEPS;s++){
+      h += '<div class="kvrow"><div class="lb">第'+(s+1)+'步</div>';
+      for(var c=0;c<STEPS;c++) h += '<div class="kc" data-s="'+s+'" data-c="'+c+'"></div>';
+      h += '</div>';
+    }
+    el.innerHTML = h;
+  }
+
+  function paintKv(){
+    // 双向：第 s 步要把 0..s 全部重算
+    // 因果：第 s 步只算第 s 个，0..s-1 读缓存
+    var bi = 0, ca = 0;
+    for(var s=0;s<STEPS;s++){
+      for(var c=0;c<STEPS;c++){
+        var bcell = biEl.querySelector('[data-s="'+s+'"][data-c="'+c+'"]');
+        var ccell = caEl.querySelector('[data-s="'+s+'"][data-c="'+c+'"]');
+        bcell.className = 'kc'; ccell.className = 'kc';
+        bcell.textContent = ''; ccell.textContent = '';
+        if(s >= kvStep || c > s) continue;          // 还没走到这一步 / 这个 token 还没出现
+        bcell.classList.add('calc');                 // 双向：全部现算
+        ccell.classList.add(c === s ? 'calc' : 'reuse');
+      }
+    }
+    // 累计计数
+    for(var t=0;t<kvStep;t++){ bi += (t+1); ca += 1; }
+    nBi.textContent = bi;
+    nCa.textContent = ca;
+  }
+
+  function kvTick(){
+    if(kvStep >= STEPS){ kvStop(); return; }
+    kvStep++;
+    paintKv();
+    if(kvStep >= STEPS) kvStop();
+  }
+  function kvStop(){
+    clearInterval(kvTimer); kvTimer = null;
+    document.getElementById('kv-play').textContent =
+      kvStep >= STEPS ? '▶ 再看一遍' : '▶ 继续';
+  }
+
+  document.getElementById('kv-play').addEventListener('click', function(){
+    if(kvTimer){ kvStop(); this.textContent = '▶ 继续'; return; }
+    if(kvStep >= STEPS){ kvStep = 0; paintKv(); }
+    this.textContent = '⏸ 暂停';
+    kvTick();
+    kvTimer = setInterval(kvTick, 780);
+  });
+  document.getElementById('kv-reset').addEventListener('click', function(){
+    kvStop(); kvStep = 0; paintKv();
+    document.getElementById('kv-play').textContent = '▶ 逐个生成';
+  });
+
+  buildKv(biEl); buildKv(caEl); paintKv();
+})();
+</script>
+</body>
+</html>

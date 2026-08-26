@@ -100,6 +100,13 @@ h3 em{font-style:normal; color:var(--acc)}
       <div class="meta"></div>
     </a>
 
+    <a class="card" href="rmsnorm.html" data-sections="9">
+      <div class="chips"><span class="chip">RMSNorm</span><span class="chip live">可交互 · 缩放滑块</span></div>
+      <h3>扔掉长度<br><em>留下方向</em></h3>
+      <p class="d">深网络每层都在乘，走过上百层数字要么炸成天文数字要么缩成 0。归一化就是<b>每层门口把音量调回标准值</b> —— 除以 RMS，上一层输出多响，下一层完全感觉不到。比 LayerNorm 少做了「减均值」那一步，参数量从 2d 降到 d，而每个 block 要用 2 次。</p>
+      <div class="meta"></div>
+    </a>
+
     <a class="card" href="activations.html" data-sections="14">
       <div class="chips"><span class="chip">激活值 / Activation</span><span class="chip live">可交互 · 显存计算器</span></div>
       <h3>权重是石头<br><em>激活值是水</em></h3>
@@ -112,7 +119,7 @@ h3 em{font-style:normal; color:var(--acc)}
 <!-- 2 · 架构 -->
 <section class="group reveal" style="--acc:var(--blue)">
   <div class="ghead"><span class="gnum"></span><h2>再看架构</h2></div>
-  <p class="glede">Transformer 是怎么被想出来的，以及它最核心的那个零件到底在算什么。先读论文那页拿全景，再读 head 那页抠细节。</p>
+  <p class="glede">Transformer 是怎么被想出来的，它最核心的那个零件到底在算什么，以及为什么后来所有人都只用了它的一半。大致按「论文 → 零件 → 架构选择」的顺序读。</p>
 
   <div class="grid">
     <a class="card" href="attention-paper.html" data-sections="14">
@@ -126,6 +133,13 @@ h3 em{font-style:normal; color:var(--acc)}
       <div class="chips"><span class="chip">Attention / Head</span><span class="chip live">可交互 · 热力图</span></div>
       <h3>Attention 是什么<br>Head 又是<em>什么</em></h3>
       <p class="d">attention = 一次<b>由内容决定的加权平均</b>（权重当场算，不是训好固定的）；head = 同一件事并行做 8 遍，各用一套标准。顺带讲清 MHA / GQA / MQA 改的是哪个轴。</p>
+      <div class="meta"></div>
+    </a>
+
+    <a class="card" href="decoder-only.html" data-sections="9">
+      <div class="chips"><span class="chip">Decoder-only</span><span class="chip live">可交互 · mask 实验台</span></div>
+      <h3>三种架构<br>为什么只<em>剩一种</em></h3>
+      <p class="d">encoder-only / encoder-decoder / decoder-only 的全部差别，<b>只是一张 attention mask</b> —— 允不允许往后看。往后看一眼就能作弊，所以必须涂掉答案，所以一遍前向只出得了 15% 的题，所以缓存也存不住。<b>下三角形一刀切掉「未来」，这一串问题全部消失。</b>附一节诚实的反例：换成多任务微调，赢的就不是它了。</p>
       <div class="meta"></div>
     </a>
   </div>

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RMSNorm · 扔掉长度，留下方向</title>
+<style>
+  :root{
+    --display:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --paper:#FDF7EE;
+    --ink:#1B1A17;
+    --mute:#8A8175;
+    --orange:#E2603C;
+    --teal:#1F9C8B;
+    --blue:#3D5A80;
+    --yellow:#F4A62A;
+    --line:#E3D8C7;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--display);
+    -webkit-font-smoothing:antialiased;
+  }
+  /* subtle paper grain */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.35;
+    background-image:radial-gradient(var(--line) 1px, transparent 1px);
+    background-size:22px 22px;
+  }
+  main{position:relative; z-index:1}
+
+  section{
+    max-width:1000px; margin:0 auto; padding:clamp(70px,11vh,140px) 24px;
+    border-bottom:2px dashed var(--line);
+  }
+  section:last-of-type{border-bottom:none}
+
+  .step{
+    font-family:var(--display); font-weight:800; font-size:14px; letter-spacing:.22em;
+    color:var(--orange); text-transform:uppercase; margin-bottom:14px;
+  }
+  h1{
+    font-family:var(--display); font-weight:900;
+    font-size:clamp(52px,11.5vw,132px); line-height:.96; margin:0 0 22px;
+    letter-spacing:-.035em;
+  }
+  h2{
+    font-family:var(--display); font-weight:900;
+    font-size:clamp(30px,5vw,54px); line-height:1.14; margin:0 0 20px;
+    letter-spacing:-.025em;
+  }
+  p{font-size:clamp(18px,2.3vw,24px); line-height:1.65; max-width:34em; margin:0 0 16px}
+  .lead{font-size:clamp(21px,2.8vw,30px); font-weight:700}
+  .mute{color:var(--mute)}
+  b{color:var(--orange)}
+  .teal{color:var(--teal)}
+  .blue{color:var(--blue)}
+
+  /* ---------- hero ---------- */
+  .hero{text-align:left; padding-top:clamp(90px,16vh,190px)}
+  .hero h1 span{display:block}
+  .hero .sub{font-size:clamp(20px,2.8vw,30px); font-weight:700; max-width:26em}
+  .formula{
+    display:inline-block; margin-top:34px; padding:18px 26px; background:#fff;
+    border:3px solid var(--ink); border-radius:18px; box-shadow:6px 6px 0 var(--ink);
+    font-family:var(--display); font-size:clamp(22px,3.4vw,38px); font-weight:800;
+  }
+  .scrollhint{margin-top:56px; font-weight:900; color:var(--mute); letter-spacing:.1em}
+  .scrollhint span{display:inline-block; animation:bob 1.6s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}
+
+  /* ---------- towers ---------- */
+  .towers{display:grid; grid-template-columns:1fr 1fr; gap:clamp(20px,5vw,60px); margin:44px 0 10px}
+  .tower h3{
+    font-family:var(--display); font-weight:900; font-size:clamp(19px,2.4vw,26px); margin:0 0 18px; text-align:center;
+  }
+  .floor{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:#fff; border:3px solid var(--ink); border-radius:14px;
+    padding:12px 16px; margin-bottom:10px; font-weight:900;
+    font-size:clamp(15px,1.9vw,21px);
+  }
+  .floor .lbl{color:var(--mute); font-size:.78em; font-weight:700}
+  .floor .val{font-family:var(--display); font-size:1.25em}
+  .bad .val{color:var(--orange)}
+  .good .val{color:var(--teal)}
+  .boom{
+    text-align:center; font-size:clamp(34px,6vw,58px); margin-top:6px;
+  }
+  .normchip{
+    display:block; text-align:center; font-size:.72em; font-weight:900; letter-spacing:.06em;
+    color:#fff; background:var(--teal); border-radius:999px; padding:5px 0; margin:-4px 0 10px;
+  }
+
+  /* ---------- big steps ---------- */
+  .steps3{display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(14px,3vw,28px); margin:40px 0 26px}
+  .card{
+    background:#fff; border:3px solid var(--ink); border-radius:20px; padding:24px 20px;
+    box-shadow:6px 6px 0 var(--ink);
+  }
+  .card .num{
+    font-family:var(--display); font-weight:900; font-size:44px; line-height:1; color:var(--yellow); margin-bottom:8px;
+  }
+  .card h4{font-family:var(--display); font-weight:900; font-size:clamp(18px,2.3vw,24px); margin:0 0 12px}
+  .vec{
+    font-family:var(--display); font-weight:800; font-size:clamp(19px,2.6vw,28px);
+    letter-spacing:.01em;
+  }
+  .arrowdown{text-align:center; font-size:40px; color:var(--mute); margin:4px 0}
+  .result{
+    background:var(--ink); color:var(--paper); border-radius:20px; padding:26px 24px; text-align:center;
+  }
+  .result .vec{font-size:clamp(21px,3.4vw,38px); color:var(--yellow)}
+  .result .cap{font-weight:900; letter-spacing:.08em; font-size:14px; color:#B8AFA1; margin-bottom:10px}
+
+  /* ---------- interactive ---------- */
+  .demo{
+    background:#fff; border:3px solid var(--ink); border-radius:24px; padding:clamp(20px,4vw,34px);
+    box-shadow:8px 8px 0 var(--ink); margin:40px 0 8px;
+  }
+  .demo .knob{margin-bottom:26px}
+  .demo label{display:block; font-weight:900; font-size:clamp(17px,2.2vw,22px); margin-bottom:12px}
+  .demo label em{font-family:var(--display); font-style:normal; color:var(--orange); font-size:1.3em}
+  input[type=range]{width:100%; height:34px; accent-color:var(--orange)}
+  .panes{display:grid; grid-template-columns:1fr 1fr; gap:clamp(16px,3.5vw,34px)}
+  .pane h4{
+    font-family:var(--display); font-weight:900; font-size:clamp(16px,2.1vw,21px); margin:0 0 4px;
+  }
+  .pane .tag{font-size:13px; font-weight:900; letter-spacing:.08em; color:var(--mute); margin-bottom:14px}
+  .plot{
+    position:relative; height:210px; border:2px solid var(--line); border-radius:12px;
+    background:linear-gradient(var(--line),var(--line)) center/100% 2px no-repeat;
+    display:flex; align-items:center; justify-content:space-around; overflow:hidden;
+  }
+  .plot.clipped{border-color:var(--orange); border-style:dashed}
+  .bar{width:15%; position:relative; height:100%; display:flex; flex-direction:column; justify-content:center}
+  .bar i{
+    display:block; border-radius:5px; transition:height .12s linear;
+    background:var(--blue);
+  }
+  .bar.neg i{background:var(--yellow)}
+  .pane.norm .bar i{background:var(--teal)}
+  .pane.norm .bar.neg i{background:#7FC9BE}
+  .bar .up{display:flex; flex-direction:column; justify-content:flex-end; height:50%}
+  .bar .dn{height:50%}
+  .nums{display:flex; justify-content:space-around; margin-top:12px}
+  .nums span{
+    width:15%; text-align:center; font-family:var(--display); font-weight:800;
+    font-size:clamp(13px,1.7vw,18px);
+  }
+  .verdict{
+    margin-top:24px; text-align:center; font-weight:900; font-size:clamp(17px,2.4vw,24px);
+    min-height:1.6em;
+  }
+
+  /* ---------- vs table ---------- */
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:clamp(16px,3.5vw,34px); margin:40px 0 10px}
+  .vs .card{position:relative}
+  .vs .card.pick{border-color:var(--teal); box-shadow:6px 6px 0 var(--teal)}
+  .badge{
+    position:absolute; top:-16px; right:18px; background:var(--teal); color:#fff;
+    font-weight:900; font-size:13px; letter-spacing:.08em; padding:6px 14px; border-radius:999px;
+  }
+  .ops{list-style:none; padding:0; margin:14px 0 0}
+  .ops li{
+    display:flex; gap:10px; align-items:flex-start; font-weight:700;
+    font-size:clamp(15px,1.9vw,19px); padding:9px 0; border-top:2px dotted var(--line);
+  }
+  .ops li:first-child{border-top:none}
+  .ops .k{font-family:var(--display); font-size:1.15em}
+  .strike{color:var(--mute); text-decoration:line-through}
+
+  /* ---------- cards grid ---------- */
+  .grid4{display:grid; grid-template-columns:repeat(2,1fr); gap:clamp(16px,3vw,26px); margin:40px 0 10px}
+  .grid4 .card{box-shadow:5px 5px 0 var(--ink)}
+  .grid4 .icon{font-size:38px; line-height:1; margin-bottom:10px}
+  .grid4 p{font-size:clamp(16px,2vw,19px); margin:0}
+
+  /* ---------- logos ---------- */
+  .logos{display:flex; flex-wrap:wrap; gap:12px; margin:26px 0 8px}
+  .chip{
+    font-family:var(--display); font-weight:800; font-size:clamp(16px,2.2vw,22px);
+    padding:10px 20px; border-radius:999px; border:3px solid var(--ink); background:#fff;
+  }
+  .chip.on{background:var(--teal); color:#fff; border-color:var(--teal)}
+  .chip.off{color:var(--mute); border-color:var(--line)}
+
+  /* ---------- code ---------- */
+  pre{
+    background:var(--ink); color:#F3EADA; border-radius:20px; padding:26px 24px; overflow:auto;
+    font-family:var(--mono);
+    font-size:clamp(13px,1.8vw,18px); line-height:1.75; margin:34px 0 0;
+  }
+  pre .c{color:#8A8175}
+  pre .k{color:#F4A62A}
+  pre .s{color:#7FC9BE}
+
+  .kicker{
+    font-family:var(--display); font-weight:800; line-height:1.25;
+    font-size:clamp(28px,5.2vw,54px); margin:0;
+  }
+  .kicker em{font-style:normal; color:var(--orange)}
+
+  .aside{
+    border-left:6px solid var(--yellow); padding:6px 0 6px 20px; margin:34px 0 0;
+  }
+  .aside p{font-size:clamp(16px,2vw,20px); margin:0}
+
+  svg{display:block; max-width:100%; height:auto; margin:34px auto 10px}
+  .cap{text-align:center; color:var(--mute); font-weight:700; font-size:16px}
+
+  .reveal{opacity:0; transform:translateY(26px); transition:opacity .6s ease, transform .6s ease}
+  .reveal.in{opacity:1; transform:none}
+
+  @media (max-width:720px){
+    .towers,.steps3,.panes,.vs,.grid4{grid-template-columns:1fr}
+    .plot{height:170px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .reveal{opacity:1; transform:none; transition:none}
+    .scrollhint span{animation:none}
+  }
+</style>
+</head>
+<body>
+<main>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="step">RMSNorm · Root Mean Square Normalization</div>
+  <h1><span>把音量</span><span>调回标准</span></h1>
+  <p class="sub">大模型的每一层，在干活之前都会先做这一件小事。<br>它叫 <b>RMSNorm</b>。</p>
+  <div class="formula">y = x ÷ RMS(x) × g</div>
+  <div class="scrollhint"><span>↓ 往下滑</span></div>
+</section>
+
+<!-- ============ 1. 问题 ============ -->
+<section class="reveal">
+  <div class="step">01 · 问题</div>
+  <h2>数字会失控</h2>
+  <p>神经网络就是一层一层地<b>乘</b>。走过 80 层、100 层之后，数字要么涨成天文数字，要么缩成 0。</p>
+
+  <div class="towers">
+    <div class="tower">
+      <h3>❌ 没有归一化</h3>
+      <div class="floor bad"><span class="lbl">第 1 层</span><span class="val">1.0</span></div>
+      <div class="floor bad"><span class="lbl">第 2 层</span><span class="val">3.1</span></div>
+      <div class="floor bad"><span class="lbl">第 3 层</span><span class="val">11</span></div>
+      <div class="floor bad"><span class="lbl">第 4 层</span><span class="val">47</span></div>
+      <div class="floor bad"><span class="lbl">第 5 层</span><span class="val">210</span></div>
+      <div class="floor bad"><span class="lbl">第 6 层</span><span class="val">1,900</span></div>
+      <div class="boom">💥 loss = NaN</div>
+    </div>
+    <div class="tower">
+      <h3>✅ 每层门口调一次音量</h3>
+      <div class="floor good"><span class="lbl">第 1 层</span><span class="val">1.0</span></div>
+      <span class="normchip">RMSNorm</span>
+      <div class="floor good"><span class="lbl">第 2 层</span><span class="val">1.0</span></div>
+      <span class="normchip">RMSNorm</span>
+      <div class="floor good"><span class="lbl">第 3 层</span><span class="val">1.0</span></div>
+      <span class="normchip">RMSNorm</span>
+      <div class="floor good"><span class="lbl">第 4 层</span><span class="val">1.0</span></div>
+      <div class="boom">🟢 训得下去</div>
+    </div>
+  </div>
+  <p class="mute">数字坏掉，梯度就跟着坏掉。训练直接死。</p>
+</section>
+
+<!-- ============ 2. RMS 是什么 ============ -->
+<section class="reveal">
+  <div class="step">02 · RMS 是什么</div>
+  <h2>三步算出<br>“平均有多大”</h2>
+  <p>一层的输出是一串数字。比如这四个 👇</p>
+  <div class="vec" style="font-size:clamp(26px,5vw,46px);margin:18px 0 6px">[ −3, &nbsp;4, &nbsp;0, &nbsp;5 ]</div>
+
+  <div class="steps3">
+    <div class="card">
+      <div class="num">①</div>
+      <h4>全部平方</h4>
+      <div class="vec">9, 16, 0, 25</div>
+      <p class="mute" style="font-size:16px;margin-top:10px">负号消失了，只剩“多大”</p>
+    </div>
+    <div class="card">
+      <div class="num">②</div>
+      <h4>求平均</h4>
+      <div class="vec">50 ÷ 4 = 12.5</div>
+      <p class="mute" style="font-size:16px;margin-top:10px">Mean</p>
+    </div>
+    <div class="card">
+      <div class="num">③</div>
+      <h4>开根号</h4>
+      <div class="vec">√12.5 = <b>3.54</b></div>
+      <p class="mute" style="font-size:16px;margin-top:10px">Root — 这就是 RMS</p>
+    </div>
+  </div>
+
+  <div class="arrowdown">↓ 每个数都除以 3.54</div>
+  <div class="result">
+    <div class="cap">RMSNORM 的输出</div>
+    <div class="vec">[ −0.85, &nbsp;1.13, &nbsp;0, &nbsp;1.41 ]</div>
+  </div>
+  <p style="margin-top:26px">Root Mean Square 三个词，就是<b>倒着念这三步</b>：开根号、求平均、平方。</p>
+</section>
+
+<!-- ============ 3. 交互 ============ -->
+<section class="reveal">
+  <div class="step">03 · 亲手试试</div>
+  <h2>×100 也没关系</h2>
+  <p>拖动滑杆，把这四个数一起放大或缩小。<br>左边疯了，右边<b>一动不动</b>。</p>
+
+  <div class="demo">
+    <div class="knob">
+      <label>整体缩放 <em id="scaleLabel">×1.0</em></label>
+      <input type="range" id="scale" min="0" max="100" value="50">
+    </div>
+    <div class="panes">
+      <div class="pane">
+        <h4>原始数字</h4>
+        <div class="tag">刻度固定 ±10</div>
+        <div class="plot" id="rawPlot"></div>
+        <div class="nums" id="rawNums"></div>
+      </div>
+      <div class="pane norm">
+        <h4>RMSNorm 之后</h4>
+        <div class="tag">刻度固定 ±2</div>
+        <div class="plot" id="normPlot"></div>
+        <div class="nums" id="normNums"></div>
+      </div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+  <p class="mute" style="margin-top:22px">这个性质叫<b>尺度不变</b>。上一层输出多响，下一层完全感觉不到——它只看到形状。</p>
+</section>
+
+<!-- ============ 4. 球面 ============ -->
+<section class="reveal">
+  <div class="step">04 · 换个看法</div>
+  <h2>扔掉长度<br>留下方向</h2>
+  <p>把一串数字当成一支箭。除以 RMS，就是把所有箭<b>拉到同一个圈上</b>。</p>
+
+  <svg viewBox="0 0 620 340" width="620" role="img" aria-label="不同长度的向量被归一化到同一个圆上">
+    <circle cx="310" cy="170" r="118" fill="none" stroke="#E3D8C7" stroke-width="3"/>
+    <circle cx="310" cy="170" r="118" fill="none" stroke="#1F9C8B" stroke-width="4" stroke-dasharray="7 9"/>
+    <!-- ghost vectors (original lengths) -->
+    <g stroke="#C9BDA9" stroke-width="3" stroke-dasharray="5 6">
+      <line x1="310" y1="170" x2="310" y2="42"/>
+      <line x1="310" y1="170" x2="530" y2="112"/>
+      <line x1="310" y1="170" x2="252" y2="228"/>
+      <line x1="310" y1="170" x2="150" y2="270"/>
+    </g>
+    <!-- normalized vectors -->
+    <g stroke-width="7" stroke-linecap="round">
+      <line x1="310" y1="170" x2="310" y2="52" stroke="#3D5A80"/>
+      <line x1="310" y1="170" x2="424" y2="140" stroke="#E2603C"/>
+      <line x1="310" y1="170" x2="227" y2="253" stroke="#F4A62A"/>
+      <line x1="310" y1="170" x2="212" y2="231" stroke="#1F9C8B"/>
+    </g>
+    <g fill="#1B1A17">
+      <circle cx="310" cy="52" r="9"/><circle cx="424" cy="140" r="9"/>
+      <circle cx="227" cy="253" r="9"/><circle cx="212" cy="231" r="9"/>
+      <circle cx="310" cy="170" r="7"/>
+    </g>
+    <g font-family="-apple-system, PingFang SC, system-ui, sans-serif" font-weight="800" font-size="19">
+      <text x="466" y="86" fill="#8A8175">虚线 = 原来的长度</text>
+      <text x="466" y="112" fill="#8A8175">（被扔掉）</text>
+      <text x="18" y="130" fill="#1F9C8B">实线 = 归一化后</text>
+      <text x="18" y="156" fill="#1F9C8B">长度全都一样</text>
+    </g>
+  </svg>
+  <p class="cap">信息全在“指哪儿”，不在“多长”。</p>
+</section>
+
+<!-- ============ 5. vs LayerNorm ============ -->
+<section class="reveal">
+  <div class="step">05 · 和 LayerNorm 的区别</div>
+  <h2>少做了一步</h2>
+
+  <div class="vs">
+    <div class="card">
+      <h4>LayerNorm（老办法）</h4>
+      <ul class="ops">
+        <li><span class="k">①</span><span>算<b>均值</b>，每个数减掉它 → 重心挪到 0</span></li>
+        <li><span class="k">②</span><span>算标准差，每个数除掉它 → 缩放</span></li>
+        <li><span class="k">③</span><span>可学习的 <b>g</b> 和 <b>b</b>（缩放 + 偏移）</span></li>
+      </ul>
+      <p class="mute" style="font-size:16px;margin-top:16px">参数量：<b>2d</b></p>
+    </div>
+    <div class="card pick">
+      <div class="badge">现在的主流</div>
+      <h4>RMSNorm</h4>
+      <ul class="ops">
+        <li><span class="k">①</span><span class="strike">减均值 —— 不做了</span></li>
+        <li><span class="k">②</span><span>除以 <b>RMS</b> → 缩放</span></li>
+        <li><span class="k">③</span><span>可学习的 <b>g</b>（只有缩放）</span></li>
+      </ul>
+      <p class="mute" style="font-size:16px;margin-top:16px">参数量：<b>d</b></p>
+    </div>
+  </div>
+
+  <p style="margin-top:34px">2019 年的 RMSNorm 论文发现：<b>减均值那一步基本没贡献</b>，让训练稳下来的是<b>缩放</b>。</p>
+  <p>于是把它删了。少一遍数据、少一组参数、少一次减法。<span class="mute">效果基本不变。</span></p>
+</section>
+
+<!-- ============ 6. g ============ -->
+<section class="reveal">
+  <div class="step">06 · 那个小旋钮</div>
+  <h2>压平之后<br>再给模型调音台</h2>
+  <p>归一化把所有维度按同一把尺子压平了。但有些维度本该更响。<br>所以每个维度配一个<b>可学习的增益 g</b>——模型自己训出来的调音台。</p>
+
+  <svg viewBox="0 0 620 250" width="620" role="img" aria-label="每个维度一个可学习增益，像调音台的推子">
+    <g stroke="#E3D8C7" stroke-width="6" stroke-linecap="round">
+      <line x1="60"  y1="30" x2="60"  y2="200"/><line x1="140" y1="30" x2="140" y2="200"/>
+      <line x1="220" y1="30" x2="220" y2="200"/><line x1="300" y1="30" x2="300" y2="200"/>
+      <line x1="380" y1="30" x2="380" y2="200"/><line x1="460" y1="30" x2="460" y2="200"/>
+      <line x1="540" y1="30" x2="540" y2="200"/>
+    </g>
+    <g fill="#E2603C">
+      <rect x="42"  y="120" width="36" height="22" rx="8"/>
+      <rect x="122" y="58"  width="36" height="22" rx="8"/>
+      <rect x="202" y="164" width="36" height="22" rx="8"/>
+      <rect x="282" y="96"  width="36" height="22" rx="8"/>
+      <rect x="362" y="44"  width="36" height="22" rx="8"/>
+      <rect x="442" y="140" width="36" height="22" rx="8"/>
+      <rect x="522" y="80"  width="36" height="22" rx="8"/>
+    </g>
+    <g font-family="-apple-system, PingFang SC, system-ui, sans-serif" font-weight="800" font-size="17" fill="#8A8175" text-anchor="middle">
+      <text x="60" y="228">g₁</text><text x="140" y="228">g₂</text><text x="220" y="228">g₃</text>
+      <text x="300" y="228">g₄</text><text x="380" y="228">g₅</text><text x="460" y="228">g₆</text>
+      <text x="540" y="228">g₇</text>
+    </g>
+  </svg>
+  <p class="cap">推子的位置不是人调的，是训练学出来的。</p>
+</section>
+
+<!-- ============ 7. 为什么 LLM 在意 ============ -->
+<section class="reveal">
+  <div class="step">07 · 为什么在 LLM 里这么重要</div>
+  <h2>四个理由</h2>
+
+  <div class="grid4">
+    <div class="card">
+      <div class="icon">🧱</div>
+      <h4>不炸</h4>
+      <p>几十上百层堆起来还能训下去。这是能不能开始训的前提。</p>
+    </div>
+    <div class="card">
+      <div class="icon">🚀</div>
+      <h4>敢用大学习率</h4>
+      <p>数值稳了，学习率就能开大，收敛更快，省出来的是真金白银的 GPU 小时。</p>
+    </div>
+    <div class="card">
+      <div class="icon">🪶</div>
+      <h4>够便宜</h4>
+      <p>只需要平方和：不用算均值、不用减、没有 bias。</p>
+    </div>
+    <div class="card">
+      <div class="icon">🔁</div>
+      <h4>用得极多</h4>
+      <p>每个 Transformer block 用 <b>2 次</b>，乘上上百层。省一点点，乘几百次。</p>
+    </div>
+  </div>
+
+  <div class="aside">
+    <p><b>顺便说</b>：现代 LLM 把它放在每个子层<b>之前</b>（pre-norm），让残差主路保持一条干净的直通道——这也是深层能训起来的关键之一。</p>
+  </div>
+</section>
+
+<!-- ============ 8. 谁在用 ============ -->
+<section class="reveal">
+  <div class="step">08 · 谁在用</div>
+  <h2>翻开权重文件<br>你会看到它</h2>
+
+  <p style="margin-top:26px"><b>RMSNorm</b></p>
+  <div class="logos">
+    <span class="chip on">LLaMA</span>
+    <span class="chip on">Llama 2 / 3</span>
+    <span class="chip on">Mistral</span>
+    <span class="chip on">Qwen</span>
+    <span class="chip on">Gemma</span>
+  </div>
+
+  <p style="margin-top:34px" class="mute">LayerNorm（上一代）</p>
+  <div class="logos">
+    <span class="chip off">GPT-2</span>
+    <span class="chip off">BERT</span>
+  </div>
+
+  <p class="mute" style="margin-top:30px">出处：<i>Root Mean Square Layer Normalization</i>，Zhang &amp; Sennrich，NeurIPS 2019。<br>T5 更早就用了这个“去掉均值”的简化版。</p>
+</section>
+
+<!-- ============ 9. 代码 + 收尾 ============ -->
+<section class="reveal">
+  <div class="step">09 · 全部内容</div>
+  <h2>五行写完</h2>
+
+<pre><span class="c"># x: [..., d]   g: [d] 可学习</span>
+<span class="k">def</span> rmsnorm(x, g, eps=<span class="s">1e-6</span>):
+    ms  = x.pow(<span class="s">2</span>).mean(-<span class="s">1</span>, keepdim=<span class="k">True</span>)   <span class="c"># ② 平方求平均</span>
+    <span class="k">return</span> x / (ms + eps).sqrt() * g          <span class="c"># ③ 开根号，除掉，再乘旋钮</span>
+</pre>
+  <p class="mute" style="margin-top:18px"><code>eps</code> 是防止全零向量除以 0 的小保险。</p>
+
+  <div style="margin-top:60px; padding-top:44px; border-top:4px solid var(--ink)">
+    <p class="kicker">一句话：<br><em>扔掉长度，留下方向，<br>再给模型一个旋钮调回来。</em></p>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ---------- interactive scale-invariance demo ----------
+const BASE = [-3, 4, 0, 5];
+const RAW_AXIS  = 10;   // 原始面板固定刻度
+const NORM_AXIS = 2;    // 归一化面板固定刻度
+
+const rawPlot  = document.getElementById('rawPlot');
+const normPlot = document.getElementById('normPlot');
+const rawNums  = document.getElementById('rawNums');
+const normNums = document.getElementById('normNums');
+const verdict  = document.getElementById('verdict');
+const slider   = document.getElementById('scale');
+const scaleLbl = document.getElementById('scaleLabel');
+
+function buildBars(container){
+  return BASE.map(() => {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const up = document.createElement('div'); up.className = 'up';
+    const dn = document.createElement('div'); dn.className = 'dn';
+    const iUp = document.createElement('i'); iUp.style.height = '0px';
+    const iDn = document.createElement('i'); iDn.style.height = '0px';
+    up.appendChild(iUp); dn.appendChild(iDn);
+    bar.appendChild(up); bar.appendChild(dn);
+    container.appendChild(bar);
+    return {bar, iUp, iDn};
+  });
+}
+function buildNums(container){
+  return BASE.map(() => {
+    const s = document.createElement('span');
+    container.appendChild(s);
+    return s;
+  });
+}
+const rawBars  = buildBars(rawPlot);
+const normBars = buildBars(normPlot);
+const rawLbls  = buildNums(rawNums);
+const normLbls = buildNums(normNums);
+
+function fmt(v){
+  const a = Math.abs(v);
+  if (a === 0) return '0';
+  if (a >= 1000) return v.toExponential(1).replace('e+', 'e');
+  if (a >= 100)  return v.toFixed(0);
+  if (a >= 10)   return v.toFixed(1);
+  return v.toFixed(2);
+}
+
+function draw(values, bars, lbls, axis, plot){
+  let clipped = false;
+  const half = plot.clientHeight / 2 || 105;
+  values.forEach((v, i) => {
+    const frac = Math.min(Math.abs(v) / axis, 1);
+    if (Math.abs(v) > axis) clipped = true;
+    const px = frac * (half - 4);
+    bars[i].bar.classList.toggle('neg', v < 0);
+    bars[i].iUp.style.height = v >= 0 ? px + 'px' : '0px';
+    bars[i].iDn.style.height = v <  0 ? px + 'px' : '0px';
+    lbls[i].textContent = fmt(v);
+  });
+  plot.classList.toggle('clipped', clipped);
+  return clipped;
+}
+
+function render(){
+  const s = Math.pow(10, (slider.value - 50) / 25);   // 0.01 → 100
+  scaleLbl.textContent = '×' + (s >= 10 ? s.toFixed(0) : s >= 1 ? s.toFixed(1) : s.toFixed(3));
+
+  const raw = BASE.map(v => v * s);
+  const ms  = raw.reduce((a, v) => a + v * v, 0) / raw.length;
+  const rms = Math.sqrt(ms + 1e-6);
+  const nrm = raw.map(v => v / rms);
+
+  const clipped = draw(raw, rawBars, rawLbls, RAW_AXIS,  rawPlot);
+  draw(nrm, normBars, normLbls, NORM_AXIS, normPlot);
+
+  const tiny = Math.max(...raw.map(Math.abs)) < 0.5;
+  verdict.innerHTML = clipped
+    ? '左边已经<b>冲出屏幕</b>了 —— 右边完全没变 🟢'
+    : tiny
+    ? '左边快<b>压成一条线</b>了 —— 右边完全没变 🟢'
+    : '左边跟着变 —— 右边<b>永远是这个形状</b> 🟢';
+}
+slider.addEventListener('input', render);
+window.addEventListener('resize', render);
+render();
+
+// ---------- reveal on scroll ----------
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+}, {threshold: 0.12});
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
