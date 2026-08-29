@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>非线性 · 线性只会按比例，非线性会看情况</title>
+<style>
+  :root{
+    --sans:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --paper:#F4F5F0;
+    --ink:#171A1F;
+    --mute:#77796F;
+    --line:#D8DAD0;
+    --str:#2A5FC9;   /* 直线 / 线性 */
+    --bend:#DC5533;  /* 弯 / 非线性 */
+    --ok:#1C8A5B;
+    --amb:#C99000;
+    --white:#FCFCFA;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); -webkit-font-smoothing:antialiased;
+  }
+  /* 方格纸 */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.55;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:30px 30px;
+  }
+  main{position:relative; z-index:1}
+
+  section{
+    max-width:980px; margin:0 auto;
+    padding:clamp(64px,10vh,124px) 22px;
+    border-bottom:1px solid var(--line);
+  }
+  section:last-of-type{border-bottom:none}
+
+  .step{
+    font-family:var(--mono); font-weight:700; font-size:13px; letter-spacing:.16em;
+    color:var(--bend); margin-bottom:16px;
+  }
+  h1{
+    font-weight:900; font-size:clamp(42px,8.4vw,96px); line-height:1.02;
+    margin:0 0 24px; letter-spacing:-.035em;
+  }
+  h1 em{font-style:normal; color:var(--bend)}
+  h2{
+    font-weight:900; font-size:clamp(28px,4.6vw,50px); line-height:1.14;
+    margin:0 0 20px; letter-spacing:-.025em;
+  }
+  h3{font-weight:900; font-size:clamp(19px,2.4vw,24px); margin:0 0 10px; letter-spacing:-.01em}
+  p{font-size:clamp(17px,2.1vw,22px); line-height:1.68; max-width:35em; margin:0 0 16px}
+  .lead{font-size:clamp(19px,2.6vw,28px); font-weight:700; line-height:1.5}
+  .mute{color:var(--mute)}
+  b{color:var(--str)}
+  .bend{color:var(--bend)}
+  .ok{color:var(--ok)}
+  code,.m{font-family:var(--mono); font-size:.92em}
+  code{background:#E7E9E1; padding:2px 6px; border-radius:4px}
+
+  /* ---------- hero ---------- */
+  .hero{padding-top:clamp(76px,14vh,164px); border-bottom:1px solid var(--line)}
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:13px; letter-spacing:.12em;
+    border:1.5px solid var(--ink); padding:5px 12px; margin-bottom:26px; background:var(--white);
+  }
+  .tldr{
+    background:var(--white); border:1.5px solid var(--ink); border-left:8px solid var(--bend);
+    padding:24px 26px; margin-top:36px; max-width:38em;
+  }
+  .tldr h3{font-size:16px; letter-spacing:.1em; font-family:var(--mono); color:var(--bend); margin-bottom:14px}
+  .tldr p{font-size:clamp(16px,1.9vw,19px); margin-bottom:10px}
+  .tldr p:last-child{margin-bottom:0}
+  .tldr ol{margin:6px 0 12px; padding-left:1.3em}
+  .tldr li{font-size:clamp(16px,1.9vw,19px); line-height:1.6; margin-bottom:5px}
+
+  /* ---------- 通用块 ---------- */
+  .card{
+    background:var(--white); border:1.5px solid var(--ink);
+    padding:22px 24px; margin:26px 0;
+  }
+  .cap{font-size:15px; color:var(--mute); margin:12px 0 0; max-width:38em}
+  .big{
+    font-size:clamp(22px,4vw,40px); font-weight:900; text-align:center;
+    font-family:var(--mono); letter-spacing:-.02em; margin:10px 0;
+  }
+  .rule{
+    display:flex; gap:16px; align-items:flex-start; margin:20px 0;
+    padding-left:0;
+  }
+  .rule .n{
+    flex:0 0 auto; width:34px; height:34px; border:1.5px solid var(--ink);
+    display:grid; place-items:center; font-weight:900; font-family:var(--mono);
+    background:var(--white);
+  }
+  .rule .t{font-size:clamp(17px,2.1vw,21px); line-height:1.55; padding-top:3px}
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:28px 0}
+  .cols3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:28px 0}
+  @media(max-width:700px){.cols,.cols3{grid-template-columns:1fr}}
+  .tile{background:var(--white); border:1.5px solid var(--ink); padding:18px 18px 16px}
+  .tile .k{font-family:var(--mono); font-size:12.5px; letter-spacing:.1em; color:var(--mute)}
+  .tile p{font-size:16.5px; margin:8px 0 0}
+  .tile .h{font-weight:900; font-size:19px; margin-top:6px}
+
+  /* ---------- demo 外壳 ---------- */
+  .demo{
+    background:var(--white); border:1.5px solid var(--ink);
+    padding:22px; margin:34px 0 8px;
+  }
+  .demo .hd{
+    font-family:var(--mono); font-size:12.5px; letter-spacing:.14em; color:var(--bend);
+    border-bottom:1px dashed var(--line); padding-bottom:12px; margin-bottom:20px;
+  }
+  .knobs{display:flex; flex-wrap:wrap; gap:22px 30px; align-items:flex-end; margin-bottom:20px}
+  .knob{flex:1 1 200px; min-width:180px}
+  .knob label{display:block; font-size:14.5px; font-weight:700; margin-bottom:8px}
+  .knob label em{font-style:normal; font-family:var(--mono); color:var(--bend); font-size:1.1em}
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:5px;
+    background:var(--line); outline:none; border-radius:3px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:22px; height:22px; border-radius:50%;
+    background:var(--bend); border:2px solid var(--ink); cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:22px; height:22px; border-radius:50%;
+    background:var(--bend); border:2px solid var(--ink); cursor:pointer;
+  }
+  .switch{display:inline-flex; align-items:center; gap:10px; cursor:pointer; user-select:none;
+    font-weight:800; font-size:15.5px; white-space:nowrap}
+  .switch input{display:none}
+  .switch .track{
+    width:52px; height:28px; border:1.5px solid var(--ink); border-radius:100px;
+    background:#E7E9E1; position:relative; transition:background .18s;
+  }
+  .switch .track::after{
+    content:""; position:absolute; top:2px; left:2px; width:20px; height:20px;
+    border-radius:50%; background:var(--ink); transition:transform .18s;
+  }
+  .switch input:checked + .track{background:#FBD9CE}
+  .switch input:checked + .track::after{transform:translateX(24px); background:var(--bend)}
+  .btn{
+    font-family:var(--sans); font-weight:800; font-size:14.5px; cursor:pointer;
+    background:var(--white); border:1.5px solid var(--ink); padding:9px 15px;
+  }
+  .btn:hover{background:#EFF1E9}
+  .btn.on{background:var(--ink); color:var(--white)}
+  .btnrow{display:flex; flex-wrap:wrap; gap:10px}
+  svg{display:block; max-width:100%; height:auto; margin:0 auto}
+  canvas{display:block; max-width:100%; margin:0 auto; border:1px solid var(--line)}
+  .verdict{
+    margin-top:18px; padding:14px 16px; border:1.5px solid var(--ink);
+    font-weight:800; font-size:clamp(16px,2vw,19px); line-height:1.5; background:#EFF1E9;
+  }
+  .verdict.good{background:#E1F2E9; border-color:var(--ok)}
+  .verdict.bad{background:#FBE7DF; border-color:var(--bend)}
+  .readout{
+    display:grid; grid-template-columns:auto 1fr 1fr; gap:10px 18px; align-items:center;
+    font-family:var(--mono); font-size:clamp(14px,1.8vw,17px); margin-top:18px;
+  }
+  .readout .lbl{color:var(--mute); font-size:.9em; letter-spacing:.04em}
+  .readout .hh{font-weight:800; border-bottom:1px solid var(--line); padding-bottom:6px}
+  .readout .v{font-weight:800}
+  .readout .yes{color:var(--ok)}
+  .readout .no{color:var(--bend)}
+  .stat{font-family:var(--mono); font-weight:900; font-size:clamp(30px,6vw,58px); letter-spacing:-.03em}
+
+  pre{
+    background:var(--ink); color:#E9EBE3; font-family:var(--mono);
+    font-size:clamp(13px,1.7vw,15.5px); line-height:1.65;
+    padding:20px 22px; overflow-x:auto; margin:24px 0;
+  }
+  pre .c{color:#8B9188}
+  pre .k{color:#F2A97E}
+
+  ul.plain{list-style:none; padding:0; margin:22px 0}
+  ul.plain li{
+    font-size:clamp(16.5px,2vw,20px); line-height:1.6; padding:13px 0 13px 0;
+    border-top:1px dashed var(--line); display:flex; gap:14px; align-items:baseline;
+  }
+  ul.plain li:last-child{border-bottom:1px dashed var(--line)}
+  ul.plain .mk{flex:0 0 auto; font-family:var(--mono); font-weight:800; font-size:.85em;
+    border:1.5px solid currentColor; padding:2px 7px}
+  ul.plain .mk.y{color:var(--bend)}
+  ul.plain .mk.n{color:var(--mute)}
+
+  .end{text-align:center; padding-bottom:clamp(80px,14vh,150px)}
+  .end .final{
+    font-weight:900; font-size:clamp(26px,5vw,52px); line-height:1.2;
+    letter-spacing:-.03em; max-width:22em; margin:0 auto;
+  }
+  .reveal{opacity:0; transform:translateY(20px); transition:opacity .5s ease, transform .5s ease}
+  .reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+<main>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <span class="tag">非线性 / NONLINEARITY</span>
+  <h1>线性只会按比例<br><em>非线性会看情况</em></h1>
+  <p class="lead">「非线性让网络能学复杂的东西」—— 这句话你已经听过了。<br>这一页不讲它有什么用，只讲<span class="bend">为什么</span>。</p>
+
+  <div class="tldr">
+    <h3>三十秒版</h3>
+    <p><b>线性</b>的全部本事：给每个输入乘一个固定的数，然后加起来。就这样。</p>
+    <p>于是它有三个绕不过去的毛病：</p>
+    <ol>
+      <li>叠一百层，还是等于一层</li>
+      <li>永远只能「一刀切」</li>
+      <li>不会<span class="bend">看情况</span> —— 它在任何地方都用同一个规则</li>
+    </ol>
+    <p>往中间塞一个最小号的 <code>if</code>（比如 <code>max(0, x)</code>），这三条同时解除。<br>这就是非线性。</p>
+  </div>
+</section>
+
+<!-- ============ 01 ============ -->
+<section class="reveal">
+  <div class="step">01 · 先把「线性」这个词讲清楚</div>
+  <h2>线性不是「看起来是直线」，<br>是两条可以当场验的规矩</h2>
+
+  <p>大部分人对线性的印象是「画出来是直的」。这个印象没错，但它是结果，不是定义。定义是这两条：</p>
+
+  <div class="rule"><span class="n">1</span><span class="t"><b>输入翻倍，输出就翻倍。</b>翻三倍就翻三倍，减半就减半。</span></div>
+  <div class="rule"><span class="n">2</span><span class="t"><b>分开算再加起来，等于合起来算。</b>两个人的行李分别称重再相加，和放一起称，一样重。</span></div>
+
+  <p class="mute">这两条同时满足 = 线性。少满足一条 = 非线性。真的就这么简单，没有别的门槛。</p>
+
+  <p style="margin-top:30px">下面是一个每个月都会出现在你生活里的对比。左边那种收费满足这两条，右边那种不满足：</p>
+
+  <div class="demo">
+    <div class="hd">实验台 A · 翻倍检验</div>
+    <div class="knobs">
+      <div class="knob">
+        <label>这个月用电 <em id="kwhLabel">150</em> 度</label>
+        <input type="range" id="kwh" min="20" max="250" step="10" value="150">
+      </div>
+    </div>
+
+    <svg id="billChart" viewBox="0 0 640 330" role="img"
+         aria-label="两种电费方案的对比曲线：单一价格是一条直线，阶梯价格是一条带折点的折线"></svg>
+
+    <div class="readout" id="billOut"></div>
+    <div class="verdict" id="billVerdict"></div>
+    <p class="cap">阶梯价这里用的是示意数字（0.5 元/度，超过 200 度的部分 0.8 元）；真实档位各地不同。</p>
+  </div>
+
+  <p style="margin-top:30px">注意右边那条线的形状：<b class="bend">两段直线，中间一个折点</b>。它已经是非线性了 —— 非线性不需要是什么优美的曲线，<b>一个折点就够</b>。</p>
+  <p>顺手记住这个形状，因为 <code>ReLU</code> 长得跟它一模一样。你在阶梯电费单上见过的东西，就是神经网络里最常用的那个非线性。</p>
+</section>
+
+<!-- ============ 02 ============ -->
+<section class="reveal">
+  <div class="step">02 · 世界本来就不成比例</div>
+  <h2>线性是特例，<br>非线性才是常态</h2>
+
+  <p>我们先学线性，只是因为它好算。但真实世界里「翻倍就翻倍」几乎不成立：</p>
+
+  <div class="cols3">
+    <div class="tile">
+      <div class="k">阈值</div>
+      <div class="h">99°C → 100°C</div>
+      <p>前面每一度都只是「更热一点」。最后这一度，水直接换了形态。同样多的输入，效果完全不同。</p>
+    </div>
+    <div class="tile">
+      <div class="k">饱和 / 反转</div>
+      <div class="h">1 杯咖啡 → 6 杯</div>
+      <p>第一杯让你清醒。第六杯不会让你清醒六倍，它让你手抖。效果不但不成比例，还会反向。</p>
+    </div>
+    <div class="tile">
+      <div class="k">相互作用</div>
+      <div class="h">盐好吃，糖好吃</div>
+      <p>各自加一点都好吃。同时猛加两样，难吃。<b>1 + 1 在这里等于 0</b> —— 第 2 条规矩直接破了。</p>
+    </div>
+  </div>
+
+  <p>最后那个例子最要紧，先把它记住：<b class="bend">「A 单独出现好，B 单独出现好，A 和 B 一起出现反而糟」—— 这种事线性永远表达不了。</b></p>
+  <p class="mute">因为线性只会给 A 打一个固定的分、给 B 打一个固定的分，然后相加。既然两个分都是正的，加起来必然更高。它在结构上就没有地方安放「一起出现时反而糟」这句话。第 5 节你会亲手撞上这堵墙。</p>
+</section>
+
+<!-- ============ 03 ============ -->
+<section class="reveal">
+  <div class="step">03 · 软肋到底在哪</div>
+  <h2>线性不会<br>「看情况」</h2>
+
+  <p>把线性的毛病压缩成一句话，就是这句。展开讲：</p>
+
+  <div class="card">
+    <p style="margin:0"><b>线性函数的斜率处处相同。</b>在 <span class="m">x = 0</span> 附近多给一个单位，和在 <span class="m">x = 1000</span> 附近多给一个单位，效果一模一样。它不知道自己现在身处何地。</p>
+  </div>
+
+  <p>而「看情况」是一切有意思的判断的核心：</p>
+  <ul class="plain">
+    <li><span class="mk y">情况</span><span>下第 1 勺盐 vs 下第 20 勺盐 —— 同一个动作，一次是改善，一次是毁掉</span></li>
+    <li><span class="mk y">情况</span><span>「便宜」对买菜是好话，对手术刀是坏话 —— 同一个词，符号相反</span></li>
+    <li><span class="mk y">情况</span><span>只有当「河」出现过，「bank」才是河岸 —— B 重不重要，取决于 A 在不在</span></li>
+  </ul>
+
+  <p>这些句子都有一个共同的骨架：<b>如果……那么……否则……</b>。而线性层里没有 <code>if</code>，一个都没有 —— 它只有乘法和加法。</p>
+
+  <p style="margin-top:30px">ReLU 就是把 <code>if</code> 补进去的最小零件。它常被写成 <span class="m">max(0, x)</span>，但更该这样读：</p>
+
+<pre><span class="c"># ReLU 的真身：一个 if，两个分支</span>
+<span class="k">def</span> relu(x):
+    <span class="k">if</span> x &gt; 0:
+        <span class="k">return</span> x        <span class="c"># 情况一：原样放过</span>
+    <span class="k">else</span>:
+        <span class="k">return</span> 0        <span class="c"># 情况二：关掉</span>
+</pre>
+
+  <p>就是这么个东西。<b class="bend">一个神经元 = 一个 if</b>。一层里有几千个神经元，就是几千个「如果……」同时在判断当前输入落在哪种情况里；层与层叠起来，就是「如果……的话，再看是不是……」。</p>
+  <p class="mute">你熟悉的程序之所以能干活，靠的就是 if 和分支。线性网络是一个没有 if 的程序 —— 它只能算一个加权总分。非线性做的事，是把 if 还给它。</p>
+</section>
+
+<!-- ============ 04 ============ -->
+<section class="reveal">
+  <div class="step">04 · 「一百层等于一层」的看图版</div>
+  <h2>线性变换只会做<br>四件事</h2>
+
+  <p>你已经见过代数版的解释：<span class="m">W₂(W₁x) = (W₂W₁)x = Wx</span>，两个矩阵乘起来还是一个矩阵。它是对的，但它没告诉你这在<b>形状</b>上意味着什么。所以换个看法。</p>
+
+  <p>把输入空间想成一张方格纸。一个线性层能对这张纸做的，只有四件事：<b>拉、压、转、翻</b>。做完之后，纸有四个性质是雷打不动的：</p>
+
+  <div class="cols">
+    <div class="tile"><div class="k">性质 1</div><div class="h">直线还是直线</div><p>纸上任何一条直线，变换后仍然是直线。永远不会弯。</p></div>
+    <div class="tile"><div class="k">性质 2</div><div class="h">平行还是平行</div><p>原来平行的两条线，之后仍然平行、仍然等距。</p></div>
+    <div class="tile"><div class="k">性质 3</div><div class="h">原点不动</div><p>零进去，零出来。</p></div>
+    <div class="tile"><div class="k">性质 4</div><div class="h">格子处处一样</div><p>整张纸被同一个规则均匀地拉伸，没有哪个角落是特殊的。</p></div>
+  </div>
+
+  <p><b class="bend">第 4 条就是「不会看情况」的几何版。</b>变换之后的空间，每个角落长得都一样 —— 你没办法让左上角遵守一套规则、右下角遵守另一套。</p>
+
+  <p class="mute">（真实的线性层还带一个 bias，<span class="m">Wx + b</span>，严格说该叫「仿射」。它只影响第 3 条 —— 原点会被挪走。第 1、2、4 条一字不变，所以该合并的照样合并：<span class="m">W₂(W₁x + b₁) + b₂ = W₂W₁x + 常数</span>。加不加 bias，都画不出弯的东西。）</p>
+
+  <p style="margin-top:26px">自己拨一下。前两个按钮是纯线性的，第三个在中间插了一次 ReLU：</p>
+
+  <div class="demo">
+    <div class="hd">实验台 B · 方格纸</div>
+    <div class="btnrow" style="margin-bottom:20px">
+      <button class="btn on" data-grid="0">原始方格纸</button>
+      <button class="btn" data-grid="1">过 1 个线性层</button>
+      <button class="btn" data-grid="2">过 2 个线性层</button>
+      <button class="btn" data-grid="3">2 个线性层，中间加 ⚡</button>
+    </div>
+
+    <svg id="gridSvg" viewBox="0 0 640 420" role="img"
+         aria-label="方格纸在线性变换下始终保持笔直、平行、均匀；加入 ReLU 后出现折痕并有区域被压平"></svg>
+
+    <div class="verdict" id="gridVerdict"></div>
+  </div>
+
+  <p style="margin-top:30px">对比第二个和第三个按钮：<b>过两个线性层的结果，跟直接过一个矩阵完全一样</b> —— 格子还是笔直、平行、均匀。这就是「一百层等于一层」在图上的样子：你反复拉压转翻一张方格纸，得到的还是一张方格纸。</p>
+
+  <p>而加了 ⚡ 之后，图上出现了两件线性变换<b class="bend">永远做不到</b>的事：</p>
+  <div class="rule"><span class="n">1</span><span class="t"><b class="bend">出现了折痕。</b>纸不再处处一样了 —— 折痕两侧是两套不同的规则。空间从此有了「地形」，而有地形才谈得上「看情况」。</span></div>
+  <div class="rule"><span class="n">2</span><span class="t"><b class="bend">有区域被压平了</b>，整整一块被压成了一个点。这意味着不同的输入可以走向同一个结果 —— 信息被主动丢掉了。线性变换（除了退化情况）是可逆的，它舍不得扔任何东西；而「忽略无关的部分」恰恰是一切识别、归类、抽象的前提。</span></div>
+</section>
+
+<!-- ============ 05 ============ -->
+<section class="reveal">
+  <div class="step">05 · 亲手撞一次墙</div>
+  <h2>盐和糖：<br>一刀切不开的题</h2>
+
+  <p>回到第 2 节那道菜。把它画成一张图：横轴是加不加盐，纵轴是加不加糖。</p>
+  <ul class="plain">
+    <li><span class="mk n">蓝</span><span>都不加 → 能吃；两样都猛加 → 难吃到另一个极端。<span class="mute">（这两堆算同一类：「口味失衡」）</span></span></li>
+    <li><span class="mk y">红</span><span>只加盐 → 好吃；只加糖 → 好吃。<span class="mute">（这两堆是另一类：「好吃」）</span></span></li>
+  </ul>
+  <p>好吃的两堆在<b>对角线上</b>。现在请你用一条直线，把红的和蓝的分开。</p>
+
+  <p class="mute">下面这台机器有两个可调的「刀」，⚡ 开关控制刀切完之后要不要先各自过一次 ReLU。先别开 ⚡，随便怎么拖，看能到多少分：</p>
+
+  <div class="demo">
+    <div class="hd">实验台 C · 两把刀</div>
+    <div class="knobs">
+      <div class="knob">
+        <label>第一把刀的位置 <em id="b1Label">0.00</em></label>
+        <input type="range" id="b1" min="-0.4" max="1.8" step="0.05" value="0">
+      </div>
+      <div class="knob">
+        <label>第二把刀的位置 <em id="b2Label">1.00</em></label>
+        <input type="range" id="b2" min="-0.4" max="1.8" step="0.05" value="1">
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="xorAct">
+        <span class="track"></span>
+        <span>⚡ ReLU</span>
+      </label>
+      <button class="btn" id="xorAuto">摆回好位置</button>
+    </div>
+
+    <canvas id="xorCv" width="640" height="440" aria-label="二维平面上的四堆点与当前决策边界"></canvas>
+    <div class="verdict" id="xorVerdict"></div>
+  </div>
+
+  <p style="margin-top:30px"><b>关 ⚡ 时，天花板是 75%。</b>不是你没拖到位 —— 是拖不到。四堆点里必然有一堆站在错误的一侧。</p>
+
+  <p style="margin-top:26px">关键在于<b class="bend">为什么明明有两把刀，却只切出了一刀</b>：</p>
+
+  <div class="card">
+    <p class="big">(s − b₁) − 2(s − b₂) = −s + <span class="bend">常数</span></p>
+    <p class="mute" style="margin:6px 0 0; text-align:center">两把刀的分数直接相加，合并成了一把刀。</p>
+  </div>
+
+  <p>这就是 <span class="m">W₂W₁ = W</span> 在这张图上的长相。<b>不是刀不够多，是没有 ReLU 时，刀会自动互相合并。</b>你加再多把刀、堆再多层，它们全都塌成同一条直线。</p>
+
+  <p style="margin-top:26px">现在打开 ⚡。同样两把刀、同样的位置滑块，只多了一次 <span class="m">max(0, ·)</span>：<b class="ok">100%</b>。</p>
+  <p>为什么这次没合并？因为 ReLU 把每把刀「不该管的那半边」按平成了 0。第一把刀只在自己右边有话说，第二把刀只在自己右边有话说 —— 两个人管的地盘不再完全重合，相加就不会互相抵消了。于是两把刀真的成了两把，夹出一条<b class="bend">带</b>，把中间那类圈了出来。</p>
+  <p class="mute">「用一条带把中间圈出来」这件事，一条直线做不到；两条直线只要能各管一段，就做到了。ReLU 提供的就是「各管一段」。</p>
+</section>
+
+<!-- ============ 06 ============ -->
+<section class="reveal">
+  <div class="step">06 · 深度为什么划算</div>
+  <h2>ReLU 干的事，<br>其实是折纸</h2>
+
+  <p>到这里「为什么需要非线性」已经答完了。但还有半个问题：<b>为什么要很多层非线性？</b></p>
+  <p>小时候玩过的那个手工就是答案：一张纸对折几次，剪<b>一刀</b>，展开来是一排口子。</p>
+
+  <div class="demo">
+    <div class="hd">实验台 D · 折纸</div>
+    <div class="knobs">
+      <div class="knob">
+        <label>对折 <em id="foldLabel">2</em> 次（= 网络的层数）</label>
+        <input type="range" id="fold" min="0" max="5" step="1" value="2">
+      </div>
+    </div>
+
+    <svg id="foldSvg" viewBox="0 0 640 200" role="img"
+         aria-label="折叠后的纸叠、一刀剪下，以及展开后得到的多个口子"></svg>
+    <svg id="sawSvg" viewBox="0 0 640 230" role="img"
+         aria-label="每多一层折叠，函数图像的直线段数量翻倍"></svg>
+
+    <div class="readout" id="foldOut"></div>
+    <div class="verdict" id="foldVerdict"></div>
+  </div>
+
+  <p style="margin-top:30px">每加一层，纸就多对折一次，之前所有的折痕跟着<b class="bend">翻一倍</b>。这就是为什么深比宽划算：</p>
+  <div class="cols">
+    <div class="tile"><div class="k">摊成一层</div><div class="h">加法</div><p>N 个神经元最多给你 N+1 段。想要更细的形状，只能一个一个往里塞。</p></div>
+    <div class="tile"><div class="k">摞成深层</div><div class="h">乘法</div><p>每层 2 个神经元、共 n 层，能折出 2<sup>n</sup> 段。层数进指数。</p></div>
+  </div>
+  <p class="mute">这不是比喻，是有严格构造的：Montúfar 等人 2014 年数过 ReLU 网络能切出的线性区域数量，Telgarsky 2016 年用的正是这个反复折叠的锯齿函数，证明浅网络要达到同样的表达力，宽度必须指数级增长。前提仍然是那个 ⚡ —— 没有它，折不起来，一百层还是一层。</p>
+</section>
+
+<!-- ============ 07 ============ -->
+<section class="reveal">
+  <div class="step">07 · 回到语言</div>
+  <h2>语言里几乎<br>全是「看情况」</h2>
+
+  <p>假设有个只会线性的模型来判断一句话是好评还是差评。它能做的事只有一件：给每个词一个固定的分，加起来，看总分过不过线。</p>
+
+  <div class="card">
+    <p style="margin:0 0 12px"><b>「这电影不好看」</b></p>
+    <p class="mute" style="margin:0">线性模型：<span class="m">「好看」+3</span>，<span class="m">「不」−1</span>，总分 <span class="m">+2</span> → 判成好评。</p>
+    <p style="margin:12px 0 0">但「不」做的事不是<b>减一点分</b>，是<b class="bend">把后面整句翻过来</b>。翻转是乘 −1，而乘多少取决于后面跟着什么 —— 这是输入和输入相乘，线性做不到（线性只允许输入乘<b>固定的权重</b>）。</p>
+  </div>
+
+  <ul class="plain">
+    <li><span class="mk y">看情况</span><span>「他这演技真是绝了」—— 褒还是贬，取决于上文。同样的词，相反的分。</span></li>
+    <li><span class="mk y">看情况</span><span>「苹果」是水果还是公司，看旁边有没有「股价」。</span></li>
+    <li><span class="mk y">看情况</span><span>「你行你上」—— 逐词打分算出来的意思，和整句的意思毫无关系。</span></li>
+  </ul>
+
+  <p>一个只会「每个词打固定分再相加」的模型，天花板就是词袋模型：它知道句子里出现了哪些词，永远不知道这些词<b>凑在一起</b>是什么意思。而语言的意思几乎全在「凑在一起」里。</p>
+  <p class="mute">所以非线性对语言模型不是一个可选的性能优化，是入场券。</p>
+</section>
+
+<!-- ============ 08 ============ -->
+<section class="reveal">
+  <div class="step">08 · 都藏在哪</div>
+  <h2>Transformer 里的<br>非线性清单</h2>
+
+  <p>常见的误解是「非线性只在激活函数里」。其实一个 block 里有好几处，也有好几处是纯线性的 —— 分清楚它们，很多设计上的选择就顺了：</p>
+
+  <ul class="plain">
+    <li><span class="mk y">非线性</span><span><b>MLP 里的激活</b>（ReLU / GELU / SwiGLU）—— 最标准、最显眼的那一个。</span></li>
+    <li><span class="mk y">非线性</span><span><b>attention 权重</b>。它算的是 Q 和 K 的乘积 —— <b class="bend">输入乘输入</b>，不是输入乘固定权重。再过一次 softmax（带指数和除法）。attention 之所以强，很大一部分就是这个「谁重要由内容当场决定」的非线性。</span></li>
+    <li><span class="mk y">非线性</span><span><b>归一化</b>（LayerNorm / RMSNorm）。除以的是<b>输入自己</b>算出来的均方根 —— 输入翻倍，输出不变。第 1 条规矩当场就破了。</span></li>
+    <li><span class="mk n">线性</span><span><b>残差的那个加号</b>。它解决的是信号能不能传到深层，跟表达能力无关 —— 别把它算成非线性来源。</span></li>
+    <li><span class="mk n">线性</span><span><b>Q / K / V 投影、MLP 的两个大矩阵、最后的输出层</b>。这些都是矩阵乘法，本身一点非线性都不提供。</span></li>
+  </ul>
+
+  <p>顺着这份清单看第 4 节那句话就更清楚了：模型里绝大部分参数在做线性的事，<b>非线性只负责在中间插入「折痕」</b>。分量很小，但去掉它，剩下那几千亿参数会一起塌成一个矩阵。</p>
+</section>
+
+<!-- ============ 09 ============ -->
+<section class="reveal">
+  <div class="step">09 · 三个常见误解</div>
+  <h2>非线性 ≠ 复杂</h2>
+
+  <div class="card">
+    <h3>误解一：非线性意味着复杂的公式</h3>
+    <p style="margin:0"><span class="m">max(0, x)</span> 比乘法还简单：两段直线拼一下，一个分支判断。它是整个深度学习里最廉价的零件之一，却是那个不可或缺的。</p>
+  </div>
+
+  <div class="card">
+    <h3>误解二：非线性就是「弯曲」</h3>
+    <p style="margin:0">ReLU 身上一处弯都没有，全是直的。真正起作用的是<b class="bend">分段</b> —— 不同区域用不同规则。至于最后画出来的曲线，是几千个折点拼出来的效果，不是单个函数自己弯的。</p>
+  </div>
+
+  <div class="card">
+    <h3>误解三：那用 x² 或 sin 岂不是更「非线性」</h3>
+    <p style="margin:0 0 12px">「非线性程度」不是越高越好，能不能训得动才是。<span class="m">x²</span> 的输出随输入平方增长，几十层叠下来数值直接爆掉；<span class="m">sin</span> 到处周期振荡，同一个输出对应无数个输入，优化器无从下手。</p>
+    <p style="margin:0">实用的激活函数几乎都长成同一副样子：<b>负的关掉（或者压小），正的原样放过</b> —— 一个门。GELU、SiLU、SwiGLU 都能写成 <span class="m">x × 一个 0~1 的门</span>。要的从来不是「弯」，是<b class="bend">开关</b>。</p>
+  </div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section class="reveal end">
+  <div class="step" style="text-align:left">10 · 一句话</div>
+  <p class="final">线性只会按固定比例打分、相加；<br><span class="bend">非线性让它学会说「看情况」。</span></p>
+  <p class="mute" style="max-width:30em; margin:34px auto 0; text-align:left">
+    再回头看 MLP 那三步 —— 摊开、掰弯、压回。摊开和压回是两个矩阵，它们负责提供参数和容量；中间那一下「掰弯」不提供任何容量，它只做一件事：<b>让前后两个矩阵没法合并</b>。<br><br>
+    没有它，那两个矩阵就是同一个矩阵，一百层就是一层，几千亿参数只够画一条直线。
+  </p>
+</section>
+
+</main>
+
+<script>
+/* ==================== 通用工具 ==================== */
+const SVGNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, text){
+  const n = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) n.setAttribute(k, attrs[k]);
+  if(text != null) n.textContent = text;
+  return n;
+}
+const FONT = '-apple-system, PingFang SC, system-ui, sans-serif';
+const C = {
+  ink:'#171A1F', mute:'#77796F', line:'#D8DAD0',
+  str:'#2A5FC9', bend:'#DC5533', ok:'#1C8A5B', white:'#FCFCFA'
+};
+
+/* ==================== A · 电费翻倍检验 ==================== */
+(function(){
+  const svg = document.getElementById('billChart');
+  const slider = document.getElementById('kwh');
+  const label = document.getElementById('kwhLabel');
+  const out = document.getElementById('billOut');
+  const verdict = document.getElementById('billVerdict');
+
+  const FLAT = 0.5, STEP_AT = 200, STEP_RATE = 0.8;
+  const flat = x => FLAT * x;
+  const tier = x => x <= STEP_AT ? FLAT * x : FLAT * STEP_AT + STEP_RATE * (x - STEP_AT);
+
+  const X0 = 76, X1 = 604, Y0 = 268, Y1 = 30;
+  const XMAX = 500, YMAX = 350;
+  const px = x => X0 + (x / XMAX) * (X1 - X0);
+  const py = y => Y0 + (y / YMAX) * (Y1 - Y0);
+
+  function draw(x){
+    svg.textContent = '';
+
+    // 网格 + 轴
+    for(let v = 0; v <= YMAX; v += 50){
+      svg.appendChild(el('line', {x1:X0, y1:py(v), x2:X1, y2:py(v),
+        stroke:C.line, 'stroke-width':1}));
+    }
+    svg.appendChild(el('line', {x1:X0, y1:Y0, x2:X1, y2:Y0, stroke:C.ink, 'stroke-width':2}));
+    svg.appendChild(el('line', {x1:X0, y1:Y0, x2:X0, y2:Y1, stroke:C.ink, 'stroke-width':2}));
+    svg.appendChild(el('text', {x:X1, y:Y0+26, 'text-anchor':'end', 'font-family':FONT,
+      'font-size':14, fill:C.mute}, '用电量（度）→'));
+    svg.appendChild(el('text', {x:X0-8, y:Y1+6, 'text-anchor':'end', 'font-family':FONT,
+      'font-size':14, fill:C.mute}, '元'));
+
+    // 两条线
+    const lin = `${px(0)},${py(flat(0))} ${px(XMAX)},${py(flat(XMAX))}`;
+    const tie = `${px(0)},${py(tier(0))} ${px(STEP_AT)},${py(tier(STEP_AT))} ${px(XMAX)},${py(tier(XMAX))}`;
+    svg.appendChild(el('polyline', {points:lin, fill:'none', stroke:C.str, 'stroke-width':4}));
+    svg.appendChild(el('polyline', {points:tie, fill:'none', stroke:C.bend, 'stroke-width':4}));
+
+    // 折点
+    svg.appendChild(el('circle', {cx:px(STEP_AT), cy:py(tier(STEP_AT)), r:6,
+      fill:C.white, stroke:C.bend, 'stroke-width':3}));
+    svg.appendChild(el('text', {x:px(STEP_AT)+12, y:py(tier(STEP_AT))+30, 'font-family':FONT,
+      'font-size':14, 'font-weight':800, fill:C.bend}, '折点'));
+
+    // 当前位置 + 翻倍位置
+    [[x, 1], [Math.min(x*2, XMAX), 0.62]].forEach(([xv, op], i) => {
+      svg.appendChild(el('line', {x1:px(xv), y1:Y0, x2:px(xv), y2:Y1,
+        stroke:C.ink, 'stroke-width':1.5, 'stroke-dasharray':'4 5', opacity:op}));
+      svg.appendChild(el('circle', {cx:px(xv), cy:py(flat(xv)), r:5.5, fill:C.str, opacity:op}));
+      svg.appendChild(el('circle', {cx:px(xv), cy:py(tier(xv)), r:5.5, fill:C.bend, opacity:op}));
+      svg.appendChild(el('text', {x:px(xv), y:Y0+20, 'text-anchor':'middle', 'font-family':FONT,
+        'font-size':13, 'font-weight':800, fill:C.ink, opacity:op},
+        i === 0 ? xv + '度' : (xv + '度（翻倍）')));
+    });
+
+    // 图例
+    svg.appendChild(el('text', {x:X0+14, y:Y1+22, 'font-family':FONT, 'font-size':15,
+      'font-weight':800, fill:C.str}, '单一价 0.5 元/度'));
+    svg.appendChild(el('text', {x:X0+14, y:Y1+44, 'font-family':FONT, 'font-size':15,
+      'font-weight':800, fill:C.bend}, '阶梯价（超 200 度涨到 0.8）'));
+  }
+
+  const yuan = v => v.toFixed(0) + ' 元';
+
+  function render(){
+    const x = +slider.value;
+    label.textContent = x;
+    draw(x);
+
+    const rows = [
+      ['', '单一价（线性）', '阶梯价'],
+      [`用 ${x} 度要交`, yuan(flat(x)), yuan(tier(x))],
+      ['翻倍用 ' + (x*2) + ' 度要交', yuan(flat(x*2)), yuan(tier(x*2))],
+      ['账单也翻倍的话应该是', yuan(2*flat(x)), yuan(2*tier(x))]
+    ];
+    let html = '';
+    rows.forEach((r, i) => {
+      const cls = i === 0 ? 'hh' : '';
+      html += `<span class="lbl ${cls}">${r[0]}</span>`
+            + `<span class="${cls || 'v'}" style="color:${i===0?'':C.str}">${r[1]}</span>`
+            + `<span class="${cls || 'v'}" style="color:${i===0?'':C.bend}">${r[2]}</span>`;
+    });
+    const linOk = Math.abs(flat(x*2) - 2*flat(x)) < 1e-9;
+    const tieOk = Math.abs(tier(x*2) - 2*tier(x)) < 1e-9;
+    html += `<span class="lbl">翻倍就翻倍？</span>`
+          + `<span class="v ${linOk?'yes':'no'}">${linOk?'✓ 一模一样':'✗ 不相等'}</span>`
+          + `<span class="v ${tieOk?'yes':'no'}">${tieOk?'✓ 一模一样':'✗ 多出 '+yuan(tier(x*2)-2*tier(x))}</span>`;
+    out.innerHTML = html;
+
+    if(tieOk){
+      verdict.className = 'verdict';
+      verdict.innerHTML = '用得少的时候，阶梯价还没跨过折点 —— <b>在折点以内，它跟线性没区别</b>。把滑块往右拖，跨过 100 度看看。';
+    }else{
+      verdict.className = 'verdict bad';
+      verdict.innerHTML = `翻倍用电，账单多涨了 <b>${yuan(tier(x*2)-2*tier(x))}</b>。`
+        + `右边这条线破了第 1 条规矩 —— <b class="bend">它是非线性的</b>，全靠中间那一个折点。`;
+    }
+  }
+  slider.addEventListener('input', render);
+  render();
+})();
+
+/* ==================== B · 方格纸 ==================== */
+(function(){
+  const svg = document.getElementById('gridSvg');
+  const verdict = document.getElementById('gridVerdict');
+  const btns = [...document.querySelectorAll('[data-grid]')];
+
+  const CX = 320, CY = 210, S = 68;   // 每单位 68px
+  const rot = d => { const r = d*Math.PI/180, c = Math.cos(r), s = Math.sin(r);
+                     return [c, -s, s, c]; };
+  const scl = (a, b) => [a, 0, 0, b];
+  const mul = (A, B) => [A[0]*B[0]+A[1]*B[2], A[0]*B[1]+A[1]*B[3],
+                         A[2]*B[0]+A[3]*B[2], A[2]*B[1]+A[3]*B[3]];
+  const app = (M, p) => [M[0]*p[0]+M[1]*p[1], M[2]*p[0]+M[3]*p[1]];
+  const inv = M => { const d = M[0]*M[3] - M[1]*M[2];
+                     return [M[3]/d, -M[1]/d, -M[2]/d, M[0]/d]; };
+
+  const M1 = mul(rot(32), scl(1.35, 0.62));
+  const M2 = mul(rot(-58), scl(0.92, 1.30));
+  const M21 = mul(M2, M1);
+  const B1 = [0.9, 0.8], B2 = [-1.3, -1.2];   // 两层各自的 bias（真实网络里也有）
+
+  const pipes = {
+    0: p => p,
+    1: p => app(M1, p),
+    2: p => app(M2, app(M1, p)),
+    3: p => {
+      const q = app(M1, p);
+      return app(M2, [Math.max(0, q[0] + B1[0]) + B2[0],
+                      Math.max(0, q[1] + B1[1]) + B2[1]]);
+    }
+  };
+  // 这两个点落在「会被 ReLU 压掉」的那一块里 —— 只有 mode 3 会让它们重合
+  const TWINS = [[-1.2, -0.4], [-2.0, -1.8]];
+
+  const LO = -2.2, HI = 2.2, STEPS = 60;
+  const ticks = [];
+  for(let v = -2; v <= 2.001; v += 0.5) ticks.push(+v.toFixed(2));
+
+  function line(fn, fixed, axis){
+    // axis 'h': y 固定; 'v': x 固定
+    const pts = [];
+    for(let i = 0; i <= STEPS; i++){
+      const t = LO + (HI - LO) * i / STEPS;
+      const p = axis === 'h' ? [t, fixed] : [fixed, t];
+      const q = fn(p);
+      pts.push((CX + q[0]*S).toFixed(1) + ',' + (CY - q[1]*S).toFixed(1));
+    }
+    return pts.join(' ');
+  }
+
+  // 折痕：ReLU 的分界线（第 k 个分量刚好被压到 0 的那条线）在输出空间里的样子
+  const IM1 = inv(M1);
+  function crease(k){
+    const pts = [];
+    for(let i = 0; i <= STEPS; i++){
+      const t = -6 + 12 * i / STEPS;
+      const p = app(IM1, k === 0 ? [-B1[0], t] : [t, -B1[1]]);
+      if(Math.abs(p[0]) > HI || Math.abs(p[1]) > HI){ if(pts.length) break; else continue; }
+      const q = pipes[3](p);
+      pts.push((CX + q[0]*S).toFixed(1) + ',' + (CY - q[1]*S).toFixed(1));
+    }
+    return pts.join(' ');
+  }
+
+  function draw(mode){
+    const fn = pipes[mode];
+    svg.textContent = '';
+
+    const clip = el('clipPath', {id:'gclip'});
+    clip.appendChild(el('rect', {x:2, y:2, width:636, height:416}));
+    svg.appendChild(clip);
+    svg.appendChild(el('rect', {x:2, y:2, width:636, height:416, fill:C.white}));
+
+    const g = el('g', {'clip-path':'url(#gclip)'});
+    // 细格
+    ticks.forEach(v => {
+      const strong = Math.abs(v) < 1e-9;
+      if(strong) return;
+      ['h','v'].forEach(ax => {
+        g.appendChild(el('polyline', {points:line(fn, v, ax), fill:'none',
+          stroke:'#C2C5B9', 'stroke-width':1.8}));
+      });
+    });
+    // 折痕
+    if(mode === 3){
+      [0, 1].forEach(k => {
+        g.appendChild(el('polyline', {points:crease(k), fill:'none', stroke:C.ink,
+          'stroke-width':2.5, 'stroke-dasharray':'7 5'}));
+      });
+      g.appendChild(el('text', {x:18, y:28, 'font-family':FONT, 'font-size':14,
+        'font-weight':800, fill:C.ink}, '- - - 折痕（ReLU 的分界线）'));
+    }
+    // 两根轴（高亮，方便看有没有被掰弯）
+    g.appendChild(el('polyline', {points:line(fn, 0, 'h'), fill:'none',
+      stroke:C.str, 'stroke-width':4}));
+    g.appendChild(el('polyline', {points:line(fn, 0, 'v'), fill:'none',
+      stroke:C.bend, 'stroke-width':4}));
+    // 两个标记点：看它们会不会被压到一起
+    const t = TWINS.map(p => { const q = fn(p); return [CX + q[0]*S, CY - q[1]*S]; });
+    const merged = Math.hypot(t[0][0]-t[1][0], t[0][1]-t[1][1]) < 4;
+    t.forEach((q, i) => {
+      g.appendChild(el('circle', {cx:q[0], cy:q[1], r:9, fill:'#EDE4FA',
+        stroke:'#7A54C8', 'stroke-width':3}));
+      if(!merged)
+        g.appendChild(el('text', {x:q[0], y:q[1]+5, 'text-anchor':'middle',
+          'font-family':FONT, 'font-size':13, 'font-weight':900, fill:'#7A54C8'}, 'AB'[i]));
+    });
+    if(merged){
+      g.appendChild(el('text', {x:t[0][0], y:t[0][1]+5, 'text-anchor':'middle',
+        'font-family':FONT, 'font-size':12, 'font-weight':900, fill:'#7A54C8'}, 'A=B'));
+      g.appendChild(el('text', {x:t[0][0] + 16, y:t[0][1] - 34, 'font-family':FONT,
+        'font-size':14, 'font-weight':800, fill:'#7A54C8'}, 'A 和 B 被压到了同一个点'));
+    }
+    svg.appendChild(g);
+    svg.appendChild(el('rect', {x:2, y:2, width:636, height:416, fill:'none',
+      stroke:C.line, 'stroke-width':1}));
+  }
+
+  const fmt = M => M.map(v => (v >= 0 ? ' ' : '') + v.toFixed(2)).join('  ');
+  const TXT = {
+    0: '还没动过。横轴（<b>蓝</b>）、竖轴（<b class="bend">红</b>）和所有格子都是笔直、平行、均匀的。A、B 是两个不同的输入。',
+    1: '被拉、压、转了一下。<b>线还是直的，平行还是平行，格子还是处处一样大</b> —— 只是整张纸换了个姿势。A 和 B 还是两个点。',
+    3: '⚡ 一进来，两件事同时发生：<b class="bend">出现了折痕</b>（折痕两侧是两套规则，格子不再处处一样），而且<b class="bend">一整块被压平了</b> —— A 和 B 这两个不同的输入，从此变成同一个点。线性变换永远做不出这两样。'
+  };
+
+  function render(mode){
+    draw(mode);
+    if(mode === 2){
+      verdict.className = 'verdict';
+      verdict.innerHTML = '又过了一层，结果<b>跟只过一层没有本质区别</b>：还是一张笔直、平行、均匀的方格纸。'
+        + '<br><span class="m" style="font-size:.85em; color:' + C.mute + '">W₂W₁ = [' + fmt(M21) + ' ]　—— 这四个数一步到位，中间那层白干了</span>';
+    }else{
+      verdict.className = mode === 3 ? 'verdict good' : 'verdict';
+      verdict.innerHTML = TXT[mode];
+    }
+    btns.forEach(b => b.classList.toggle('on', +b.dataset.grid === mode));
+  }
+  btns.forEach(b => b.addEventListener('click', () => render(+b.dataset.grid)));
+  render(0);
+})();
+
+/* ==================== C · 两把刀 (XOR) ==================== */
+(function(){
+  const cv = document.getElementById('xorCv');
+  const ctx = cv.getContext('2d');
+  const s1 = document.getElementById('b1'), s2 = document.getElementById('b2');
+  const l1 = document.getElementById('b1Label'), l2 = document.getElementById('b2Label');
+  const act = document.getElementById('xorAct');
+  const auto = document.getElementById('xorAuto');
+  const verdict = document.getElementById('xorVerdict');
+
+  // 视觉坐标：数据 x,y ∈ [-0.35, 1.35]
+  const W = cv.width, H = cv.height, PAD = 34;
+  const LO = -0.35, HI = 1.35;
+  const sx = x => PAD + (x - LO) / (HI - LO) * (W - 2*PAD);
+  const sy = y => H - PAD - (y - LO) / (HI - LO) * (H - 2*PAD);
+  const ix = X => LO + (X - PAD) / (W - 2*PAD) * (HI - LO);
+  const iy = Y => LO + (H - PAD - Y) / (H - 2*PAD) * (HI - LO);
+
+  // 四堆点：对角同类。cls 0 = 口味失衡(蓝)，cls 1 = 好吃(红)
+  let seed = 20240817;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const gauss = () => (rnd() + rnd() + rnd() + rnd() - 2) * 0.9;
+  const pts = [];
+  [[0,0,0],[1,1,0],[0,1,1],[1,0,1]].forEach(([cx, cy, cls]) => {
+    for(let i = 0; i < 13; i++)
+      pts.push({x: cx + gauss()*0.085, y: cy + gauss()*0.085, cls});
+  });
+
+  const TAU = 0.5;
+  function score(x, y, b1, b2, useRelu){
+    const s = x + y;
+    const f = useRelu ? (v => Math.max(0, v)) : (v => v);
+    return f(s - b1) - 2 * f(s - b2);
+  }
+  const predict = (x, y, b1, b2, r) => score(x, y, b1, b2, r) > TAU ? 1 : 0;
+
+  function render(){
+    const b1 = +s1.value, b2 = +s2.value, r = act.checked;
+    l1.textContent = b1.toFixed(2);
+    l2.textContent = b2.toFixed(2);
+
+    // 决策区域
+    const B = 5;
+    for(let X = PAD; X < W - PAD; X += B){
+      for(let Y = PAD; Y < H - PAD; Y += B){
+        const p = predict(ix(X + B/2), iy(Y + B/2), b1, b2, r);
+        ctx.fillStyle = p === 1 ? '#FBE6DE' : '#E1E9FA';
+        ctx.fillRect(X, Y, B, B);
+      }
+    }
+    ctx.fillStyle = C.white;
+    ctx.fillRect(0, 0, W, PAD); ctx.fillRect(0, H-PAD, W, PAD);
+    ctx.fillRect(0, 0, PAD, H); ctx.fillRect(W-PAD, 0, PAD, H);
+
+    // 两把刀（s = x + y = b 是 45° 线）
+    ctx.setLineDash([7, 6]);
+    ctx.lineWidth = 2;
+    [[b1, '刀 1'], [b2, '刀 2']].forEach(([b, name], i) => {
+      // 线段端点：x + y = b，在可视框内
+      const xs = [], ys = [];
+      for(const x of [LO, HI]){ const y = b - x; if(y >= LO && y <= HI){ xs.push(x); ys.push(y); } }
+      for(const y of [LO, HI]){ const x = b - y; if(x >= LO && x <= HI){ xs.push(x); ys.push(y); } }
+      if(xs.length < 2) return;
+      ctx.strokeStyle = i === 0 ? '#171A1F' : '#77796F';
+      ctx.beginPath();
+      ctx.moveTo(sx(xs[0]), sy(ys[0]));
+      ctx.lineTo(sx(xs[1]), sy(ys[1]));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = '700 13px ' + FONT;
+      ctx.fillStyle = i === 0 ? '#171A1F' : '#77796F';
+      ctx.fillText(name, sx(xs[1]) + 6, sy(ys[1]) - 6);
+      ctx.setLineDash([7, 6]);
+    });
+    ctx.setLineDash([]);
+
+    // 点
+    let right = 0;
+    pts.forEach(p => {
+      const ok = predict(p.x, p.y, b1, b2, r) === p.cls;
+      if(ok) right++;
+      ctx.beginPath();
+      ctx.arc(sx(p.x), sy(p.y), 7, 0, 6.2832);
+      ctx.fillStyle = p.cls === 1 ? C.bend : C.str;
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = ok ? C.white : '#171A1F';
+      ctx.stroke();
+      if(!ok){
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = '#171A1F';
+        ctx.beginPath();
+        ctx.moveTo(sx(p.x)-11, sy(p.y)-11); ctx.lineTo(sx(p.x)+11, sy(p.y)+11);
+        ctx.moveTo(sx(p.x)+11, sy(p.y)-11); ctx.lineTo(sx(p.x)-11, sy(p.y)+11);
+        ctx.stroke();
+      }
+    });
+
+    // 轴标注
+    ctx.font = '700 14px ' + FONT;
+    ctx.fillStyle = C.mute;
+    ctx.fillText('加盐 →', W - PAD - 66, H - PAD + 22);
+    ctx.save();
+    ctx.translate(PAD - 12, PAD + 62);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText('加糖 →', 0, 0);
+    ctx.restore();
+    ctx.font = '800 13px ' + FONT;
+    ctx.fillStyle = C.bend;
+    ctx.fillText('红 = 好吃', PAD + 8, PAD + 20);
+    ctx.fillStyle = C.str;
+    ctx.fillText('蓝 = 口味失衡', PAD + 8, PAD + 40);
+
+    const acc = Math.round(right / pts.length * 100);
+    if(!r){
+      verdict.className = 'verdict bad';
+      verdict.innerHTML = `准确率 <span class="stat" style="font-size:1.5em">${acc}%</span>　`
+        + `<span style="font-weight:700">两把刀相加又变回一把 —— 边界永远只有一条直线。`
+        + `<b class="bend">怎么拖都到不了 75% 以上</b>，试试。</span>`;
+    }else if(acc >= 98){
+      verdict.className = 'verdict good';
+      verdict.innerHTML = `准确率 <span class="stat" style="font-size:1.5em">${acc}%</span>　`
+        + `<span style="font-weight:700">两把刀夹出一条<b class="ok">带</b>，中间那类被圈了出来。`
+        + `参数一个没多，只多了一次 <span class="m">max(0, ·)</span>。</span>`;
+    }else{
+      verdict.className = 'verdict';
+      verdict.innerHTML = `准确率 <span class="stat" style="font-size:1.5em">${acc}%</span>　`
+        + `<span style="font-weight:700">⚡ 已经开了，边界能弯了 —— 现在去调两把刀的位置：`
+        + `让刀 1 落在左下那堆<b>之后</b>、刀 2 落在中间两堆<b>之后</b>。（或者直接按「一键摆正」）</span>`;
+    }
+  }
+  [s1, s2, act].forEach(n => n.addEventListener('input', render));
+  auto.addEventListener('click', () => {
+    s1.value = 0; s2.value = 1; act.checked = true; render();
+  });
+  render();
+})();
+
+/* ==================== D · 折纸 ==================== */
+(function(){
+  const paper = document.getElementById('foldSvg');
+  const saw = document.getElementById('sawSvg');
+  const slider = document.getElementById('fold');
+  const label = document.getElementById('foldLabel');
+  const out = document.getElementById('foldOut');
+  const verdict = document.getElementById('foldVerdict');
+
+  // 三角映射 g(x) = 1 - |2x - 1|，复合 n 次 → 2^n 段
+  const g = x => 1 - Math.abs(2*x - 1);
+  function comp(x, n){ let v = x; for(let i = 0; i < n; i++) v = g(v); return v; }
+
+  function drawPaper(n){
+    paper.textContent = '';
+    const cuts = 1 << n;
+    const X0 = 40, X1 = 600, YT = 30, HGT = 46;
+
+    // 左：折好的纸叠（n+1 层）+ 一刀
+    const stackW = 120, sx0 = X0, sy0 = YT + 8;
+    for(let i = n; i >= 0; i--){
+      paper.appendChild(el('rect', {x:sx0 + i*3, y:sy0 + i*3, width:stackW, height:HGT,
+        fill:i === 0 ? C.white : '#EDEFE7', stroke:C.ink, 'stroke-width':1.6}));
+    }
+    const cutX = sx0 + stackW*0.55;
+    paper.appendChild(el('line', {x1:cutX, y1:sy0 - 12, x2:cutX, y2:sy0 + HGT + n*3 + 12,
+      stroke:C.bend, 'stroke-width':3.5}));
+    paper.appendChild(el('text', {x:cutX + 8, y:sy0 - 16, 'font-family':FONT, 'font-size':15,
+      'font-weight':800, fill:C.bend}, '✂ 只剪一刀'));
+    paper.appendChild(el('text', {x:sx0, y:sy0 + HGT + n*3 + 34, 'font-family':FONT,
+      'font-size':14, fill:C.mute}, `对折 ${n} 次 → 叠了 ${cuts} 层`));
+
+    // 箭头
+    paper.appendChild(el('text', {x:sx0 + stackW + 46, y:sy0 + HGT/2 + 6, 'font-family':FONT,
+      'font-size':22, 'font-weight':900, fill:C.ink}, '展开'));
+    paper.appendChild(el('text', {x:sx0 + stackW + 52, y:sy0 + HGT/2 + 30, 'font-family':FONT,
+      'font-size':22, 'font-weight':900, fill:C.ink}, '→'));
+
+    // 右：展开后的长条 + 2^n 个口子
+    const rx0 = sx0 + stackW + 120, rw = X1 - rx0;
+    paper.appendChild(el('rect', {x:rx0, y:sy0, width:rw, height:HGT,
+      fill:C.white, stroke:C.ink, 'stroke-width':1.6}));
+    for(let k = 0; k < cuts; k++){
+      const cx = rx0 + rw * (k + 0.5) / cuts;
+      paper.appendChild(el('line', {x1:cx, y1:sy0 + 4, x2:cx, y2:sy0 + HGT - 4,
+        stroke:C.bend, 'stroke-width':3}));
+    }
+    paper.appendChild(el('text', {x:rx0, y:sy0 + HGT + 34, 'font-family':FONT,
+      'font-size':14, fill:C.mute}, `一刀下去，展开后是 ${cuts} 道口子`));
+  }
+
+  function drawSaw(n){
+    saw.textContent = '';
+    const X0 = 76, X1 = 604, YB = 186, YT = 26;
+    const px = t => X0 + t * (X1 - X0);
+    const py = v => YB - v * (YB - YT);
+
+    saw.appendChild(el('line', {x1:X0, y1:YB, x2:X1, y2:YB, stroke:C.ink, 'stroke-width':2}));
+    saw.appendChild(el('line', {x1:X0, y1:YB, x2:X0, y2:YT, stroke:C.ink, 'stroke-width':2}));
+
+    const segs = 1 << n;
+    const pts = [];
+    for(let k = 0; k <= segs; k++){
+      const t = k / segs;
+      pts.push(px(t).toFixed(1) + ',' + py(comp(t, n)).toFixed(1));
+    }
+    saw.appendChild(el('polyline', {points:pts.join(' '), fill:'none', stroke:C.bend,
+      'stroke-width':3.5, 'stroke-linejoin':'round'}));
+    for(let k = 0; k <= segs; k++){
+      const t = k / segs;
+      saw.appendChild(el('circle', {cx:px(t), cy:py(comp(t, n)), r:3.2, fill:C.bend}));
+    }
+    saw.appendChild(el('text', {x:X0 + 10, y:YT - 4, 'font-family':FONT, 'font-size':14,
+      'font-weight':800, fill:C.mute}, `折 ${n} 次之后，这个网络能画出来的形状：${segs} 段直线`));
+    saw.appendChild(el('text', {x:X1, y:YB + 24, 'text-anchor':'end', 'font-family':FONT,
+      'font-size':13, fill:C.mute}, '输入 →'));
+  }
+
+  function render(){
+    const n = +slider.value;
+    label.textContent = n;
+    drawPaper(n);
+    drawSaw(n);
+
+    const deep = 1 << n;
+    const neurons = 2 * n;
+    const wide = neurons + 1;
+    out.innerHTML =
+        `<span class="lbl hh">对比</span><span class="hh">摞成 ${n} 层（每层 2 个神经元）</span><span class="hh">同样 ${neurons} 个神经元摊成 1 层</span>`
+      + `<span class="lbl">能画出的直线段数</span>`
+      + `<span class="v" style="color:${C.bend}">${deep} 段</span>`
+      + `<span class="v" style="color:${C.mute}">最多 ${wide} 段</span>`;
+
+    if(n === 0){
+      verdict.className = 'verdict';
+      verdict.innerHTML = '一次都不折：一刀就是一刀，函数就是一条直线。<b>这就是没有 ⚡ 的网络的全部本事</b>，跟有多少层无关。';
+    }else{
+      verdict.className = 'verdict good';
+      verdict.innerHTML = `每多折一次，口子数<b class="bend">翻一倍</b>：${n} 层 → <b>${deep}</b> 段。`
+        + `而同样多的神经元摊成一层只能给你 ${wide} 段 —— <b>深度进的是指数，宽度进的是加法</b>。`;
+    }
+  }
+  slider.addEventListener('input', render);
+  render();
+})();
+
+/* ==================== 滚动出现 ==================== */
+const io = new IntersectionObserver(es => {
+  es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+}, {threshold:0.06});
+document.querySelectorAll('.reveal').forEach(n => io.observe(n));
+</script>
+</body>
+</html>
