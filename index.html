@@ -77,7 +77,7 @@ h3 em{font-style:normal; color:var(--acc)}
 <div class="hero">
   <span class="kicker">ML PRIMER · 索引</span>
   <h1>AI / ML 基础<br><em>图解合集</em></h1>
-  <p class="sub">每页一个概念，一路读到底。<br>下面的顺序就是推荐的读法：先基础概念，再架构，最后训练。</p>
+  <p class="sub">每页一个概念，一路读到底。<br>下面的顺序就是推荐的读法：先基础概念，再架构，然后训练，最后是多卡。</p>
 </div>
 
 <!-- 1 · 基础概念 -->
@@ -161,8 +161,8 @@ h3 em{font-style:normal; color:var(--acc)}
 
 <!-- 3 · 训练 -->
 <section class="group reveal" style="--acc:var(--pur)">
-  <div class="ghead"><span class="gnum"></span><h2>最后是训练</h2></div>
-  <p class="glede">给已经懂推理的人补上训练侧。顺序大致是从小往大：先掰开最基本的计数单位，再看训练一圈是怎么转的、那些名词分别落在模型的哪一段人生里，然后是最常用的微调方法和多卡怎么分工，最后落到「这活儿到底要几张卡、跑多久」。</p>
+  <div class="ghead"><span class="gnum"></span><h2>然后是训练</h2></div>
+  <p class="glede">给已经懂推理的人补上训练侧。顺序大致是从小往大：先掰开最基本的计数单位，再看训练一圈是怎么转的、那些名词分别落在模型的哪一段人生里，最后是最常用的微调方法。</p>
 
   <div class="grid">
     <a class="card" href="epoch-step-batch.html" data-sections="4">
@@ -193,10 +193,26 @@ h3 em{font-style:normal; color:var(--acc)}
       <div class="meta"></div>
     </a>
 
+  </div>
+</section>
+
+<!-- 4 · 多卡 -->
+<section class="group reveal" style="--acc:var(--ok)">
+  <div class="ghead"><span class="gnum"></span><h2>最后是多卡</h2></div>
+  <p class="glede">这一组是系统层，不是模型层 —— 一张卡装不下、算不完的时候，卡怎么分工、卡之间怎么说话、这活儿到底要几张卡。它不只属于训练：张量并行推理时照样每层通信。顺序是「怎么切 → 怎么通信 → 怎么估」。</p>
+
+  <div class="grid">
     <a class="card" href="data-parallel.html" data-sections="14">
       <div class="chips"><span class="chip">数据并行 / DP</span><span class="chip live">可交互 · 卡数滑块</span></div>
       <h3>模型复制 N 份<br>数据<em>切成 N 份</em></h3>
       <p class="d">名字里的「数据」就是<b>被切开</b>的那个东西 —— 复制的从来是模型。一步只有一个同步点（all-reduce 平均梯度），<b>DP 一个字节显存都不省</b>；推理侧没有梯度，它就退化成多副本 + 负载均衡。</p>
+      <div class="meta"></div>
+    </a>
+
+    <a class="card" href="collectives.html" data-sections="11">
+      <div class="chips"><span class="chip">集合通信 / Collectives</span><span class="chip live">可交互 · 8 个动作实验台</span></div>
+      <h3>八个名字<br>其实是<em>拼出来的</em></h3>
+      <p class="d">broadcast / scatter / gather / reduce / all-gather / reduce-scatter / all-to-all —— 四个词根加一个 <b>All- 前缀（结果人人有一份）</b>，拼一下就知道它在搬什么。all-reduce 是全家唯一走两趟的（= reduce-scatter + all-gather），所以每卡通信量是别人的 2 倍；<b>all-to-all 根本不做算术，它是把 4×4 的表转置</b> —— MoE 的 token 路由靠它。含 ring 分步演示：为什么加卡不加通信量。</p>
       <div class="meta"></div>
     </a>
 
