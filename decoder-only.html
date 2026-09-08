@@ -235,15 +235,15 @@
 <header>
   <div class="wrap">
     <div class="kicker">Decoder-only</div>
-    <h1>为什么现在的 LLM<br>清一色是 <em>decoder-only</em></h1>
-    <p class="sub">2018 年还有三条路在跑。到现在，<b>你能叫得出名字的生成式大模型基本只剩一种架构</b>。<br>不是审美收敛 —— 是一堆约束把路收窄了。而所有约束都能追到同一张图上。</p>
+    <h1>为什么主流生成式 LLM<br>大多是 <em>decoder-only</em></h1>
+    <p class="sub">2018 年还有三类架构在竞争。现在，<b>主流生成式大模型基本都采用 decoder-only</b>。<br>原因可以从训练信号、缓存、扩展方式和数据形态几方面解释，而这些差别都与 attention mask 有关。</p>
 
     <div class="heromask">
       <div class="hm a"><div class="g" id="hm-a"></div><div class="t">双向</div><div class="n">BERT 一路</div></div>
       <div class="hm b"><div class="g" id="hm-b"></div><div class="t">前缀双向</div><div class="n">T5 / UL2 一路</div></div>
-      <div class="hm c2"><div class="g" id="hm-c"></div><div class="t">因果</div><div class="n">GPT 一路 · 赢了</div></div>
+      <div class="hm c2"><div class="g" id="hm-c"></div><div class="t">因果</div><div class="n">GPT 一路 · 成为主流</div></div>
     </div>
-    <p class="sub" style="margin-top:26px;font-size:15.5px">↑ 这三张格子图叫 <b>attention mask</b>：谁能看见谁。<br>整篇文章都只是在讲：<b>右边这个三角形，为什么把另外两个赢了。</b></p>
+    <p class="sub" style="margin-top:26px;font-size:15.5px">↑ 这三张格子图叫 <b>attention mask</b>：谁能看见谁。<br>下面用这三种 mask 解释因果架构为什么成为生成式大模型的主流。</p>
   </div>
 </header>
 
@@ -252,10 +252,10 @@
     <div class="top">五个理由 · 先看结论</div>
     <ol>
       <li><div><strong>每个 token 都是一道题。</strong><span class="why"> 同一段文本，因果 mask 能出 7 道题，双向只能出 1 道 —— 同样的算力，训练信号差 6 倍多。</span></div></li>
-      <li><div><strong>所有任务都能写成「接着写」。</strong><span class="why"> 翻译、分类、摘要、多轮对话，全塌进同一个格式，不用给每个任务定「哪一半是输入」。</span></div></li>
-      <li><div><strong>算过的永远不用再算。</strong><span class="why"> 因果 mask 保证前面的 token 不会因为后面来了新词而改变 —— 这就是 KV cache 成立的唯一前提。</span></div></li>
+      <li><div><strong>所有任务都能写成「接着写」。</strong><span class="why"> 翻译、分类、摘要、多轮对话可以统一成同一种格式，不用给每个任务单独划分输入和输出。</span></div></li>
+      <li><div><strong>已经计算的表示可以复用。</strong><span class="why"> 因果 mask 保证前面的 token 不会因为后面来了新词而改变，这是 KV cache 成立的前提。</span></div></li>
       <li><div><strong>一种零件，堆 N 层。</strong><span class="why"> 没有 cross-attention、没有 encoder/decoder 参数分配问题。越简单的东西越好往上堆、越好切到几千张卡上。</span></div></li>
-      <li><div><strong>网上的数据本来就是一条流。</strong><span class="why"> 不是 (输入, 输出) 对。「猜下一个词」直接吃原始语料，零加工。</span></div></li>
+      <li><div><strong>网上的数据本来就是一条流。</strong><span class="why"> 网页、书和代码通常是连续文本，不需要先整理成 (输入, 输出) 对。</span></div></li>
     </ol>
   </div>
 </div>
@@ -296,7 +296,7 @@
     <div class="note">
       <span class="tag">名字很误导，先纠正一下</span>
       「decoder-only」<b>不是「只有解码器」</b>。原论文的 decoder 块有三个子层：因果自注意力 + <b>cross-attention</b>（看 encoder 的输出）+ FFN。而 decoder-only 模型<b>把 cross-attention 删了</b> —— 剩下的两个子层（自注意力 + FFN）跟 encoder 块<b>结构完全一样</b>。<br><br>
-      所以 encoder-only 和 decoder-only 的真实差别，只剩<b>一件事</b>：自注意力那一步允不允许往后看。<b>整个架构之争，就是一张 mask 之争。</b>
+      encoder-only 和 decoder-only 的主要结构差别，是自注意力能否看到后续 token。这个差别由 attention mask 决定。
     </div>
   </div>
 </section>
@@ -305,7 +305,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">02</span>一切都从<em>这张 mask</em> 开始</h2>
-    <p class="lead">下面这句话切成 8 个 token。方格图的意思：<b>第 i 行 = 第 i 个 token 在算自己的表示时，能看见哪些 token</b>。点上面的按钮换 mask，右边所有结论会跟着变 —— 那三条结论就是后面三节的全部内容。</p>
+    <p class="lead">下面这句话切成 8 个 token。方格图的意思是：<b>第 i 行 = 第 i 个 token 在算自己的表示时，能看见哪些 token</b>。切换上面的 mask，右边会显示训练信号、任务形式和缓存能力的变化。</p>
 
     <div class="stage">
       <div class="segs" id="mask-segs">
@@ -377,7 +377,7 @@
     <div class="note">
       <span class="tag">公平起见</span>
       完形填空的每道题<b>质量更高</b> —— 它能同时用上左右两边的上下文，比只能往前看信息更足。这是真的优势。<br><br>
-      但 <b>6.6 倍不是「每题更好」能补回来的</b>。当你要烧的是几万张卡、几万亿 token，「同样一遍前向能不能榨出 6 倍的题」就成了压倒性的因素。规模越大，这一条越致命。
+      即使每道题的信息更完整，<b>6.6 倍的训练信号差距仍然很大</b>。在几万张卡、几万亿 token 的训练规模下，同一次前向能产生多少训练目标，会显著影响总计算成本。
     </div>
   </div>
 </section>
@@ -386,7 +386,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">04</span>理由二 · 所有任务都能写成<em>「接着写」</em></h2>
-    <p class="lead">encoder-decoder 要求你<b>先回答一个问题：哪一半是输入，哪一半是输出？</b>decoder-only 不问 —— 全部拼成一条流，让它接着写。选一个任务看看差别。</p>
+    <p class="lead">encoder-decoder 需要明确区分输入和输出；decoder-only 把两部分拼成一条 token 流，统一按续写处理。选一个任务看看差别。</p>
 
     <div class="stage">
       <div class="segs" id="task-segs">
@@ -407,15 +407,15 @@
         <div class="panel win">
           <div class="ph">Decoder-only · 一条流</div>
           <div class="strip" id="p-strip"></div>
-          <div class="pnote">墙没了。灰色是喂进去的，<b style="color:var(--dec)">橙色是它自己往下写的</b> —— 而模型内部完全不区分这两段，它只是在一直「猜下一个」。</div>
+          <div class="pnote">灰色是输入，<b style="color:var(--dec)">橙色是模型生成的部分</b>。在模型内部，两段都属于同一条 token 流，目标始终是预测下一个 token。</div>
         </div>
       </div>
     </div>
 
     <div class="note">
-      <span class="tag">这条解锁了一件更大的事</span>
+      <span class="tag">这也支持 in-context learning</span>
       既然任务只是「换一段前文」，那<b>换任务就不用动参数了</b> —— 直接在 prompt 里写清要求、塞几个例子。这就是 in-context learning / few-shot prompting，GPT-3（2020，175B 参数）把它变成了主流用法。<br><br>
-      而 encoder-decoder 的那道墙在多轮对话里<b>根本划不出来</b>：第 3 轮的时候，前两轮的「模型输出」到底算输入还是输出？decoder-only 不用回答这个问题 —— 全是同一条流上的 token。
+      多轮对话也很难长期固定输入和输出的边界：到第 3 轮时，前两轮的模型输出已经成为新一轮输入。decoder-only 直接把整段历史当作同一条 token 流。
     </div>
   </div>
 </section>
@@ -423,8 +423,8 @@
 <!-- ======================= 05 ======================= -->
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">05</span>理由三 · 算过的<em>永远不用再算</em></h2>
-    <p class="lead">因果 mask 有一个白送的性质：<b>第 i 个 token 的表示，永远不会受到 i 之后任何东西的影响。</b>所以它算一次就永久有效，可以存起来 —— 这就是 KV cache。双向没有这个性质：来了新词，前面所有表示全变，只能全部重算。</p>
+    <h2 class="h2"><span class="num">05</span>理由三 · 已计算的表示<em>可以复用</em></h2>
+    <p class="lead">因果 mask 保证<b>第 i 个 token 的表示不受后续 token 影响</b>，因此可以把 K/V 保存到 KV cache。双向注意力加入新 token 后会改变前面位置的表示，需要重新计算。</p>
 
     <div class="stage">
       <div class="segs">
@@ -460,9 +460,9 @@
     </div>
 
     <div class="note">
-      <span class="tag">诚实一点：这条不是打 encoder-decoder 的</span>
-      encoder-decoder 的 decoder <b>也是因果的</b>，它照样能用 KV cache，cross-attention 的 K/V 也能缓存。这条真正打死的是<b>「让 prompt 部分双向可见」这个念头</b>（encoder-only，以及 prefix-LM 的前缀那一段）。<br><br>
-      decoder-only 额外多赚的是 <b>prefix 复用</b>：system prompt、前几轮对话，因为跟生成部分在同一条因果流里，可以整段缓存下来，下一轮直接往后接。encoder-decoder 那边输入一改，双向的 encoder 就得整个重跑。
+      <span class="tag">适用范围</span>
+      encoder-decoder 的 decoder <b>也是因果的</b>，同样能用 KV cache，cross-attention 的 K/V 也能缓存。这里受影响的是<b>让 prompt 部分双向可见</b>的结构，例如 encoder-only 和 prefix-LM 的前缀部分。<br><br>
+      decoder-only 还支持 <b>prefix 复用</b>：system prompt 和前几轮对话与生成部分处在同一条因果流里，可以整段缓存，下一轮直接继续。encoder-decoder 的输入一旦改变，双向 encoder 通常需要重新计算。
     </div>
   </div>
 </section>
@@ -471,7 +471,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">06</span>理由四 · 一种零件，堆 N 层</h2>
-    <p class="lead">这条听起来很虚，但在「几千张卡跑几个月」这个尺度上，它是最实在的一条。</p>
+    <p class="lead">在几千张卡、持续数月的训练规模下，结构是否规则会直接影响并行切分和 kernel 优化。</p>
 
     <div class="stackwrap">
       <div class="stack">
@@ -514,8 +514,8 @@
     </div>
 
     <div class="note">
-      <span class="tag">复利效应</span>
-      同构的层还带来一个滚雪球：<b>整个生态都能围着这一种块去优化</b>。FlashAttention、PagedAttention、各家推理引擎、量化方案、并行策略 —— 全都先支持纯因果 decoder。<b>后来者不是「效果差」输掉的，是「没人给它写 kernel」输掉的。</b>
+      <span class="tag">生态效应</span>
+      同构的层让<b>软硬件生态可以集中优化这一种块</b>。FlashAttention、PagedAttention、各家推理引擎、量化方案和并行策略，通常都会优先支持纯因果 decoder。其他架构即使效果不差，也可能因为 kernel 和推理工具支持不足而处于劣势。
     </div>
   </div>
 </section>
@@ -524,7 +524,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">07</span>理由五 · 网上的数据本来就是<em>一条流</em></h2>
-    <p class="lead">预训练语料是网页、书、代码。它<b>不是</b>成对的 (输入, 输出)。目标函数越贴近数据原本的形状，加工损耗就越小。</p>
+    <p class="lead">预训练语料主要来自网页、书和代码，通常以连续文本存在。目标函数越贴近这种数据形态，所需的预处理越少。</p>
 
     <div class="cmp">
       <div class="blk" style="--bc:var(--dec)">
@@ -545,8 +545,8 @@
 
     <div class="note">
       <span class="tag">这里有几个新旋钮</span>
-      「涂 15%」「平均长度 3」「用什么哨兵符号」—— 这些都是<b>人拍出来的超参</b>，是为了把一条流硬掰成「输入 / 输出」而发明的。它们全都可能拍错，而且都得靠实验去调。<br><br>
-      「猜下一个词」一个这样的旋钮都没有。<b>它不是一个更聪明的目标函数，它是一个不需要发明的目标函数。</b>
+      「涂 15%」「平均长度 3」「用什么哨兵符号」都是<b>需要人工设定的超参数</b>，用于把连续文本转换成输入和输出。它们都需要通过实验调整。<br><br>
+      「猜下一个词」不需要这些 corruption 超参数，训练目标直接来自原始 token 序列。
     </div>
   </div>
 </section>
@@ -554,8 +554,8 @@
 <!-- ======================= 08 ======================= -->
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">08</span>白送的礼物 · mask 自己就带着位置信息</h2>
-    <p class="lead">这条不是设计目标，是撞出来的副作用，但它很能说明因果结构有多「自然」。</p>
+    <h2 class="h2"><span class="num">08</span>因果 mask 带来的位置信号</h2>
+    <p class="lead">这不是最初的设计目标，但实验表明，因果可见性本身会提供一部分位置信息。</p>
 
     <div class="stage">
       <div class="cmp" style="margin-top:0">
@@ -583,21 +583,21 @@
 <!-- ======================= 09 ======================= -->
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">09</span>说点不那么爽的</h2>
-    <p class="lead">「decoder-only 更强」这句话，收窄到能站住脚的版本是：<b>在「预训练到极大、然后靠 prompt 使用」这条路线上，它更强。</b>换掉路线，结论就会翻。</p>
+    <h2 class="h2"><span class="num">09</span>结论的适用范围</h2>
+    <p class="lead">decoder-only 的优势主要出现在<b>大规模预训练后通过 prompt 使用</b>这条路线。训练方式和任务形态改变后，结果也可能改变。</p>
 
     <div class="qa">
       <span class="tag">同规模对照实验</span>
-      <h3>换成「多任务微调」，赢的就不是它了</h3>
+      <h3>多任务微调下，结果会改变</h3>
       <p>Wang 等（ICML 2022）做过一次干净的对照：三种架构 × 两种预训练目标，模型<b>超过 50 亿参数、训了超过 1700 亿 token</b>。结论是分岔的 ——</p>
       <p>纯无监督预训练之后比 zero-shot：<b>因果 decoder-only + 自回归目标最强</b>（跟现实一致）。<br>但加上<b>多任务微调</b>之后：<b>非因果可见性 + 掩码语言建模的组合反而最好。</b></p>
-      <p>所以 decoder-only 赢的不是「架构本身绝对更优」这场比赛，而是「谁最适合被无监督地喂到极大、然后靠 prompt 驱动」这场比赛。恰好这场比赛才是过去几年真正在跑的那场。</p>
+      <p>这说明 decoder-only 更适合大规模无监督预训练后通过 prompt 使用；它并不在所有训练设置下都占优。过去几年，主流生成式模型主要采用的正是前一种路线。</p>
       <p class="src">arXiv:2204.05832</p>
     </div>
 
     <div class="qa">
       <span class="tag">Encoder-only 没死</span>
-      <h3>它只是不再叫「LLM」了</h3>
+      <h3>它仍然广泛用于非生成任务</h3>
       <p>向量检索的 embedding 模型、重排序器、各种文本分类和内容审核 —— BERT 系的双向编码器在这些地方仍是主力，因为这些任务<b>要的就是「读懂整句」，不需要往下写</b>，双向看两边的优势可以完整吃到。</p>
       <p>「现在的 LLM 都是 decoder-only」这句话，主语其实是<b>生成式</b> LLM。</p>
     </div>
@@ -610,23 +610,23 @@
 
     <div class="qa">
       <span class="tag">混合体存在过</span>
-      <h3>prefix-LM 不是输在效果，是输在复杂度</h3>
+      <h3>prefix-LM 的工程复杂度更高</h3>
       <p>UL2、GLM 这类做法把前缀设为双向可见、后半段保持因果，想把两边的好处都拿到，效果也确实不差。但它多了一个「前缀边界在哪」的问题、多了一种 mask 形状、KV cache 和各种推理优化都要额外照顾。</p>
-      <p>而对面是一个<b>只有一种块、只有一种 mask、全世界的 kernel 都为它写好了</b>的方案。这不是一场公平的比较 —— 但工程上的胜负就是这么定的。</p>
+      <p>纯因果 decoder 只有一种块和一种 mask，现有 kernel 也普遍优先支持它。长期积累的工程支持进一步扩大了两者的部署成本差距。</p>
     </div>
   </div>
 
   <div class="wrap">
     <div class="final">
-      <div class="k">如果只记一句</div>
-      <p>decoder-only 赢的不是「更聪明」，<br>是<em>「更省、更简单、更好堆」</em>。</p>
-      <p class="s">往后看一眼就能作弊 → 所以必须涂掉答案 → 所以一遍前向只出得了 15% 的题 → 所以省不下算力；而且前面的表示会被后面改写 → 所以存不住缓存。<br><br>因果 mask 一刀切掉「往后看」，上面这一串问题全部消失。代价是每道题的上下文少了一半 —— 在足够大的规模面前，这个代价便宜得离谱。</p>
+      <div class="k">核心结论</div>
+      <p>decoder-only 更适合大规模生成模型，<br>因为它<em>训练信号密、结构规则、缓存简单</em>。</p>
+      <p class="s">允许往后看时，需要遮住一部分答案才能构造训练目标，一次前向产生 loss 的位置也会减少；同时，新 token 会改变前面位置的表示，缓存更难复用。<br><br>因果 mask 禁止访问未来 token，避开了这些问题。代价是每个训练位置只能使用左侧上下文，而大规模训练通常愿意接受这个取舍。</p>
     </div>
   </div>
 </section>
 
 <footer>
-  <div class="wrap">一张下三角形的 mask，撑起了现在几乎所有的生成式大模型。</div>
+  <div class="wrap">因果 mask 决定了 decoder-only 的训练方式、缓存能力和扩展路径。</div>
 </footer>
 
 <script>

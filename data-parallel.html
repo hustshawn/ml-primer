@@ -170,7 +170,7 @@ ol.k li{font-size:15px; margin-top:12px}
   <span class="kicker">DATA PARALLELISM · DP</span>
   <h1><span class="b">模型</span>复制 N 份<br><em>数据</em>切成 N 份</h1>
   <p class="sub">名字里的「数据」，指的就是<b>被切开的那个东西</b>。<br>
-  被复制的那个从来不是数据，是模型。</p>
+  数据被切分，模型则会完整复制到每张卡上。</p>
 
   <div class="herofig">
     <svg viewBox="0 0 820 300" role="img" aria-label="四张卡各放一整份模型，一个 batch 被切成四片分给它们">
@@ -245,13 +245,13 @@ ol.k li{font-size:15px; margin-top:12px}
 <!-- ================= 1 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">1</span><h2>直接回答：谁复制，谁切开</h2></div>
-  <p class="lede">这个问题问得很准 —— 它是「数据并行」这个词唯一真正需要搞清楚的地方。答案不是二选一，而是<b>两件事同时发生，但发生在不同的东西上</b>。</p>
+  <p class="lede">数据并行同时做两件事：<b>复制模型，切分数据</b>。两件事作用在不同的对象上。</p>
 
   <div class="grid2" style="margin-top:26px">
     <div class="panel" style="box-shadow:6px 6px 0 var(--mdl)">
       <h4><span class="dot" style="background:var(--mdl)"></span>模型 → 被<b>复制</b></h4>
-      <p>每张卡上都有<b>一整份</b>权重。不是一半，不是一层，是全部。四张卡就是四份一模一样的模型。</p>
-      <p>而且它们必须<b>始终保持一样</b> —— 这是 DP 唯一的硬约束，后面第 3 节讲它是怎么被维持的。</p>
+      <p>每张卡上都有<b>一整份</b>权重，也就是模型的全部权重。四张卡就是四份一模一样的模型。</p>
+      <p>这些副本必须<b>始终保持一样</b>。第 3 节会解释同步过程。</p>
       <span class="cost">代价：显存 × N（一份都没省）</span>
     </div>
     <div class="panel" style="box-shadow:6px 6px 0 var(--d1)">
@@ -279,7 +279,7 @@ global_batch = 8 × 8 × 4 = <u>256</u>   <i># 优化器每 256 条样本才走�
 <!-- ================= 2 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">2</span><h2>为什么数据「不能」复制</h2></div>
-  <p class="lede">最快的理解方式，是假装它真的被复制了，然后看会发生什么 —— 会发生一件很好笑的事。</p>
+  <p class="lede">假设每张卡都拿到同一份数据，结果会变成下面这样。</p>
 
   <div class="card">
     <svg viewBox="0 0 820 250" role="img" aria-label="假设四张卡拿到同一份数据，算出的梯度完全相同，平均之后毫无变化">
@@ -322,20 +322,20 @@ global_batch = 8 × 8 × 4 = <u>256</u>   <i># 优化器每 256 条样本才走�
   </div>
 
   <div class="card dark">
-    <div class="big">复制数据 = 把同一道题抄四遍，让四个人同时做。</div>
-    <p>四份答案完全相同，平均一下还是那个答案。<b>没有任何新信息进入模型</b> —— 这一步的成本变成 4 倍，效果一点没变。<br><br>
-    所以 DP 里数据<b>必须</b>切开。「每张卡看不同的数据」不是一个实现技巧，<b>它就是数据并行的定义</b>。切开数据，梯度才彼此不同；梯度彼此不同，平均起来才等于「看了 4 倍的数据」。</p>
+    <div class="big">如果数据也复制，每张卡会算出相同的梯度。</div>
+    <p>四份梯度完全相同，平均以后仍是原来的梯度。<b>没有新信息进入模型</b>，计算成本却变成 4 倍。<br><br>
+    因此 DP 必须让每张卡看到不同的数据。数据切开后，各卡得到不同的梯度；把它们平均，才等价于处理了更大的 batch。</p>
   </div>
 
   <p class="note" style="max-width:820px; margin-left:64px">
-    ⚠️ 唯一的例外是<b>抄错了</b>：如果你忘了给每个 rank 设不同的 data sampler（<span class="mono">DistributedSampler</span> 没设 / seed 没错开），就会真的落到上面这张图里 —— 训练能跑、loss 会降、没有任何报错，只是你的 8 张卡在做 1 张卡的事。这是分布式训练最经典的静默 bug。
+    ⚠️ 一个常见错误是给每个 rank 使用相同的 data sampler（<span class="mono">DistributedSampler</span> 没设 / seed 没错开）。训练仍能运行，loss 也会下降，但 8 张卡实际在重复 1 张卡的工作，而且不会报错。
   </p>
 </section>
 
 <!-- ================= 3 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">3</span><h2>一步里到底发生了什么</h2></div>
-  <p class="lede">DP 的一整步只有四个动作。前三个各卡各干各的，第四个是<b>唯一</b>一次全员碰面。</p>
+  <p class="lede">DP 的一整步有四个动作。前三个由各卡独立完成，第四个需要全员同步。</p>
 
   <div class="card">
     <svg viewBox="0 0 820 330" role="img" aria-label="数据并行一步的四个动作：切数据、各自前向反向、all-reduce 平均梯度、各自更新">
@@ -385,11 +385,11 @@ global_batch = 8 × 8 × 4 = <u>256</u>   <i># 优化器每 256 条样本才走�
     <div class="panel">
       <h4>它平均的是<b>梯度</b>，不是权重</h4>
       <p>常见误解是「各卡各自训，最后把权重平均一下」。那是另一个东西（叫 model averaging / local SGD），收敛性质完全不同。</p>
-      <p>DP 是<b>每一步都平均梯度</b>，所以权重从来没有分叉过 —— 不需要「合回来」，因为它们从头到尾都相等。</p>
+      <p>DP <b>每一步都平均梯度</b>，因此各卡的权重在每次更新后都保持相等，不需要在训练结束时再合并。</p>
     </div>
     <div class="panel">
       <h4>通信其实藏在反向里</h4>
-      <p>反向传播是从最后一层往前算的，所以<b>最后几层的梯度先算完</b>。PyTorch DDP 不等全部算完，而是把参数分成若干 bucket，<b>一个桶满了就立刻开始 all-reduce</b>。</p>
+      <p>反向传播从最后一层往前计算，因此<b>最后几层的梯度先完成</b>。PyTorch DDP 会把参数分成若干 bucket；一个 bucket 就绪后立即开始 all-reduce，同时继续计算前面各层的梯度。</p>
       <p>于是通信和计算重叠，第 3 步的大部分时间被藏在第 2 步里 —— 这也是 DDP 比老式 DataParallel 快得多的原因。</p>
     </div>
   </div>
@@ -425,7 +425,7 @@ global_batch = 8 × 8 × 4 = <u>256</u>   <i># 优化器每 256 条样本才走�
 <!-- ================= 4 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">4</span><h2>凭什么这样是对的</h2></div>
-  <p class="lede">DP 的全部合法性来自一行小学数学：<b>平均的梯度，就是平均 loss 的梯度</b>。所以「4 卡 × 每卡 8 条」和「1 卡 × 32 条」在数学上是同一件事。</p>
+  <p class="lede">DP 与单卡大 batch 等价，依据是<b>平均梯度等于平均 loss 的梯度</b>。所以「4 卡 × 每卡 8 条」和「1 卡 × 32 条」在数学上是同一件事。</p>
 
   <div class="card">
     <pre><i># loss 定义成 batch 内每条样本 loss 的平均值（几乎所有框架的默认）</i>
@@ -443,9 +443,8 @@ L(θ) = (1/32) · Σ<sub>i=1..32</sub> ℓ<sub>i</sub>(θ)
   </div>
 
   <div class="card dark">
-    <div class="big">DP 不是一种近似，是一个恒等式。</div>
-    <p>这一点很重要，因为它决定了你该怎么想 DP：<b>它不会改变训练结果</b>，只会改变你多快跑完。<br><br>
-    换句话说 —— <b>DP 唯一买到的东西是「同样的一步，更快走完」，以及「一步能吃下更多数据」</b>。它不改变优化轨迹（在第 5 节那几个例外之外），也不省显存（第 6 节）。</p>
+    <div class="big">在上述前提下，DP 与单卡大 batch 计算的是同一个梯度。</div>
+    <p>DP 可以缩短每一步的计算时间，也能让一步处理更多数据。除第 5 节列出的情况外，它不改变优化轨迹；同时，它也不会减少单卡上的模型状态显存。</p>
   </div>
 </section>
 
@@ -464,7 +463,7 @@ L(θ) = (1/32) · Σ<sub>i=1..32</sub> ℓ<sub>i</sub>(θ)
     <div class="panel" style="box-shadow:6px 6px 0 var(--ok)">
       <h4><span class="dot" style="background:var(--ok)"></span>LayerNorm / RMSNorm</h4>
       <p>它们只在<b>单条样本自己的特征维</b>上做归一化，压根不看 batch 里的别人。</p>
-      <p>所以 batch 怎么切都无所谓，恒等式完好。<b>这就是 Transformer 里这个坑基本消失了的原因</b> —— 不是大家变小心了，是换了 norm。</p>
+      <p>因此 batch 的切分方式不会影响统计量。Transformer 通常使用 LayerNorm 或 RMSNorm，也就避开了 BatchNorm 的这个问题。</p>
       <span class="cost">天然安全，不用管</span>
     </div>
     <div class="panel" style="box-shadow:6px 6px 0 var(--red)">
@@ -485,7 +484,7 @@ L(θ) = (1/32) · Σ<sub>i=1..32</sub> ℓ<sub>i</sub>(θ)
 <!-- ================= 6 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">6</span><h2>DP 不省显存 —— 自己拖着看</h2></div>
-  <p class="lede">这是关于 DP 最值钱的一句话。既然模型是<b>复制</b>的，那加卡对单卡显存的帮助就是：<b>零</b>。拖动下面的滑块，看着那根条一动不动。</p>
+  <p class="lede">模型在每张卡上完整复制，因此增加 DP 卡数不会降低单卡的模型状态显存。拖动下面的滑块可以看到这一点。</p>
 
   <div class="lab">
     <div class="labtitle">可交互 · 卡数 与 显存切分策略（模型：7B，Adam，bf16 混合精度）</div>
@@ -534,9 +533,9 @@ L(θ) = (1/32) · Σ<sub>i=1..32</sub> ℓ<sub>i</sub>(θ)
   </div>
 
   <div class="card dark">
-    <div class="big">DP 买吞吐，ZeRO 买显存。这是两笔不同的交易。</div>
-    <p>「我加了 8 张卡，为什么还是 OOM？」—— 因为你加的是 DP。<b>DP 从来不是为了装下更大的模型</b>，它是为了让同样的模型一步吃下 8 倍的数据。<br><br>
-    要装下更大的模型，你需要的是<b>切模型</b>：ZeRO/FSDP（切状态）、TP（切矩阵）、PP（切层）。</p>
+    <div class="big">DP 提升吞吐；ZeRO、TP 和 PP 用来分摊显存。</div>
+    <p>增加 8 张 DP 卡后仍然 OOM，是因为每张卡依旧保存完整的模型状态。DP 让同一个模型在一步里处理更多数据。<br><br>
+    如果单卡放不下模型，需要切分模型或模型状态：ZeRO/FSDP 切状态，TP 切矩阵，PP 切层。</p>
   </div>
 </section>
 
@@ -601,7 +600,7 @@ L(θ) = (1/32) · Σ<sub>i=1..32</sub> ℓ<sub>i</sub>(θ)
 
       <rect x="14" y="256" width="776" height="38" rx="10" fill="#E8F1FA" stroke="#2E6FB7" stroke-width="3"/>
       <text x="402" y="280" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">
-        四行的「数据怎么切」完全一样 —— 所以 ZeRO / FSDP 属于 DP 家族，不是模型并行。
+        四行的「数据怎么切」完全一样，因此 ZeRO / FSDP 仍属于 DP 家族。
       </text>
     </svg>
   </div>
@@ -725,7 +724,7 @@ for step, batch in enumerate(loader):
       <p>这就是训练集群里网络是一等公民的原因：机内 NVLink（数百 GB/s）、机间 InfiniBand / EFA。<b>把 DP 组拉到普通以太网上，通信立刻变成瓶颈。</b></p>
     </div>
     <div class="panel">
-      <h4>真正的杀手是「最慢那张卡」</h4>
+      <h4>每一步的速度由最慢那张卡决定</h4>
       <p>all-reduce 是<b>集合操作</b>：所有卡都到齐才算完。所以每一步的耗时 = <b>最慢那张卡的耗时</b>。</p>
       <p>一张降频的卡、一条坏网线、一个 rank 上数据加载慢了 —— <b>整个集群一起等它</b>。规模越大，遇到一个慢节点的概率越高，这是大规模训练最主要的工程痛点。</p>
       <span class="cost">DP 组越大，越怕长尾</span>
@@ -735,8 +734,8 @@ for step, batch in enumerate(loader):
 
 <!-- ================= 10 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">10</span><h2>DP 的真上限：batch 大到没用</h2></div>
-  <p class="lede">DP 的天花板不是通信打不过，而是一件更根本的事：<b>加卡 = 加 global batch，而 batch 大到一定程度就不再换来更快的收敛</b>。</p>
+  <div class="head"><span class="num">10</span><h2>DP 的扩展上限：critical batch size</h2></div>
+  <p class="lede">增加 DP 卡数会增大 global batch。batch 超过 critical batch size 后，继续加卡通常不再缩短收敛所需的步数。</p>
 
   <div class="card">
     <h4>第一步：batch 变了，学习率必须跟着变</h4>
@@ -768,8 +767,8 @@ for step, batch in enumerate(loader):
   </div>
 
   <div class="card dark">
-    <div class="big">所以超大规模训练必须叠 TP / PP，不是因为通信，是因为 DP 加不下去了。</div>
-    <p>当 DP 度数已经把 global batch 顶到临界点，你手上还有几千张卡闲着 —— <b>唯一的出路是让这些卡去切模型而不是切数据</b>。这就是 3D 并行（DP × TP × PP）的由来：<br><br>
+    <div class="big">global batch 达到临界规模后，剩余 GPU 通常用于 TP 和 PP。</div>
+    <p>当 DP 度数已经把 global batch 推到临界点，继续增加 DP 度数收益很小。此时可以用更多 GPU 切分模型，这就是 3D 并行（DP × TP × PP）的由来：<br><br>
     <b>DP 度数被 critical batch size 卡住 → 剩下的卡拿去做 TP 和 PP。</b></p>
   </div>
 </section>
@@ -777,7 +776,7 @@ for step, batch in enumerate(loader):
 <!-- ================= 11 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">11</span><h2>推理侧：同一个词，另一件事</h2></div>
-  <p class="lede">到这里可以回答第三个问题了。答案是：<b>差别巨大，而且差别的来源只有一个</b> —— 推理没有梯度，所以没有那次 all-reduce。把第 3 步和第 4 步拿掉，DP 剩下的东西就平凡到几乎不该叫「并行」了。</p>
+  <p class="lede">推理没有梯度，也就没有训练时的 all-reduce。每张卡独立处理请求，系统形态更接近多副本服务。</p>
 
   <div class="lab">
     <div class="labtitle">可交互 · 同样 4 张卡，训练 vs 推理</div>
@@ -832,7 +831,7 @@ for step, batch in enumerate(loader):
 
         <!-- 推理视图 -->
         <g id="g-infer" style="display:none">
-          <text x="14" y="22" font-size="13" font-weight="900" fill="#1E9E62">请求从四面八方来，不是一个 batch</text>
+          <text x="410" y="20" font-size="13" font-weight="900" fill="#1E9E62" text-anchor="middle">独立请求由调度器动态组成 batch</text>
           <rect x="266" y="30" width="288" height="40" rx="20" fill="#16130F"/>
           <text x="410" y="55" font-size="13.5" font-weight="900" fill="#F2B705" text-anchor="middle">负载均衡 / 路由</text>
           <g font-size="10.5" font-weight="900" fill="#6E655B">
@@ -905,14 +904,14 @@ for step, batch in enumerate(loader):
   <div class="grid2" style="margin-top:26px">
     <div class="panel">
       <h4>所以推理侧一般不说「数据并行」</h4>
-      <p>说的是<b>多副本 / replica / 横向扩容</b>。因为它跟扩一个无状态 Web 服务没有本质区别：起 N 个进程，前面挂个 LB。</p>
-      <p>决定你能不能这么干的只有一件事：<b>一张卡放不放得下整个模型</b>。放得下 → 起 N 个副本（吞吐最优、故障隔离最好）。放不下 → 你需要的是 TP，那是切模型，跟数据并行无关。</p>
+      <p>更常见的说法是<b>多副本 / replica / 横向扩容</b>。它的工作方式接近扩一个无状态 Web 服务：启动 N 个进程，在前面放一个 LB。</p>
+      <p>首先看<b>一张卡能否放下整个模型</b>。放得下 → 起 N 个副本（吞吐最优、故障隔离最好）。放不下 → 使用 TP 切模型。</p>
       <span class="tag yes">先尽量多副本，逼不得已才 TP</span>
     </div>
     <div class="panel">
-      <h4>唯一的例外：MoE</h4>
+      <h4>MoE 是一个例外</h4>
       <p>vLLM 之类的引擎确实有 <span class="mono">--data-parallel-size</span>，在 MoE 模型上它不只是起副本：<b>attention 层各 rank 处理自己的请求（DP），专家层用专家并行（EP），token 要 all-to-all 发到持有对应专家的卡上</b>。</p>
-      <p>这时候 DP rank 之间才真的有通信。但这是 MoE 的特殊结构逼出来的，不是数据并行本身的性质。</p>
+      <p>这时 DP rank 之间会通信，原因是 MoE 的专家路由，而不是普通数据并行。</p>
       <span class="tag b">遇到 MoE 再回来看这段</span>
     </div>
   </div>
@@ -940,22 +939,22 @@ for step, batch in enumerate(loader):
 
 <!-- ================= 14 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">14</span><h2>记住这七句</h2></div>
-  <p class="lede">如果只带走一页，带走这个。</p>
+  <div class="head"><span class="num">14</span><h2>七个要点</h2></div>
+  <p class="lede">前面的内容可以归纳为下面七点。</p>
 
   <div class="take"><span class="n2">01</span><p><b>模型被复制，数据被切开。</b>「数据并行」这个名字说的就是被切的那个东西是数据。</p></div>
-  <div class="take"><span class="n2">02</span><p><b>数据必须切开，否则毫无意义。</b>每卡同一份数据 → 梯度全一样 → 平均之后还是它 → N 倍成本换零收益。</p></div>
+  <div class="take"><span class="n2">02</span><p><b>每张卡需要读取不同的数据。</b>如果每卡拿到同一份数据，梯度也会相同，平均后没有新增信息。</p></div>
   <div class="take"><span class="n2">03</span><p><b>一步只有一个同步点</b>：反向之后 all-reduce 把 N 份梯度<b>平均</b>（不是求和）。这一步保证了 N 份模型永远一模一样。</p></div>
   <div class="take"><span class="n2">04</span><p><b>它是恒等式，不是近似。</b>4 卡 × 8 条 ≡ 1 卡 × 32 条。前提是 loss 逐样本独立 —— BatchNorm 和对比学习 loss 会破这个前提。</p></div>
-  <div class="take"><span class="n2">05</span><p><b>DP 不省显存，一个字节都不省。</b>省显存靠 ZeRO/FSDP（切状态，数据切法不变，所以它仍是 DP）、TP（切矩阵）、PP（切层）。</p></div>
-  <div class="take"><span class="n2">06</span><p><b>加卡 = 加 global batch，所以要重调学习率</b>（linear scaling + warmup）；而且过了 critical batch size，加卡就不再换来更快收敛 —— 这才是 DP 的真上限。</p></div>
-  <div class="take"><span class="n2">07</span><p><b>推理没有梯度，所以没有那次 all-reduce。</b>「数据并行」在推理侧退化成「多副本 + 负载均衡」，副本间零通信、互不影响；那里的 batch 是调度器<b>拼</b>出来的，不是你<b>切</b>出来的。</p></div>
+  <div class="take"><span class="n2">05</span><p><b>纯 DP 不减少单卡的模型状态显存。</b>分摊显存要用 ZeRO/FSDP（切状态）、TP（切矩阵）或 PP（切层）。</p></div>
+  <div class="take"><span class="n2">06</span><p><b>加卡会增大 global batch，因此需要重调学习率</b>（linear scaling + warmup）；超过 critical batch size 后，继续加卡通常不再缩短收敛时间。</p></div>
+  <div class="take"><span class="n2">07</span><p><b>推理没有梯度，也没有训练时的 all-reduce。</b>推理侧通常使用「多副本 + 负载均衡」；batch 由调度器根据请求动态组合。</p></div>
 
   <div class="card dark" style="margin-top:34px">
-    <div class="big">一句话版本</div>
+    <div class="big">训练和推理的差别</div>
     <p><b>训练里，N 张卡靠每步一次 all-reduce 被绑成一个逻辑设备，一起走同一步；<br>
-    推理里，N 张卡就是 N 个互不相识的独立服务。</b><br><br>
-    中间那根把它们绑起来的绳子，叫梯度。</p>
+    推理里，N 张卡可以作为 N 个独立服务处理请求。</b><br><br>
+    是否需要同步梯度，决定了两种系统的组织方式。</p>
   </div>
 </section>
 
@@ -974,8 +973,8 @@ for step, batch in enumerate(loader):
   let mode='ddp';
 
   const tips={
-    ddp:'纯 DP：<b>无论多少张卡，单卡都要背 112 GB</b>。滑块从 1 拉到 64，上面那根条一动不动 —— 这就是「DP 不省显存」的全部含义。7B 全参数微调在一张 80 GB 卡上放不下，加多少张 DP 卡都放不下。',
-    z1:'ZeRO-1 只切最胖的那块：<b>优化器状态（84 GB，占 3/4）</b>。它只在更新那一瞬间用到，平时每卡各留一份纯属浪费。<b>通信量和纯 DP 完全一样</b> —— 这是白捡的便宜，多卡训练几乎没有理由不开。',
+    ddp:'纯 DP：<b>无论多少张卡，单卡都要保存 112 GB 的模型状态</b>。滑块从 1 拉到 64，上面的显存条不会变化。7B 全参数微调在一张 80 GB 卡上放不下，增加 DP 卡数也不能解决。',
+    z1:'ZeRO-1 切分占用最大的部分：<b>优化器状态（84 GB，占 3/4）</b>。优化器状态只在更新时使用，没有必要在每张卡上保留完整副本。<b>通信量和纯 DP 完全一样</b>，因此多卡训练通常会启用这一层切分。',
     z2:'ZeRO-2 再切梯度。梯度反正 all-reduce 完就只有自己负责的那块要用，留全份没意义。通信量<b>仍然</b>和纯 DP 一样（reduce-scatter + all-gather，加起来还是 2×）。',
     z3:'ZeRO-3（= PyTorch FSDP）连权重都切了 —— 前向每层都要先 all-gather 把权重拼回来，用完立刻扔。<b>显存 ÷ N，通信涨到约 1.5 倍</b>。注意实际占用会比这条高一些：临时 all-gather buffer 和 activation 都不在这条里。'
   };
@@ -1033,9 +1032,9 @@ for step, batch in enumerate(loader):
   const gT=document.getElementById('g-train'), gI=document.getElementById('g-infer');
   const info={
     train:{sync:'1 次 / 步', comm:'≈ 28 GB', fail:'全 job 挂', cls:'hot',
-      tip:'训练时 4 张卡不是 4 台机器，是<b>一台被绑在一起的机器</b>。每步都要为 7B 的梯度搬 ≈ 28 GB（bf16 梯度 14 GB × 2），全员到齐才能往下走。所以：<b>一张卡慢，全体等它；一张卡挂，整个 job 从 checkpoint 重来</b>。'},
+      tip:'训练时 4 张卡组成一个同步组。每步都要为 7B 的梯度搬 ≈ 28 GB（bf16 梯度 14 GB × 2），所有 rank 完成同步后才能继续。所以：<b>一张卡慢，全体等它；一张卡挂，整个 job 从 checkpoint 重来</b>。'},
     infer:{sync:'0', comm:'0', fail:'那个副本的请求失败', cls:'ok',
-      tip:'推理时没有梯度，<b>那根把卡绑在一起的绳子不存在了</b>。4 个副本各自加载一份权重、各自维护 KV cache、各自跑自己的请求，彼此不知道对方存在 —— 这和扩一个无状态 Web 服务是同一件事。所以它一般不叫 data parallel，叫多副本。<br><br>推理里唯一需要卡间通信的是 <b>TP</b>（把一个矩阵切开算），那属于「切模型」，不是「切数据」。'}
+      tip:'推理时没有梯度同步。4 个副本各自加载一份权重、维护 KV cache、处理自己的请求，工作方式接近无状态 Web 服务的横向扩容，所以一般称为多副本。<br><br>如果使用 <b>TP</b> 把一个矩阵切到多张卡上，才会产生卡间通信；这属于模型并行。'}
   };
   document.querySelectorAll('#ph button').forEach(b=>{
     b.addEventListener('click', ()=>{

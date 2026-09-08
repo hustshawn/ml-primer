@@ -211,23 +211,23 @@
 
   <div class="tldr">
     <h3>三十秒版</h3>
-    <p><b>线性</b>的全部本事：给每个输入乘一个固定的数，然后加起来。就这样。</p>
-    <p>于是它有三个绕不过去的毛病：</p>
+    <p><b>线性计算</b>会给每个输入乘一个固定的数，然后把结果加起来。</p>
+    <p>这种结构有三个限制：</p>
     <ol>
       <li>叠一百层，还是等于一层</li>
       <li>永远只能「一刀切」</li>
       <li>不会<span class="bend">看情况</span> —— 它在任何地方都用同一个规则</li>
     </ol>
-    <p>往中间塞一个最小号的 <code>if</code>（比如 <code>max(0, x)</code>），这三条同时解除。<br>这就是非线性。</p>
+    <p>在中间加入一个最小的 <code>if</code>（比如 <code>max(0, x)</code>），这三个限制都可以被打破。<br>这就是非线性的作用。</p>
   </div>
 </section>
 
 <!-- ============ 01 ============ -->
 <section class="reveal">
   <div class="step">01 · 先把「线性」这个词讲清楚</div>
-  <h2>线性不是「看起来是直线」，<br>是两条可以当场验的规矩</h2>
+  <h2>线性由两条<br>可以直接检验的规则定义</h2>
 
-  <p>大部分人对线性的印象是「画出来是直的」。这个印象没错，但它是结果，不是定义。定义是这两条：</p>
+  <p>线性函数画出来通常是直的，但图形只是结果。定义看下面两条：</p>
 
   <div class="rule"><span class="n">1</span><span class="t"><b>输入翻倍，输出就翻倍。</b>翻三倍就翻三倍，减半就减半。</span></div>
   <div class="rule"><span class="n">2</span><span class="t"><b>分开算再加起来，等于合起来算。</b>两个人的行李分别称重再相加，和放一起称，一样重。</span></div>
@@ -291,7 +291,7 @@
   <div class="step">03 · 软肋到底在哪</div>
   <h2>线性不会<br>「看情况」</h2>
 
-  <p>把线性的毛病压缩成一句话，就是这句。展开讲：</p>
+  <p>更具体地说，线性函数在所有位置都使用同一套变化规则：</p>
 
   <div class="card">
     <p style="margin:0"><b>线性函数的斜率处处相同。</b>在 <span class="m">x = 0</span> 附近多给一个单位，和在 <span class="m">x = 1000</span> 附近多给一个单位，效果一模一样。它不知道自己现在身处何地。</p>
@@ -401,7 +401,7 @@
     <div class="verdict" id="xorVerdict"></div>
   </div>
 
-  <p style="margin-top:30px"><b>关 ⚡ 时，天花板是 75%。</b>不是你没拖到位 —— 是拖不到。四堆点里必然有一堆站在错误的一侧。</p>
+  <p style="margin-top:30px"><b>关 ⚡ 时，准确率最高是 75%。</b>无论怎样调整，两条线都会合并成一条，因此四堆点里必然有一堆落在错误的一侧。</p>
 
   <p style="margin-top:26px">关键在于<b class="bend">为什么明明有两把刀，却只切出了一刀</b>：</p>
 
@@ -410,7 +410,7 @@
     <p class="mute" style="margin:6px 0 0; text-align:center">两把刀的分数直接相加，合并成了一把刀。</p>
   </div>
 
-  <p>这就是 <span class="m">W₂W₁ = W</span> 在这张图上的长相。<b>不是刀不够多，是没有 ReLU 时，刀会自动互相合并。</b>你加再多把刀、堆再多层，它们全都塌成同一条直线。</p>
+  <p>这就是 <span class="m">W₂W₁ = W</span> 在图上的表现。<b>没有 ReLU 时，多层线性边界会自动合并。</b>继续增加线性层，最后仍然只得到一条直线。</p>
 
   <p style="margin-top:26px">现在打开 ⚡。同样两把刀、同样的位置滑块，只多了一次 <span class="m">max(0, ·)</span>：<b class="ok">100%</b>。</p>
   <p>为什么这次没合并？因为 ReLU 把每把刀「不该管的那半边」按平成了 0。第一把刀只在自己右边有话说，第二把刀只在自己右边有话说 —— 两个人管的地盘不再完全重合，相加就不会互相抵消了。于是两把刀真的成了两把，夹出一条<b class="bend">带</b>，把中间那类圈了出来。</p>
@@ -461,7 +461,7 @@
   <div class="card">
     <p style="margin:0 0 12px"><b>「这电影不好看」</b></p>
     <p class="mute" style="margin:0">线性模型：<span class="m">「好看」+3</span>，<span class="m">「不」−1</span>，总分 <span class="m">+2</span> → 判成好评。</p>
-    <p style="margin:12px 0 0">但「不」做的事不是<b>减一点分</b>，是<b class="bend">把后面整句翻过来</b>。翻转是乘 −1，而乘多少取决于后面跟着什么 —— 这是输入和输入相乘，线性做不到（线性只允许输入乘<b>固定的权重</b>）。</p>
+    <p style="margin:12px 0 0">「不」会<b class="bend">改变后面整句的方向</b>，而非简单减去一个固定分数。这个变化取决于后面跟着什么，需要表达输入之间的相互作用；线性模型只能让输入乘以<b>固定权重</b>。</p>
   </div>
 
   <ul class="plain">
@@ -471,7 +471,7 @@
   </ul>
 
   <p>一个只会「每个词打固定分再相加」的模型，天花板就是词袋模型：它知道句子里出现了哪些词，永远不知道这些词<b>凑在一起</b>是什么意思。而语言的意思几乎全在「凑在一起」里。</p>
-  <p class="mute">所以非线性对语言模型不是一个可选的性能优化，是入场券。</p>
+  <p class="mute">语言中的组合关系依赖上下文，因此语言模型需要非线性来表示这些变化。</p>
 </section>
 
 <!-- ============ 08 ============ -->
@@ -483,7 +483,7 @@
 
   <ul class="plain">
     <li><span class="mk y">非线性</span><span><b>MLP 里的激活</b>（ReLU / GELU / SwiGLU）—— 最标准、最显眼的那一个。</span></li>
-    <li><span class="mk y">非线性</span><span><b>attention 权重</b>。它算的是 Q 和 K 的乘积 —— <b class="bend">输入乘输入</b>，不是输入乘固定权重。再过一次 softmax（带指数和除法）。attention 之所以强，很大一部分就是这个「谁重要由内容当场决定」的非线性。</span></li>
+    <li><span class="mk y">非线性</span><span><b>attention 权重</b>。Q 和 K 都来自输入，二者相乘后再经过 softmax（带指数和除法）。这种计算让「谁重要」随当前内容变化。</span></li>
     <li><span class="mk y">非线性</span><span><b>归一化</b>（LayerNorm / RMSNorm）。除以的是<b>输入自己</b>算出来的均方根 —— 输入翻倍，输出不变。第 1 条规矩当场就破了。</span></li>
     <li><span class="mk n">线性</span><span><b>残差的那个加号</b>。它解决的是信号能不能传到深层，跟表达能力无关 —— 别把它算成非线性来源。</span></li>
     <li><span class="mk n">线性</span><span><b>Q / K / V 投影、MLP 的两个大矩阵、最后的输出层</b>。这些都是矩阵乘法，本身一点非线性都不提供。</span></li>
@@ -504,19 +504,19 @@
 
   <div class="card">
     <h3>误解二：非线性就是「弯曲」</h3>
-    <p style="margin:0">ReLU 身上一处弯都没有，全是直的。真正起作用的是<b class="bend">分段</b> —— 不同区域用不同规则。至于最后画出来的曲线，是几千个折点拼出来的效果，不是单个函数自己弯的。</p>
+    <p style="margin:0">ReLU 由两段直线组成。起作用的是<b class="bend">分段</b>：不同区域使用不同规则。网络最后画出的复杂曲线，是大量折点组合后的结果。</p>
   </div>
 
   <div class="card">
     <h3>误解三：那用 x² 或 sin 岂不是更「非线性」</h3>
-    <p style="margin:0 0 12px">「非线性程度」不是越高越好，能不能训得动才是。<span class="m">x²</span> 的输出随输入平方增长，几十层叠下来数值直接爆掉；<span class="m">sin</span> 到处周期振荡，同一个输出对应无数个输入，优化器无从下手。</p>
-    <p style="margin:0">实用的激活函数几乎都长成同一副样子：<b>负的关掉（或者压小），正的原样放过</b> —— 一个门。GELU、SiLU、SwiGLU 都能写成 <span class="m">x × 一个 0~1 的门</span>。要的从来不是「弯」，是<b class="bend">开关</b>。</p>
+    <p style="margin:0 0 12px">非线性程度越高不代表越好，训练稳定性同样重要。<span class="m">x²</span> 的输出随输入平方增长，几十层叠加后数值容易爆掉；<span class="m">sin</span> 周期振荡，同一个输出对应多个输入，也会增加优化难度。</p>
+    <p style="margin:0">实用的激活函数通常会<b>把负值关掉或压小，让正值通过</b>，相当于一个门。GELU、SiLU、SwiGLU 都能写成 <span class="m">x × 一个 0~1 的门</span>。这里需要的是能根据输入调节信号的<b class="bend">开关</b>。</p>
   </div>
 </section>
 
 <!-- ============ 10 ============ -->
 <section class="reveal end">
-  <div class="step" style="text-align:left">10 · 一句话</div>
+  <div class="step" style="text-align:left">10 · 小结</div>
   <p class="final">线性只会按固定比例打分、相加；<br><span class="bend">非线性让它学会说「看情况」。</span></p>
   <p class="mute" style="max-width:30em; margin:34px auto 0; text-align:left">
     再回头看 MLP 那三步 —— 摊开、掰弯、压回。摊开和压回是两个矩阵，它们负责提供参数和容量；中间那一下「掰弯」不提供任何容量，它只做一件事：<b>让前后两个矩阵没法合并</b>。<br><br>
@@ -772,8 +772,8 @@ const C = {
     draw(mode);
     if(mode === 2){
       verdict.className = 'verdict';
-      verdict.innerHTML = '又过了一层，结果<b>跟只过一层没有本质区别</b>：还是一张笔直、平行、均匀的方格纸。'
-        + '<br><span class="m" style="font-size:.85em; color:' + C.mute + '">W₂W₁ = [' + fmt(M21) + ' ]　—— 这四个数一步到位，中间那层白干了</span>';
+      verdict.innerHTML = '又过了一层，结果仍是一张笔直、平行、均匀的方格纸。'
+        + '<br><span class="m" style="font-size:.85em; color:' + C.mute + '">W₂W₁ = [' + fmt(M21) + ' ]　—— 两层线性变换可以合并成一层</span>';
     }else{
       verdict.className = mode === 3 ? 'verdict good' : 'verdict';
       verdict.innerHTML = TXT[mode];
@@ -1017,7 +1017,7 @@ const C = {
 
     if(n === 0){
       verdict.className = 'verdict';
-      verdict.innerHTML = '一次都不折：一刀就是一刀，函数就是一条直线。<b>这就是没有 ⚡ 的网络的全部本事</b>，跟有多少层无关。';
+      verdict.innerHTML = '一次都不折时，函数只有一条直线。<b>没有 ⚡ 时，增加线性层也不会增加分段数</b>。';
     }else{
       verdict.className = 'verdict good';
       verdict.innerHTML = `每多折一次，口子数<b class="bend">翻一倍</b>：${n} 层 → <b>${deep}</b> 段。`

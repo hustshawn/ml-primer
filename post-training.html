@@ -256,7 +256,7 @@
 <!-- ============ 1 ============ -->
 <section>
   <p class="step">01 · 起点</p>
-  <h2>预训练模型首先学会续写，<br>而不是稳定地按要求回答</h2>
+  <h2>预训练模型先学会续写，<br>后训练再调整回答方式</h2>
 
   <p>预训练的核心任务只有一个：给一段文字，猜下一个 token。所以刚出炉的 base 模型看到一个问题时，可能直接回答，也可能把它当成文章、试卷或论坛帖子的一部分继续往下写。</p>
 
@@ -271,11 +271,11 @@
       <span class="tag g">post-training 之后</span>
       <h3 style="margin-top:14px">你：法国的首都是哪里？</h3>
       <p class="mono" style="font-size:16px; color:var(--mute); max-width:none">它：巴黎。</p>
-      <p style="font-size:16px; margin-top:14px; max-width:none">在这个例子里，变化的不是「巴黎」这条知识，而是行为：<em>看到问句要答、答完要停、不确定要说不确定、遇到不该做的请求要拒绝</em>。</p>
+      <p style="font-size:16px; margin-top:14px; max-width:none">在这个例子里，「巴黎」这条知识没有变化；后训练调整的是行为：<em>看到问句要答、答完要停、不确定要说不确定、遇到不该做的请求要拒绝</em>。</p>
     </div>
   </div>
 
-  <p class="big"><u>Post-training 的主要任务不是灌入大量知识，而是调整「在无数种合理续写里挑哪一种」。</u></p>
+  <p class="big"><u>Post-training 主要调整模型会选择哪一种合理续写，也就是它的回答行为。</u></p>
 
   <div class="note">严格说，<em>SFT 也能让模型记住一些新信息</em>。但用它维护大量、经常变化的知识通常很低效，还可能影响原有能力。想让模型使用公司内部文档，通常更适合接检索；后训练主要负责调整<em>行为</em>。</div>
 </section>
@@ -351,12 +351,12 @@
     <div class="card">
       <span class="tag d">改动一</span>
       <h3 style="margin-top:14px">数据换成对话</h3>
-      <p style="font-size:16.5px; max-width:none">从「网上的文章」换成「一个请求 + 一个人想要的回答」，中间用固定的特殊 token 隔开。所谓 <span class="mono">chat template</span> 就是在这一步教进去的 —— 模型不是天生认识 <span class="mono">&lt;|assistant|&gt;</span>，是这一步反复见到才学会「看到这个符号，该我说话了」。</p>
+      <p style="font-size:16.5px; max-width:none">从「网上的文章」换成「一个请求 + 一个人想要的回答」，中间用固定的特殊 token 隔开。模型通过反复看到 <span class="mono">chat template</span>，逐渐学会 <span class="mono">&lt;|assistant|&gt;</span> 之类的符号表示「接下来由助手回答」。</p>
     </div>
     <div class="card">
       <span class="tag d">改动二</span>
       <h3 style="margin-top:14px">只让回答部分计入 loss</h3>
-      <p style="font-size:16.5px; max-width:none">用户的问题仍然会被模型读到，但只作为上下文；训练目标主要落在<em>助手回答</em>上。这样可以让模型把能力集中在「看到这个请求后应该怎么答」，而不是同时模仿用户怎么提问。</p>
+      <p style="font-size:16.5px; max-width:none">用户的问题仍然会被模型读到，但只作为上下文；训练目标主要落在<em>助手回答</em>上。这样训练会集中优化「看到这个请求后应该怎么答」，不会同时要求模型模仿用户的提问方式。</p>
     </div>
   </div>
 
@@ -395,7 +395,7 @@
     </div>
   </div>
 
-  <p class="big">这些限制引出了两条常见思路：<u>让人比较答案，而不必完整写答案；让模型从自己真正可能生成的回答中学习。</u></p>
+  <p class="big">这些限制对应两种常见做法：<u>让人比较已有答案；让模型从自己生成的回答中学习。</u></p>
 </section>
 
 <!-- ============ 5 ============ -->
@@ -433,20 +433,20 @@
 
   <p>RM 的用处，是把有限的人工比较变成一个可以反复调用的自动打分器。人只标一批偏好对，训练阶段就可以让 RM 大规模地替人排序。</p>
 
-  <div class="note">代价也在这里：<em>RM 是个代理，不是真的人。</em>它通常在接近训练数据的范围内更可靠；模型一旦跑到 RM 不熟悉的地方，分数就可能失真。很多「reward hacking / 刷分」问题都与此有关。</div>
+  <div class="note">RM 只是人的偏好代理。它通常在接近训练数据的范围内更可靠；模型一旦生成 RM 不熟悉的内容，分数就可能失真。很多「reward hacking / 刷分」问题都与此有关。</div>
 </section>
 
 <!-- ============ 6 ============ -->
 <section id="ppo">
   <p class="step">06 · 第二种 <span class="tag p" style="margin-left:6px">人的偏好 · 在线</span></p>
-  <h2>RLHF：自己生成，<br>按分数推，用 KL 拴住</h2>
+  <h2>RLHF：自己生成，<br>按分数更新，用 KL 约束</h2>
 
   <p>有了会打分的 RM，循环就转起来了。一个 step 里四件事：</p>
 
   <div class="row4">
     <div class="flat"><h4>① 采</h4><p style="font-size:15.5px; max-width:none; margin:0">拿一个 prompt，让当前模型<em>自己写</em>一个回答。</p></div>
     <div class="flat"><h4>② 评</h4><p style="font-size:15.5px; max-width:none; margin:0">RM 给这个回答一个分。</p></div>
-    <div class="flat"><h4>③ 拴</h4><p style="font-size:15.5px; max-width:none; margin:0">用 KL 衡量它和<em>训练前那个模型</em>差多远，再从奖励里扣掉一部分。</p></div>
+    <div class="flat"><h4>③ 约束</h4><p style="font-size:15.5px; max-width:none; margin:0">用 KL 衡量它和<em>训练前那个模型</em>差多远，再从奖励里扣掉一部分。</p></div>
     <div class="flat"><h4>④ 推</h4><p style="font-size:15.5px; max-width:none; margin:0">按「分 − 罚」的方向改参数：让这次这么写的概率变高。</p></div>
   </div>
 
@@ -457,13 +457,13 @@
     <li><b>reward model</b> —— 冻结，只打分</li>
     <li><b>critic / value</b> —— 也在训，先估一个「大概能拿多少分」的基准，减少训练时的随机波动</li>
   </ul>
-  <p>再加上每个 step 中间都要做一次完整的自回归生成，一个 token 一个 token 地吐答案。RLHF 的主要难点因此不是 loss 本身，而是<em>工程重、资源贵、超参敏感</em>。</p>
+  <p>再加上每个 step 中间都要做一次完整的自回归生成，一个 token 一个 token 地生成答案。因此 RLHF 的工程成本高、资源占用大，而且对超参数较敏感。</p>
 
-  <h3 style="margin-top:48px">③ 那个「拴」是整套方案的保险丝</h3>
-  <p>KL 可以理解成「当前模型和参考模型的输出分布差了多少」。如果只让模型追 RM 给的分数，它可能找到 RM 的漏洞并一直薅。KL 罚项是在提醒它：<em>可以变好，但别一下跑得离原模型太远。</em></p>
+  <h3 style="margin-top:48px">③ KL 限制模型偏离参考模型</h3>
+  <p>KL 衡量当前模型和参考模型的输出分布相差多少。如果只追求 RM 分数，模型可能利用 RM 的漏洞持续刷高分。KL 罚项限制这种偏离：<em>提高奖励的同时，不要一次离参考模型太远。</em></p>
 
   <div class="demo">
-    <div class="hd"><span class="tag p">实验台</span><span class="t">KL 拴绳松紧</span><span class="sim">示意，非实测数字</span></div>
+    <div class="hd"><span class="tag p">实验台</span><span class="t">KL 约束强度</span><span class="sim">示意，非实测数字</span></div>
     <label class="rl">KL 罚项系数 β = <span id="klV"></span></label>
     <input type="range" id="kl" min="0" max="100" step="1" value="50">
     <div class="bars" style="margin-top:18px">
@@ -475,15 +475,15 @@
     <p class="cap" id="klCap"></p>
   </div>
 
-  <p>成绩是实打实的：InstructGPT 论文里，一个 <em>1.3B</em> 的 RLHF 模型的输出，被标注员判为<em>优于 175B 的原始 GPT-3</em>。参数量差一百多倍，赢的不是知识，是「按要求做事」。</p>
+  <p>InstructGPT 论文里，一个 <em>1.3B</em> 的 RLHF 模型的输出，被标注员判为<em>优于 175B 的原始 GPT-3</em>。参数量相差一百多倍，这里的优势主要来自更符合用户要求的回答行为。</p>
 
-  <div class="note">PPO 只是第 ④ 步「怎么推参数」的具体算法（核心是一个 clip，防止一步走太远）。把它换成别的 RL 算法，上面这一圈的形状不变 —— <em>所以别把 PPO 和 RLHF 当同一个词</em>。</div>
+  <div class="note">PPO 是第 ④ 步更新参数的一种具体算法，核心是用 clip 限制单步更新幅度。换成其他 RL 算法，上面的训练流程仍然成立；PPO 和 RLHF 指的不是同一层概念。</div>
 </section>
 
 <!-- ============ 7 ============ -->
 <section id="dpo">
   <p class="step">07 · 第三种 <span class="tag p" style="margin-left:6px">人的偏好 · 离线</span></p>
-  <h2>DPO：把奖励模型和采样<br>一起删掉</h2>
+  <h2>DPO：直接使用<br>偏好对训练</h2>
 
   <p>看着上面那一圈，很自然会问一句：人给的本来就是「A 比 B 好」，我们却先把它压成一个 RM，再让 RM 去教模型。<em>中间这一道能不能跳过？</em></p>
 
@@ -559,7 +559,7 @@
     <p class="cap" id="nCap"></p>
   </div>
 
-  <p class="big">一旦拿代理分数当目标去挑极值，<u>代理和真实目标就可能逐渐分开</u>。采样池越大，挑到「刚好骗过打分器的答案」的风险也越高。</p>
+  <p class="big">用代理分数挑选极值时，<u>代理分数和真实质量可能逐渐偏离</u>。采样池越大，选中「刚好骗过打分器的答案」的风险也越高。</p>
 
   <div class="note">它和 RL 的差别也在这儿：拒绝采样只学被选中的那一条，剩下 N−1 条<em>直接扔了</em>；RL 还会利用「每条答案比基准好或差多少」。因此 RL 能用到更多信息，但拒绝采样通常更简单、更稳定。</div>
 </section>
@@ -577,7 +577,7 @@
     <div class="card" style="border-color:var(--veri)"><h4>较难靠表面功夫刷分</h4><p style="font-size:16px;max-width:none">堆客套话不能让单元测试通过，但验证器设计不完整时仍可能被钻空子</p></div>
   </div>
 
-  <h3 style="margin-top:48px">GRPO 顺手又删掉一个模型</h3>
+  <h3 style="margin-top:48px">GRPO 用组内均值替代 critic</h3>
   <p>PPO 里的 critic 会先估一个基准，用来判断这次拿到的分数到底算高还是低。GRPO 换了一种更直接的参照：<em>同一个 prompt 一次采一组（G 个）回答，让组内答案互相比较。</em>高于组内平均的答案往上推，低于平均的往下压，因此不再需要单独的 critic。</p>
   <div class="fml">优势（简化理解） = 自己这条的分 − <b>这一组的平均分</b>     <span class="cm">// 不再单独训练 critic</span></div>
 
@@ -594,16 +594,16 @@
 
   <p>这也解释了 RLVR 的数据配方核心：<em>题的难度最好落在模型「不是全对也不是全错」的区间</em>。如果同一组全对或全错，组内答案没有高低差别，提供不了有效的相对奖励信号。</p>
 
-  <p class="big">最重要的一点：<u>较长的「思考」可以从结果奖励中自己长出来。</u></p>
+  <p class="big"><u>结果奖励也可能让模型逐渐生成更长的推理过程。</u></p>
   <p>当奖励主要看最终答案是否正确时，模型可能发现「先多推几步再答」更容易拿到高分，于是回答逐渐变长。DeepSeek-R1 报告里的响应长度曲线就展示了这种现象：<em>不必逐条人工示范「要写多长」，模型也可能学会投入更多推理步骤。</em></p>
 
-  <div class="note">限制也很硬：<em>得有验证器。</em>数学、代码、形式化推理有；「写一封得体的邮件」「这个回答有没有冒犯人」没有 —— 那部分还得靠人的偏好。所以今天的流水线两边都要，不是二选一。</div>
+  <div class="note">这类方法需要验证器。数学、代码和形式化推理通常可以自动判定；「写一封得体的邮件」「这个回答有没有冒犯人」难以写成明确规则，仍要依赖人的偏好。实际流水线通常会同时使用两类信号。</div>
 </section>
 
 <!-- ============ 10 ============ -->
 <section id="distill">
   <p class="step">10 · 那蒸馏算哪一种</p>
-  <h2>蒸馏不是一种训练算法，<br>是一种数据来源</h2>
+  <h2>蒸馏描述的是数据来源，<br>训练算法可以保持不变</h2>
 
   <p>它经常和上面几种并列被提，但它不在同一层：<em>它换的是「答案从哪来」，训练算法照旧。</em></p>
 
@@ -746,7 +746,7 @@
     <li><b>偏好和验证器并存。</b>能自动判对错的任务适合验证器；难以写成明确规则的质量标准，仍要依靠人或模型给出的偏好。</li>
   </ul>
 
-  <p class="big">再遇到一个没听过的后训练方法，就先拿三个问题问它：<u>一条样本长什么样、谁打分、答案从哪里来。</u>先把位置定住，再看它具体怎么优化。</p>
+  <p class="big">分析一种新的后训练方法时，可以先问三个问题：<u>一条样本长什么样、谁打分、答案从哪里来。</u>确定这三个位置后，再看它具体怎样优化。</p>
 </section>
 
 <footer>
@@ -847,7 +847,7 @@
       out.cap.innerHTML = '两个分数一起 +3，<em>差值一点没变，loss 一模一样（' + loss.toFixed(3) + '）</em>。'
         + '所以奖励模型的绝对分数<em>不是独立确定的</em>，真正稳定的是同一个 RM 内的相对排序。别直接比较两个不同 RM 的分数，也别把「7.8 分」当成质量的绝对刻度。';
     } else if (d < 0) {
-      out.cap.innerHTML = '差值是负的 —— <em>模型现在觉得坏的那个更好</em>，loss 冲得很高，梯度会狠狠地把这两个分数往正确方向掰。';
+      out.cap.innerHTML = '差值是负的 —— <em>模型现在觉得坏的那个更好</em>，loss 会很高，梯度会推动两个分数向正确排序调整。';
     } else if (d > 5) {
       out.cap.innerHTML = 'σ(Δ) 已经贴着 100%，loss 趋近 0 —— <em>这一对它学透了，再拉大差值也换不来什么梯度</em>。RM 训练里绝大部分信号来自那些「人也觉得难分」的对子。';
     } else {
@@ -866,10 +866,10 @@
   render(false);
 })();
 
-/* ============ 06 · KL 拴绳 ============ */
+/* ============ 06 · KL 约束 ============ */
 (function(){
   var zones = [
-    { max:12, beta:'0（不拴）', rm:98, kl:100, hu:9,
+    { max:12, beta:'0（无约束）', rm:98, kl:100, hu:9,
       out:'当然可以！这是一个非常好的问题！非常好的问题！我非常乐意帮您！非常乐意帮您！当然可以！当然！',
       cap:'<em>这就是刷分（reward hacking）。</em>它没学会答题，它学会了「哪些词能骗到高分」，然后一直重复。RM 给满分，人一眼就看出是废话 —— 因为模型已经跑到 RM 完全没见过的地方去了。' },
     { max:34, beta:'很小', rm:88, kl:72, hu:42,
@@ -880,10 +880,10 @@
       cap:'<em>这一档才是要的。</em>分数涨了，但还认得出是原来那个模型在说话。现实里 β 就是在这条「reward 涨了多少 / 跑远了多少」的曲线上找一个折中点，没有普适最优值。' },
     { max:86, beta:'偏大', rm:61, kl:11, hu:74,
       out:'一般建议设置为 644。对于需要执行的脚本文件，可以设置为 755。具体取值取决于使用场景。',
-      cap:'拴得有点紧了：<em>输出正在退回 SFT 的样子</em> —— 稳，但那些「更利落、更抓重点」的改进也一起被拴住没长出来。' },
+      cap:'KL 约束偏强：<em>输出逐渐接近 SFT 模型</em>。结果更稳定，但「更利落、更抓重点」的改进也会受到限制。' },
     { max:100, beta:'非常大', rm:52, kl:2, hu:52,
       out:'一般建议设置为 644。对于需要执行的脚本文件，可以设置为 755。具体取值取决于使用场景。',
-      cap:'<em>和 SFT 模型的输出一模一样。</em>KL 罚项大到压倒了 reward，参数几乎不动 —— 这一整轮 RL 白跑，钱和卡都白烧。' }
+      cap:'<em>和 SFT 模型的输出一模一样。</em>KL 罚项大到压过 reward，参数几乎不更新，这一轮 RL 基本没有产生效果。' }
   ];
   var sl = document.getElementById('kl');
   var el = {

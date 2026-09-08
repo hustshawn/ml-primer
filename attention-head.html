@@ -141,7 +141,7 @@ tr.hi td{background:#FFF6DE}
     <div class="tl">
       <div class="w">ATTENTION</div>
       <div class="d">一次<br>由内容决定的<br>加权平均。</div>
-      <div class="n">重点在「由内容决定」—— 权重是当场算出来的，不是训好固定的。</div>
+      <div class="n">重点在「由内容决定」：权重会根据当前输入计算，而不是训练后固定不变。</div>
     </div>
     <div class="tl">
       <div class="w">HEAD</div>
@@ -153,7 +153,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 1 -->
 <section class="reveal">
-  <div class="head"><span class="num">1</span><h2>Attention 的全部：五步，带形状</h2></div>
+  <div class="head"><span class="num">1</span><h2>Attention 的计算：五步，带形状</h2></div>
   <p class="lede">用论文的配置：<span class="mono">d_model = 512</span>，一个 head <span class="mono">d_k = 64</span>，输入 n 个词。</p>
 
   <div class="card">
@@ -184,7 +184,7 @@ tr.hi td{background:#FFF6DE}
         <p>按<b>行</b>做 softmax。每一行加起来等于 1 —— 「我的注意力总共就 100%，怎么分」。</p></div></div>
       <div class="sl"><div class="sn"></div><div>
         <h5>取值 <code>O = A·V　→ (n, 64)</code></h5>
-        <p>第 i 个词的输出 = 所有 V 按第 i 行权重做加权平均。<b>信息在这一步真正流动。</b></p></div></div>
+        <p>第 i 个词的输出 = 所有 V 按第 i 行权重做加权平均。<b>这一步完成词与词之间的信息混合。</b></p></div></div>
     </div>
   </div>
 </section>
@@ -228,8 +228,8 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 3 -->
 <section class="reveal">
-  <div class="head"><span class="num">3</span><h2>真正的主角：那张 n×n 表</h2></div>
-  <p class="lede">Attention 的一切都发生在这张表里。行 = 谁在看，列 = 看谁，格子越深 = 权重越大，每行加起来 = 1。</p>
+  <div class="head"><span class="num">3</span><h2>Attention 矩阵：那张 n×n 表</h2></div>
+  <p class="lede">这张表记录每个位置对其他位置的权重。行 = 谁在看，列 = 看谁，格子越深 = 权重越大，每行加起来 = 1。</p>
 
   <div class="card">
     <div class="pill">一个 head 的注意力矩阵（示意）</div>
@@ -248,7 +248,7 @@ tr.hi td{background:#FFF6DE}
     <p class="note" style="font-size:16px">
       它是 <span class="mono">n × n</span>。序列长度翻倍，它<b>翻四倍</b>。<br>
       8K 上下文 → 6400 万个格子 <span class="mono">×</span> 每层 <span class="mono">×</span> 每个 head。<br><br>
-      长上下文为什么贵、FlashAttention 在优化什么、稀疏注意力在砍什么 —— 全都是这张表。
+      长上下文的成本、FlashAttention 的优化目标和稀疏注意力的切分方式，都与这张表有关。
     </p>
   </div>
 </section>
@@ -287,7 +287,7 @@ tr.hi td{background:#FFF6DE}
         <div class="sr"><span>累</span><div class="bar"><i style="width:25.7%;background:var(--upd)"></i></div><span class="v">0.257</span></div>
         <div class="sr"><span>马路</span><div class="bar"><i style="width:17.2%;background:var(--upd)"></i></div><span class="v">0.172</span></div>
       </div>
-      <p class="note">有层次、有梯度。方差被拉回 1，这才是 √d<sub>k</sub> 的全部作用。</p>
+      <p class="note">有层次、有梯度。除以 √d<sub>k</sub> 把方差拉回 1，避免 softmax 过早饱和。</p>
     </div>
   </div>
 
@@ -295,34 +295,33 @@ tr.hi td{background:#FFF6DE}
     <h4 class="sh">Step 3 · 输出</h4>
     <p class="mono" style="font-size:17px;margin-top:8px">O<sub>它</sub> = 0.571 · V<sub>动物</sub> ＋ 0.257 · V<sub>累</sub> ＋ 0.172 · V<sub>马路</sub></p>
     <p class="note" style="font-size:16px">「它」原本是个空洞的代词，走完这一层，它的向量里已经装了 57% 的「动物」。<br>
-    <b>这就是 attention 干的唯一一件事：让词与词交换内容。</b></p>
+    <b>Attention 用这些权重混合不同位置的内容。</b></p>
   </div>
 </section>
 
 <!-- 5 -->
 <section class="reveal">
-  <div class="head"><span class="num">5</span><h2>最该记住的一点：A 不是参数</h2></div>
-  <p class="lede">如果只带走一句话，带这句。这是 attention 和普通神经网络层的本质分界。</p>
+  <div class="head"><span class="num">5</span><h2>A 由输入计算，不是模型参数</h2></div>
+  <p class="lede">普通线性层使用训练后固定的权重；attention 的混合权重 A 会随当前输入变化。</p>
 
   <div class="grid2" style="margin-top:28px">
     <div class="card" style="margin-top:0">
       <div class="pill" style="background:#F1EDE6">普通 Linear / FFN 层</div>
-      <div class="big" style="margin-top:16px;font-size:28px">权重是<br>训完就<b style="color:var(--red)">钉死</b>的</div>
+      <div class="big" style="margin-top:16px;font-size:28px">权重在<br>训练完成后<b style="color:var(--red)">固定</b></div>
       <p class="note" style="font-size:15.5px">不管输入什么句子，都用同一套 W。<br><b>固定的变换。</b></p>
     </div>
     <div class="card" style="margin-top:0;background:#E8F1FA">
       <div class="pill" style="background:#fff">Attention</div>
-      <div class="big" style="margin-top:16px;font-size:28px">混合权重是<br><b style="color:var(--bwd)">当场算</b>出来的</div>
+      <div class="big" style="margin-top:16px;font-size:28px">混合权重根据<br><b style="color:var(--bwd)">当前输入计算</b></div>
       <p class="note" style="font-size:15.5px">同一个模型，「它」在不同句子里会连到不同的词。<br><b>动态路由。</b></p>
     </div>
   </div>
 
   <div class="card">
     <p style="font-size:17px;font-weight:800;line-height:1.9">
-      参数（<span class="mono">W^Q, W^K, W^V, W^O</span>）学的<b>不是</b>「连哪个词」，<br>
-      而是<span class="hl">「按什么标准判断相关」</span>。<br><br>
+      参数（<span class="mono">W^Q, W^K, W^V, W^O</span>）学习<span class="hl">「按什么标准判断相关」</span>。<br><br>
       <span style="font-weight:600;color:var(--muted);font-size:15.5px">
-      连哪个词，是推理时看着实际输入现算的。这就是为什么同一套权重能处理它从没见过的句子结构。</span>
+      具体连接哪些词，会在推理时根据实际输入计算。因此同一套参数可以处理不同的句子结构。</span>
     </p>
   </div>
 </section>
@@ -342,7 +341,7 @@ tr.hi td{background:#FFF6DE}
     </div>
     <p class="note" style="text-align:center;font-size:17px;margin-top:20px">
       一个 head 只能产出 <b>一个</b> 概率分布 —— 也就是<b>一种</b>「什么算相关」的判断标准。<br>
-      这个限制，就是需要多个 head 的全部理由。
+      多个 head 可以并行学习多种判断标准。
     </p>
   </div>
 </section>
@@ -403,8 +402,8 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 9 -->
 <section class="reveal">
-  <div class="head"><span class="num">9</span><h2>8 个 head 是「切开」，不是「加 8 倍」</h2></div>
-  <p class="lede">这是 multi-head 设计最漂亮的地方 —— 8 个视角基本是白拿的。</p>
+  <div class="head"><span class="num">9</span><h2>8 个 head 会切分总维度</h2></div>
+  <p class="lede">Multi-head attention 把总维度分给多个 head，因此增加 head 数不会让总计算量变成 8 倍。</p>
 
   <div class="card">
     <div class="shp" style="width:100%;min-width:0"><b>d_model = 512</b><span>一个词的向量</span></div>
@@ -416,7 +415,7 @@ tr.hi td{background:#FFF6DE}
   </div>
 
   <div class="card" style="background:#FFF6DE">
-    <h4 class="sh">但也不是白吃的午餐：每个 head 只剩 64 维</h4>
+    <h4 class="sh">代价：每个 head 只剩 64 维</h4>
     <p class="note">论文 Table 3 的消融实验，是一条<b>倒 U</b>：</p>
     <div style="margin-top:16px">
       <div class="bl"><span>1 head × 512</span><div class="bar"><i style="width:45%;background:#B0A99E"></i></div><span class="v">24.9</span></div>
@@ -433,8 +432,8 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 10 -->
 <section class="reveal">
-  <div class="head"><span class="num">10</span><h2>代码里根本没有 8 个 head</h2></div>
-  <p class="lede">别被图骗了。实现上不是 8 次矩阵乘 —— 是<b>一次矩阵乘 + 一次 reshape</b>。</p>
+  <div class="head"><span class="num">10</span><h2>代码里的 head 是张量维度</h2></div>
+  <p class="lede">实现上通常只做<b>一次矩阵乘，再 reshape</b>，而不是分别执行 8 次完整的矩阵乘。</p>
 
   <div class="card">
     <div class="pipe">
@@ -457,7 +456,7 @@ tr.hi td{background:#FFF6DE}
     </p>
     <p class="note" style="font-size:15.5px">
       W<sup>Q</sup> 是<b>一个</b> 512×512 的矩阵，不是 8 个 512×64。head 不是结构上的 8 个模块，只是张量上的一个轴。<br>
-      想通这一点，下一节的 GQA 就是显然的了 —— 你只要把那个轴的长度改一改。
+      GQA 正是沿着这个轴减少 K/V 的 head 数。
     </p>
   </div>
 </section>
@@ -502,9 +501,9 @@ tr.hi td{background:#FFF6DE}
     <tr><th>这一页讲的</th><th>在推理栈里就是</th></tr>
     <tr><td>head 这个维度</td><td class="m">KV cache 形状里的 <span class="mono">n_heads</span>：<span class="mono">[layer, 2, batch, n_kv_heads, seq, d_head]</span></td></tr>
     <tr class="hi"><td>K/V 的 head 数可以少于 Q</td><td class="m">GQA / MQA。KV cache 直接按 <span class="mono">n_q_heads ÷ n_kv_heads</span> 倍缩小</td></tr>
-    <tr><td>那张 <span class="mono">(n, n)</span> 的 A 矩阵</td><td class="m">FlashAttention 要<b>避免落地</b>的东西 —— 它分块算 softmax，A 从来不完整写进 HBM</td></tr>
+    <tr><td>那张 <span class="mono">(n, n)</span> 的 A 矩阵</td><td class="m">FlashAttention 分块计算 softmax，避免把完整的 A 写入 HBM</td></tr>
     <tr><td>A 是 n×n，随长度平方增长</td><td class="m">长上下文的成本曲线 · 稀疏注意力 / 滑窗注意力在砍的正是它</td></tr>
-    <tr><td>K、V 每个位置算完不再变</td><td class="m">所以可以缓存 —— <b>KV cache 存在的全部理由</b></td></tr>
+    <tr><td>K、V 每个位置算完不再变</td><td class="m">因此可以缓存，后续生成时直接复用</td></tr>
     <tr><td>Q 只用当前这一个位置</td><td class="m">所以解码阶段 Q 是 <span class="mono">(1, 64)</span>，变成瘦长的 GEMV → 访存瓶颈，不是算力瓶颈</td></tr>
   </table>
   </div>
@@ -520,14 +519,14 @@ tr.hi td{background:#FFF6DE}
 </section>
 
 <div class="punch reveal">
-  <div class="big">两句话收尾</div>
+  <div class="big">小结</div>
   <p style="margin-top:28px">
     <b style="color:#fff">Attention</b> = 每个词当场算出「我该听谁的」，然后按这个比例把大家的内容拌进自己。<br>
-    权重是<span class="mono">算</span>出来的，不是<span class="mono">存</span>下来的。
+    这些混合权重会随输入重新计算，不会作为参数保存。
   </p>
   <p>
     <b style="color:#fff">Head</b> = 同一件事按 8 套不同标准并行做一遍，因为一个 softmax 的预算只有 100%。<br>
-    实现上它只是张量的一个轴 —— 所以 GQA 才能顺手把它改小。
+    实现上它是张量的一个轴，GQA 通过减少 K/V 的 head 数来缩小 KV cache。
   </p>
 </div>
 
