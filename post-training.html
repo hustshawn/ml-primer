@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Post-training · 谁在打分，答案从哪来</title>
+<style>
+  :root{
+    --sans:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --paper:#F5F2EB;
+    --paper2:#EAE5DA;
+    --card:#FFFDF8;
+    --ink:#17161C;
+    --mute:#7A7365;
+    --line:#DBD3C4;
+    --demo:#D9902A;   /* 人写的示范 */
+    --pref:#7647C4;   /* 人的偏好 */
+    --veri:#0E876A;   /* 自动验证 */
+    --hot:#D6412A;    /* 强调 / 坑 */
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.4;
+    background-image:radial-gradient(var(--line) 1px, transparent 1px);
+    background-size:24px 24px;
+  }
+  main{position:relative; z-index:1}
+
+  /* ---------- 进度条 ---------- */
+  .prog{position:fixed; top:0; left:0; right:0; height:5px; background:transparent; z-index:9}
+  .prog i{display:block; height:100%; width:0; background:var(--ink)}
+
+  section{
+    max-width:1020px; margin:0 auto; padding:clamp(66px,10vh,132px) 22px;
+    border-bottom:2px dashed var(--line);
+  }
+  .step{
+    font-weight:900; font-size:13px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--mute); margin:0 0 14px;
+  }
+  h1{font-weight:900; font-size:clamp(46px,10vw,116px); line-height:.98; letter-spacing:-.035em; margin:0 0 24px}
+  h2{font-weight:900; font-size:clamp(29px,4.8vw,52px); line-height:1.14; letter-spacing:-.025em; margin:0 0 20px}
+  h3{font-weight:900; font-size:clamp(19px,2.5vw,26px); line-height:1.25; margin:0 0 12px}
+  h4{font-weight:900; font-size:clamp(16px,2vw,19px); margin:0 0 10px}
+  p{font-size:clamp(17px,2.15vw,22px); line-height:1.66; max-width:35em; margin:0 0 16px}
+  .lead{font-size:clamp(20px,2.7vw,29px); font-weight:700; line-height:1.45}
+  .mute{color:var(--mute)}
+  b{color:var(--hot)}
+  em{font-style:normal; font-weight:900}
+  .mono{font-family:var(--mono); font-size:.92em}
+  a{color:var(--ink)}
+
+  /* ---------- hero ---------- */
+  .hero{padding-top:clamp(84px,15vh,180px)}
+  .hero h1 > span{display:block}
+  .hero h1 .k1{color:var(--demo)}
+  .hero h1 .k2{color:var(--pref)}
+  .hero h1 .k3{color:var(--veri)}
+  .hero .sub{font-size:clamp(19px,2.7vw,28px); font-weight:700; max-width:27em}
+  .legend{display:flex; flex-wrap:wrap; gap:10px; margin:34px 0 0}
+  .lg{display:flex; align-items:center; gap:9px; background:var(--card); border:3px solid var(--ink);
+      border-radius:100px; padding:8px 16px 8px 12px; font-weight:800; font-size:15px;
+      box-shadow:4px 4px 0 var(--ink)}
+  .dot{width:15px; height:15px; border-radius:50%; border:2px solid var(--ink); flex:0 0 auto}
+  .dot.d{background:var(--demo)} .dot.p{background:var(--pref)} .dot.v{background:var(--veri)}
+  .scrollhint{margin-top:46px; font-weight:900; color:var(--mute); letter-spacing:.1em}
+  .scrollhint i{display:inline-block; font-style:normal; animation:bob 1.7s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
+
+  /* ---------- 通用块 ---------- */
+  .card{background:var(--card); border:3px solid var(--ink); border-radius:18px;
+        padding:22px 20px; box-shadow:6px 6px 0 var(--ink)}
+  .flat{background:var(--paper2); border:2px solid var(--line); border-radius:16px; padding:20px 20px; box-shadow:none}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:clamp(14px,2.6vw,24px); margin:32px 0 8px}
+  .row3{display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(13px,2.2vw,22px); margin:32px 0 8px}
+  .row4{display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(12px,2vw,18px); margin:32px 0 8px}
+  @media(max-width:760px){.row2,.row3{grid-template-columns:1fr}.row4{grid-template-columns:1fr 1fr}}
+
+  .tag{display:inline-block; font-size:12px; font-weight:900; letter-spacing:.1em; text-transform:uppercase;
+       border:2px solid var(--ink); border-radius:100px; padding:4px 11px; color:#fff; background:var(--ink)}
+  .tag.d{background:var(--demo)} .tag.p{background:var(--pref)} .tag.v{background:var(--veri)}
+  .tag.g{background:var(--paper2); color:var(--mute)}
+
+  .fml{background:var(--ink); color:var(--paper); border-radius:16px; padding:20px 22px; margin:26px 0;
+       font-family:var(--mono); font-size:clamp(14px,1.9vw,19px); line-height:1.75; overflow-x:auto}
+  .fml .hi{color:#7ED9B8; font-weight:700}
+  .fml .lo{color:#FF9E8A; font-weight:700}
+  .fml .cm{color:#9B948A}
+  .fml b{color:#FFD166}
+
+  .note{border-left:5px solid var(--line); padding:4px 0 4px 18px; margin:24px 0; color:var(--mute);
+        font-size:clamp(15px,1.9vw,18px); max-width:36em; line-height:1.62}
+  .note em{color:var(--ink)}
+  .big{font-weight:900; font-size:clamp(21px,3.2vw,34px); line-height:1.35; letter-spacing:-.02em;
+       max-width:30em; margin:30px 0 10px}
+  .big u{text-decoration:none; box-shadow:inset 0 -.42em 0 rgba(214,65,42,.22)}
+
+  ul{max-width:35em; padding-left:1.15em; margin:0 0 16px}
+  li{font-size:clamp(16px,2.05vw,20px); line-height:1.6; margin-bottom:10px}
+
+  /* ---------- 三个轴 ---------- */
+  .axis .n{font-size:44px; font-weight:900; line-height:1; color:var(--line); margin-bottom:6px}
+  .axis .q{font-weight:900; font-size:clamp(18px,2.3vw,23px); margin-bottom:12px; line-height:1.3}
+  .axis .opts{font-size:15.5px; line-height:1.7; color:var(--mute); font-weight:600}
+  .axis .opts s{text-decoration:none; color:var(--ink); font-weight:800}
+
+  /* ---------- 定位图 ---------- */
+  .map{display:grid; grid-template-columns:132px 1fr 1fr; gap:10px; margin:34px 0 6px}
+  .map .hd{font-weight:900; font-size:14.5px; letter-spacing:.02em; display:flex; align-items:flex-end;
+           padding-bottom:6px; line-height:1.3}
+  .map .rh{font-weight:900; font-size:15px; display:flex; align-items:center; gap:8px; line-height:1.25}
+  .cell{background:var(--card); border:3px solid var(--ink); border-radius:14px; padding:14px 14px;
+        box-shadow:4px 4px 0 var(--ink); text-decoration:none; color:inherit; display:block;
+        transition:transform .14s ease, box-shadow .14s ease}
+  .cell:hover{transform:translate(-2px,-2px); box-shadow:7px 7px 0 var(--acc,var(--ink))}
+  .cell .nm{font-weight:900; font-size:clamp(16px,2.1vw,20px); line-height:1.25}
+  .cell .ds{font-size:13.5px; color:var(--mute); margin-top:7px; font-weight:600; line-height:1.5}
+  .cell.void{background:transparent; border-style:dashed; box-shadow:none; border-color:var(--line);
+             color:var(--mute); pointer-events:none}
+  @media(max-width:760px){
+    .map{grid-template-columns:1fr}
+    .map .hd{display:none}
+    .map .rh{padding-top:14px}
+  }
+
+  /* ---------- 交互台 ---------- */
+  .demo{background:var(--card); border:3px solid var(--ink); border-radius:22px;
+        padding:clamp(18px,3.4vw,30px); box-shadow:8px 8px 0 var(--ink); margin:34px 0 10px}
+  .demo .hd{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px}
+  .demo .hd .t{font-weight:900; font-size:clamp(16px,2.1vw,20px)}
+  .demo .hd .sim{font-size:12px; font-weight:800; color:var(--mute); letter-spacing:.06em;
+                 border:2px dashed var(--line); border-radius:100px; padding:3px 10px}
+  .btns{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px}
+  button{font-family:var(--sans); font-weight:900; font-size:15px; cursor:pointer;
+         background:var(--paper2); color:var(--ink); border:3px solid var(--ink); border-radius:100px;
+         padding:9px 17px; box-shadow:3px 3px 0 var(--ink)}
+  button:hover{transform:translate(-1px,-1px); box-shadow:5px 5px 0 var(--ink)}
+  button.on{background:var(--ink); color:var(--paper)}
+  input[type=range]{width:100%; height:32px; accent-color:var(--hot)}
+  label.rl{display:block; font-weight:900; font-size:16px; margin-bottom:6px}
+  label.rl span{font-family:var(--mono); color:var(--hot)}
+  .cap{font-size:15.5px; line-height:1.6; font-weight:600; color:var(--mute); margin-top:16px; max-width:44em}
+  .cap em{color:var(--ink); font-weight:900}
+
+  /* token strip */
+  .strip{display:flex; flex-wrap:wrap; gap:6px; align-items:flex-end}
+  .tk{border:2px solid var(--ink); border-radius:8px; padding:6px 8px 4px; min-width:30px; text-align:center;
+      background:#fff; font-weight:800; font-size:15px; transition:opacity .18s ease, background .18s ease}
+  .tk.sp{font-family:var(--mono); font-size:11.5px; font-weight:800; background:var(--paper2); letter-spacing:-.02em}
+  .tk .bar{height:22px; margin-top:5px; display:flex; align-items:flex-end; justify-content:center}
+  .tk .bar i{display:block; width:9px; background:var(--hot); border-radius:2px 2px 0 0}
+  .tk .x{height:22px; margin-top:5px; color:var(--mute); font-size:12px; font-weight:900; line-height:22px}
+  .tk.off{opacity:.34; border-style:dashed; background:transparent}
+  .tk.hit{background:#FFF3D6}
+
+  /* bars */
+  .bars{display:grid; gap:12px; margin-top:6px}
+  .brow{display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center}
+  .brow .k{font-weight:900; font-size:14.5px; width:9.5em}
+  .brow .t{height:20px; background:var(--paper2); border:2px solid var(--ink); border-radius:100px; overflow:hidden}
+  .brow .t i{display:block; height:100%; width:0; transition:width .2s ease}
+  .brow .v{font-family:var(--mono); font-weight:800; font-size:14px; width:4.4em; text-align:right}
+  @media(max-width:600px){.brow{grid-template-columns:1fr}.brow .k{width:auto}}
+
+  .out{margin-top:18px; background:var(--paper2); border:2px solid var(--line); border-radius:14px;
+       padding:16px 16px; font-size:16px; line-height:1.6; font-weight:600; min-height:5.4em}
+  .out .who{font-size:12px; font-weight:900; letter-spacing:.12em; color:var(--mute); display:block; margin-bottom:8px}
+
+  /* best-of-N */
+  .pool{display:flex; flex-wrap:wrap; gap:5px; margin:6px 0 20px}
+  .sm{width:22px; height:22px; border:2px solid var(--line); border-radius:5px; background:transparent}
+  .sm.act{border-color:var(--ink); background:var(--paper2)}
+  .sm.pick{background:var(--hot); border-color:var(--ink); box-shadow:0 0 0 3px rgba(214,65,42,.22)}
+  .twin{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:4px}
+  .twin .box{border:3px solid var(--ink); border-radius:14px; padding:14px; text-align:center}
+  .twin .box .lbl{font-size:13px; font-weight:900; letter-spacing:.04em; color:var(--mute)}
+  .twin .box .num{font-weight:900; font-size:clamp(32px,6vw,52px); line-height:1.05; margin-top:4px}
+  .twin .rm .num{color:var(--pref)} .twin .tq .num{color:var(--veri)}
+  .chart{display:flex; align-items:flex-end; gap:clamp(6px,1.6vw,14px); height:170px; margin-top:22px;
+         border-bottom:3px solid var(--ink); padding-bottom:0}
+  .chart .col{flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; height:100%}
+  .chart .pair{display:flex; gap:3px; align-items:flex-end; width:100%; justify-content:center; height:100%}
+  .chart .pair i{width:32%; border:2px solid var(--ink); border-radius:4px 4px 0 0}
+  .chart .pair .a{background:var(--pref)} .chart .pair .b{background:var(--veri)}
+  .chart .xl{font-family:var(--mono); font-size:12px; font-weight:800; margin-top:6px; color:var(--mute)}
+
+  /* grpo group */
+  .grp{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:6px 0 18px}
+  @media(max-width:700px){.grp{grid-template-columns:repeat(2,1fr)}}
+  .ans{border:3px solid var(--ink); border-radius:12px; padding:11px 11px 9px; background:#fff}
+  .ans .r{font-weight:900; font-size:14px; display:flex; justify-content:space-between; align-items:center}
+  .ans .txt{font-family:var(--mono); font-size:11.5px; color:var(--mute); margin:6px 0 8px; font-weight:700}
+  .ans.ok{background:#EAF7F1} .ans.no{background:#FCEEEB}
+  .ans .advb{height:9px; background:var(--paper2); border:2px solid var(--ink); border-radius:100px; position:relative}
+  .ans .advb i{position:absolute; top:0; bottom:0; left:50%; background:var(--veri)}
+  .ans .advb i.neg{background:var(--hot)}
+  .mean{display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-weight:900; font-size:16px}
+  .mean .pill{font-family:var(--mono); background:var(--ink); color:var(--paper); border-radius:100px; padding:5px 13px; font-size:14px}
+
+  /* 表 */
+  .tblwrap{overflow-x:auto; margin:32px -4px 8px; padding:4px}
+  table{border-collapse:separate; border-spacing:0; width:100%; min-width:820px; background:var(--card);
+        border:3px solid var(--ink); border-radius:16px; overflow:hidden}
+  th,td{padding:13px 14px; text-align:left; font-size:15px; border-bottom:2px solid var(--line); vertical-align:top}
+  th{background:var(--ink); color:var(--paper); font-weight:900; font-size:13.5px; letter-spacing:.04em;
+     border-bottom:3px solid var(--ink)}
+  tr:last-child td{border-bottom:none}
+  td.nm{font-weight:900; white-space:nowrap}
+  td .sq{display:inline-block; width:11px; height:11px; border:2px solid var(--ink); border-radius:3px; margin-right:7px}
+  .sq.d{background:var(--demo)} .sq.p{background:var(--pref)} .sq.v{background:var(--veri)} .sq.g{background:var(--paper2)}
+  td.c{font-family:var(--mono); font-weight:800; text-align:center}
+
+  /* pipeline */
+  .pipe{margin:30px 0 8px}
+  .pipe .ttl{font-weight:900; font-size:clamp(18px,2.4vw,24px); margin-bottom:4px}
+  .pipe .yr{font-size:14px; color:var(--mute); font-weight:800; margin-bottom:14px}
+  .flow{display:flex; flex-wrap:wrap; gap:8px; align-items:stretch}
+  .stg{background:var(--card); border:3px solid var(--ink); border-radius:12px; padding:10px 13px;
+       box-shadow:4px 4px 0 var(--ink); min-width:118px; flex:1 1 118px}
+  .stg .s1{font-weight:900; font-size:15px; line-height:1.25}
+  .stg .s2{font-size:12.5px; color:var(--mute); font-weight:700; margin-top:5px; line-height:1.45}
+  .arw{align-self:center; font-weight:900; color:var(--mute); font-size:20px}
+  .loop{margin-top:12px; font-weight:900; font-size:15px; color:var(--hot)}
+
+  footer{max-width:1020px; margin:0 auto; padding:60px 22px 110px; color:var(--mute);
+         font-size:15px; font-weight:700; line-height:1.7}
+
+  .reveal{opacity:0; transform:translateY(20px); transition:opacity .5s ease, transform .5s ease}
+  .reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+<div class="prog"><i id="progbar"></i></div>
+<main>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <p class="step">Post-training · 后训练</p>
+  <h1><span>预训练之后</span><span>那一堆方法，</span><span>看<span class="k1">谁打分</span><span class="k2">，</span></span><span class="k3">答案哪来</span></h1>
+  <p class="sub">SFT、RLHF、PPO、DPO、拒绝采样、GRPO、蒸馏 —— 名字一大把，目的都很接近：<em>把模型已经会的东西，往人想要的方向拧。</em>要看懂它们的区别，先看两件事：谁判断答案好不好，训练用的答案从哪里来。</p>
+
+  <div class="legend">
+    <span class="lg"><i class="dot d"></i>示范式训练</span>
+    <span class="lg"><i class="dot p"></i>偏好比较</span>
+    <span class="lg"><i class="dot v"></i>机器自动验证</span>
+  </div>
+  <p class="scrollhint">往下 <i>↓</i></p>
+</section>
+
+<!-- ============ 1 ============ -->
+<section>
+  <p class="step">01 · 起点</p>
+  <h2>预训练模型首先学会续写，<br>而不是稳定地按要求回答</h2>
+
+  <p>预训练的核心任务只有一个：给一段文字，猜下一个 token。所以刚出炉的 base 模型看到一个问题时，可能直接回答，也可能把它当成文章、试卷或论坛帖子的一部分继续往下写。</p>
+
+  <div class="row2">
+    <div class="card">
+      <span class="tag g">base 模型</span>
+      <h3 style="margin-top:14px">你：法国的首都是哪里？</h3>
+      <p class="mono" style="font-size:16px; color:var(--mute); max-width:none">它：德国的首都是哪里？<br>意大利的首都是哪里？<br>西班牙的首都是哪里？<br>（参考答案见第 42 页）</p>
+      <p style="font-size:16px; margin-top:14px; max-width:none">它很可能已经学到「法国首都是巴黎」。问题在于，它还没稳定学会<em>看到问句就直接回答</em>，于是把这句话续成了一份练习题。</p>
+    </div>
+    <div class="card">
+      <span class="tag g">post-training 之后</span>
+      <h3 style="margin-top:14px">你：法国的首都是哪里？</h3>
+      <p class="mono" style="font-size:16px; color:var(--mute); max-width:none">它：巴黎。</p>
+      <p style="font-size:16px; margin-top:14px; max-width:none">在这个例子里，变化的不是「巴黎」这条知识，而是行为：<em>看到问句要答、答完要停、不确定要说不确定、遇到不该做的请求要拒绝</em>。</p>
+    </div>
+  </div>
+
+  <p class="big"><u>Post-training 的主要任务不是灌入大量知识，而是调整「在无数种合理续写里挑哪一种」。</u></p>
+
+  <div class="note">严格说，<em>SFT 也能让模型记住一些新信息</em>。但用它维护大量、经常变化的知识通常很低效，还可能影响原有能力。想让模型使用公司内部文档，通常更适合接检索；后训练主要负责调整<em>行为</em>。</div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="axes">
+  <p class="step">02 · 一把尺子量所有方法</p>
+  <h2>每种方法，你只需要问三个问题</h2>
+
+  <p>后面大多数名词，都可以先用这三个问题定位。记住这三问，遇到没听过的新方法时，也能先看懂它大概属于哪一类。</p>
+
+  <div class="row3">
+    <div class="card axis">
+      <div class="n">1</div>
+      <div class="q">一条训练样本<br>长什么样？</div>
+      <div class="opts">
+        <s>一条示范</s>：问题 + 一个好答案<br>
+        <s>一对比较</s>：问题 + A 比 B 好<br>
+        <s>一道能判对错的题</s>：问题 + 标准答案 / 单元测试
+      </div>
+    </div>
+    <div class="card axis">
+      <div class="n">2</div>
+      <div class="q">好坏<br>是谁说的？</div>
+      <div class="opts">
+        <s>人写</s>（示范就是答案）<br>
+        <s>人挑</s>（人只说哪个更好）<br>
+        <s>另一个模型挑</s>（RLAIF）<br>
+        <s>一段能跑的代码验</s>（验证器）
+      </div>
+    </div>
+    <div class="card axis">
+      <div class="n">3</div>
+      <div class="q">训练用的答案<br>从哪里来？</div>
+      <div class="opts">
+        <s>训练前已经准备好</s> —— 训练时直接读取，可以反复用<br>
+        <s>由当前模型生成</s> —— 可能在每个 step 里在线生成，也可能在两轮训练之间批量生成
+      </div>
+    </div>
+  </div>
+
+  <div class="note">第 3 问最容易被忽略，还要继续追问一句：<em>生成发生在训练循环里，还是两轮训练之间？</em>每个 step 都要先生成一批回答，通常更慢、更占资源；先批量生成、再拿固定数据训练，工程上更接近普通监督学习。</div>
+
+  <h3 style="margin-top:52px">于是所有方法可以摆成这样一张图</h3>
+  <div class="map">
+    <div class="hd"></div>
+    <div class="hd">训练前已有答案<br><span class="mute" style="font-weight:700">（训练时读取固定数据）</span></div>
+    <div class="hd">答案由当前模型生成<br><span class="mute" style="font-weight:700">（在线生成或轮间批量生成）</span></div>
+
+    <div class="rh"><i class="dot d"></i>示范式<br>训练</div>
+    <a class="cell" style="--acc:var(--demo)" href="#sft"><div class="nm">SFT · 指令微调</div><div class="ds">照着标准答案学。蒸馏也在这一格，只是答案是另一个模型写的。</div></a>
+    <a class="cell" style="--acc:var(--demo)" href="#rft"><div class="nm">拒绝采样微调</div><div class="ds">两轮训练之间批量采 N 个 → 挑出最好的 → 当成示范再 SFT。筛子可以是 RM，也可以是验证器。</div></a>
+
+    <div class="rh"><i class="dot p"></i>人的偏好<br>（挑）</div>
+    <a class="cell" style="--acc:var(--pref)" href="#dpo"><div class="nm">DPO 及其家族</div><div class="ds">直接在「A 比 B 好」上做梯度下降。不要 RM，不要采样。</div></a>
+    <a class="cell" style="--acc:var(--pref)" href="#ppo"><div class="nm">RLHF · PPO</div><div class="ds">每个 step 在线生成 → 奖励模型打分 → 按分数更新。经典那一套。</div></a>
+
+    <div class="rh"><i class="dot v"></i>机器<br>自动验证</div>
+    <div class="cell void"><div class="nm">验证器筛选 + SFT</div><div class="ds">先离线运行验证器，留下通过的答案，再把它们当示范训练；通常会归到拒绝采样里。</div></div>
+    <a class="cell" style="--acc:var(--veri)" href="#grpo"><div class="nm">RLVR · GRPO</div><div class="ds">每个 step 生成一组答案，再对答案或跑测试，用验证结果更新模型。</div></a>
+  </div>
+  <p class="cap">点格子可以直接跳到那一节。</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="sft">
+  <p class="step">03 · 第一种 <span class="tag d" style="margin-left:6px">人写的示范</span></p>
+  <h2>SFT：还是预测下一个 token，<br>通常只让回答部分计算 loss</h2>
+
+  <p>监督微调（supervised fine-tuning）的核心计算和预训练相同：预测下一个 token，使用交叉熵。典型的指令微调主要改了两件事。</p>
+
+  <div class="row2">
+    <div class="card">
+      <span class="tag d">改动一</span>
+      <h3 style="margin-top:14px">数据换成对话</h3>
+      <p style="font-size:16.5px; max-width:none">从「网上的文章」换成「一个请求 + 一个人想要的回答」，中间用固定的特殊 token 隔开。所谓 <span class="mono">chat template</span> 就是在这一步教进去的 —— 模型不是天生认识 <span class="mono">&lt;|assistant|&gt;</span>，是这一步反复见到才学会「看到这个符号，该我说话了」。</p>
+    </div>
+    <div class="card">
+      <span class="tag d">改动二</span>
+      <h3 style="margin-top:14px">只让回答部分计入 loss</h3>
+      <p style="font-size:16.5px; max-width:none">用户的问题仍然会被模型读到，但只作为上下文；训练目标主要落在<em>助手回答</em>上。这样可以让模型把能力集中在「看到这个请求后应该怎么答」，而不是同时模仿用户怎么提问。</p>
+    </div>
+  </div>
+
+  <div class="demo">
+    <div class="hd"><span class="tag d">实验台</span><span class="t">loss 算在哪些 token 上</span></div>
+    <div class="btns">
+      <button id="mkOn" class="on">只计算回答部分（常见做法）</button>
+      <button id="mkOff">整段都计算 loss</button>
+    </div>
+    <div class="strip" id="strip"></div>
+    <p class="cap" id="mkCap"></p>
+  </div>
+
+  <p>这一步主要教的是<em>格式和行为</em>，因此所需数据可以比预训练少很多。InstructGPT 的 SFT 集大约有 1.3 万条人写示范；后来 LIMA 用 <em>1000 条</em>精挑的示范，也展示了高质量小数据的效果。</p>
+
+  <p>实际流水线通常先做 SFT：模型先学会按格式回答，后面那些「让它自己生成再打分」的方法才更容易采到可用的答案。它不是理论上必需，但通常能让后续训练稳定很多。</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section>
+  <p class="step">04 · 为什么不能就停在这</p>
+  <h2>SFT 的三个天花板</h2>
+
+  <div class="row3">
+    <div class="card">
+      <h4>① 判断好坏，通常比亲自示范容易</h4>
+      <p style="font-size:16px; max-width:none">让你<em>写</em>一首更好的诗很难，让你在两首里<em>挑</em>一首往往容易得多。只靠示范数据时，答案质量会明显受示范作者能力限制。</p>
+    </div>
+    <div class="card">
+      <h4>② 不擅长直接表达「A 比 B 好」</h4>
+      <p style="font-size:16px; max-width:none">SFT 可以用正确示范间接教模型「不要编参考文献」，但很难直接利用「这个答案比另一个差在哪里」的信息。偏好比较更适合表达这种相对好坏。</p>
+    </div>
+    <div class="card">
+      <h4>③ 训练时看到的前文太理想</h4>
+      <p style="font-size:16px; max-width:none">训练时，要预测的 token 前面通常是标准答案；真正生成时，前面却是模型自己刚写的内容，可能已经有一点偏。<em>它较少练习如何从自己的小错误里往回收。</em></p>
+    </div>
+  </div>
+
+  <p class="big">这些限制引出了两条常见思路：<u>让人比较答案，而不必完整写答案；让模型从自己真正可能生成的回答中学习。</u></p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="rm">
+  <p class="step">05 · 零件 <span class="tag p" style="margin-left:6px">人的偏好</span></p>
+  <h2>奖励模型：<br>把「更好」压成一个数</h2>
+
+  <p>要让人打分，得先解决一个问题：人不可能在训练循环里打几百万次分。因此可以先训练另一个模型去模仿人的偏好，再让它批量打分 —— 这就是奖励模型（reward model, RM）。</p>
+
+  <p><em>数据</em>：同一个问题采两个回答，人只回答一句「哪个更好」。<br>
+     <em>模型</em>：通常从 SFT 模型开始，把最后的输出层改成<em>只输出一个数</em>。这个数用来表示模型对「这个回答有多好」的判断。</p>
+
+  <div class="fml">loss = − log σ( r(<span class="hi">好答案</span>) − r(<span class="lo">坏答案</span>) )     <span class="cm">// σ 是 sigmoid，把任意实数压到 0~1</span></div>
+
+  <p>注意这个式子里只有<em>差值</em>。给全世界所有答案的分数一起 +5，loss 一个小数点都不变。</p>
+
+  <div class="demo">
+    <div class="hd"><span class="tag p">实验台</span><span class="t">奖励模型的 loss 只管差值</span></div>
+    <div style="margin-bottom:14px">
+      <label class="rl">好答案的分 r(好) = <span id="rwV">1.2</span></label>
+      <input type="range" id="rw" min="-8" max="8" step="0.1" value="1.2">
+    </div>
+    <div style="margin-bottom:18px">
+      <label class="rl">坏答案的分 r(坏) = <span id="rlV">-0.8</span></label>
+      <input type="range" id="rlo" min="-8" max="8" step="0.1" value="-0.8">
+    </div>
+    <div class="bars">
+      <div class="brow"><div class="k">差值 Δ</div><div class="t"><i id="bDelta" style="background:var(--ink)"></i></div><div class="v" id="vDelta"></div></div>
+      <div class="brow"><div class="k">σ(Δ)：模型认为<br>「好的确实更好」的概率</div><div class="t"><i id="bSig" style="background:var(--pref)"></i></div><div class="v" id="vSig"></div></div>
+      <div class="brow"><div class="k">loss</div><div class="t"><i id="bLoss" style="background:var(--hot)"></i></div><div class="v" id="vLoss"></div></div>
+    </div>
+    <div class="btns" style="margin:20px 0 0"><button id="shift">两个分数一起 +3</button><button id="rmReset">复位</button></div>
+    <p class="cap" id="rmCap"></p>
+  </div>
+
+  <p>RM 的用处，是把有限的人工比较变成一个可以反复调用的自动打分器。人只标一批偏好对，训练阶段就可以让 RM 大规模地替人排序。</p>
+
+  <div class="note">代价也在这里：<em>RM 是个代理，不是真的人。</em>它通常在接近训练数据的范围内更可靠；模型一旦跑到 RM 不熟悉的地方，分数就可能失真。很多「reward hacking / 刷分」问题都与此有关。</div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="ppo">
+  <p class="step">06 · 第二种 <span class="tag p" style="margin-left:6px">人的偏好 · 在线</span></p>
+  <h2>RLHF：自己生成，<br>按分数推，用 KL 拴住</h2>
+
+  <p>有了会打分的 RM，循环就转起来了。一个 step 里四件事：</p>
+
+  <div class="row4">
+    <div class="flat"><h4>① 采</h4><p style="font-size:15.5px; max-width:none; margin:0">拿一个 prompt，让当前模型<em>自己写</em>一个回答。</p></div>
+    <div class="flat"><h4>② 评</h4><p style="font-size:15.5px; max-width:none; margin:0">RM 给这个回答一个分。</p></div>
+    <div class="flat"><h4>③ 拴</h4><p style="font-size:15.5px; max-width:none; margin:0">用 KL 衡量它和<em>训练前那个模型</em>差多远，再从奖励里扣掉一部分。</p></div>
+    <div class="flat"><h4>④ 推</h4><p style="font-size:15.5px; max-width:none; margin:0">按「分 − 罚」的方向改参数：让这次这么写的概率变高。</p></div>
+  </div>
+
+  <p style="margin-top:34px">贵在哪？典型的 PPO-RLHF 训练要同时维护四种模型角色：</p>
+  <ul>
+    <li><b>policy</b> —— 正在被训的那个，有梯度、有优化器状态</li>
+    <li><b>reference</b> —— SFT 模型的冻结副本，只用来算「跑多远了」</li>
+    <li><b>reward model</b> —— 冻结，只打分</li>
+    <li><b>critic / value</b> —— 也在训，先估一个「大概能拿多少分」的基准，减少训练时的随机波动</li>
+  </ul>
+  <p>再加上每个 step 中间都要做一次完整的自回归生成，一个 token 一个 token 地吐答案。RLHF 的主要难点因此不是 loss 本身，而是<em>工程重、资源贵、超参敏感</em>。</p>
+
+  <h3 style="margin-top:48px">③ 那个「拴」是整套方案的保险丝</h3>
+  <p>KL 可以理解成「当前模型和参考模型的输出分布差了多少」。如果只让模型追 RM 给的分数，它可能找到 RM 的漏洞并一直薅。KL 罚项是在提醒它：<em>可以变好，但别一下跑得离原模型太远。</em></p>
+
+  <div class="demo">
+    <div class="hd"><span class="tag p">实验台</span><span class="t">KL 拴绳松紧</span><span class="sim">示意，非实测数字</span></div>
+    <label class="rl">KL 罚项系数 β = <span id="klV"></span></label>
+    <input type="range" id="kl" min="0" max="100" step="1" value="50">
+    <div class="bars" style="margin-top:18px">
+      <div class="brow"><div class="k">RM 给的分</div><div class="t"><i id="bRm" style="background:var(--pref)"></i></div><div class="v" id="vRm"></div></div>
+      <div class="brow"><div class="k">离原模型多远</div><div class="t"><i id="bKl" style="background:var(--hot)"></i></div><div class="v" id="vKl"></div></div>
+      <div class="brow"><div class="k">真人看了觉得</div><div class="t"><i id="bHu" style="background:var(--veri)"></i></div><div class="v" id="vHu"></div></div>
+    </div>
+    <div class="out"><span class="who">这时候它会这样回答「文件权限该设成多少」</span><span id="klOut"></span></div>
+    <p class="cap" id="klCap"></p>
+  </div>
+
+  <p>成绩是实打实的：InstructGPT 论文里，一个 <em>1.3B</em> 的 RLHF 模型的输出，被标注员判为<em>优于 175B 的原始 GPT-3</em>。参数量差一百多倍，赢的不是知识，是「按要求做事」。</p>
+
+  <div class="note">PPO 只是第 ④ 步「怎么推参数」的具体算法（核心是一个 clip，防止一步走太远）。把它换成别的 RL 算法，上面这一圈的形状不变 —— <em>所以别把 PPO 和 RLHF 当同一个词</em>。</div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="dpo">
+  <p class="step">07 · 第三种 <span class="tag p" style="margin-left:6px">人的偏好 · 离线</span></p>
+  <h2>DPO：把奖励模型和采样<br>一起删掉</h2>
+
+  <p>看着上面那一圈，很自然会问一句：人给的本来就是「A 比 B 好」，我们却先把它压成一个 RM，再让 RM 去教模型。<em>中间这一道能不能跳过？</em></p>
+
+  <p>DPO（2023）的答案是能。它不再单独训练一个 RM，而是直接拿「好答案、坏答案」这一对来调整模型：<em>相对于参考模型，让当前模型更偏向好答案，而不是坏答案。</em></p>
+
+  <p>推导之后，这个目标可以写成下面的 loss。训练时只需要读取固定的偏好数据，不必在每个 step 里现场生成答案：</p>
+
+  <div class="fml">loss = − log σ( β · [ log <span class="hi">π(好)</span>/π<sub>ref</sub>(<span class="hi">好</span>) − log <span class="lo">π(坏)</span>/π<sub>ref</sub>(<span class="lo">坏</span>) ] )</div>
+
+  <p>直觉上，它比较两件事：当前模型相对参考模型，给好答案增加了多少概率，又给坏答案增加了多少概率。<em>前者应该比后者大。</em>训练时需要用当前模型和参考模型分别计算好、坏答案的概率，但没有在线生成，没有 RM，也没有 critic。</p>
+
+  <div class="row2">
+    <div class="card" style="border-color:var(--veri)">
+      <span class="tag v">省掉了</span>
+      <ul style="margin-top:14px; margin-bottom:0">
+        <li>训一个 RM 的那一整轮</li>
+        <li>训练循环里的自回归生成</li>
+        <li>critic 模型</li>
+        <li>一堆 RL 超参</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:var(--hot)">
+      <span class="tag" style="background:var(--hot)">代价</span>
+      <ul style="margin-top:14px; margin-bottom:0">
+        <li><b>固定数据不会跟模型同步变化。</b>训着训着模型变了，偏好对仍然来自旧模型，和当前模型可能越来越不匹配。</li>
+        <li><b>它只保证「好比坏更可能」，不保证「好本身更可能」。</b>实测里常见：两边的概率<em>一起</em>往下掉，只是好的掉得慢点。</li>
+      </ul>
+    </div>
+  </div>
+
+  <p style="margin-top:30px">第一个代价的现实解法是<em>迭代</em>：训一轮 → 用新模型重新采样 → 重新标偏好 → 再训。Llama 3 就是这么干的，来回六轮。绕了一圈，又把「让模型自己生成」这件事请回来了 —— 只是搬到了循环外面。</p>
+
+  <h3 style="margin-top:48px">DPO 家族：都在改同一个 loss 的形状</h3>
+  <p>你听过的这几个名字，大体和 DPO 处在同一类（离线、使用偏好信号、不单独训练 RM），主要区别在 loss 的具体设计：</p>
+  <div class="row2">
+    <div class="flat"><h4>IPO</h4><p style="font-size:15.5px;max-width:none;margin:0">换掉 log-sigmoid，避免模型一味把差值往无穷大推、进而过拟合偏好数据。</p></div>
+    <div class="flat"><h4>KTO</h4><p style="font-size:15.5px;max-width:none;margin:0">不要成对数据。单条「这条行 / 这条不行」也能训 —— 现实里的反馈（点赞点踩）本来就是这个形状。</p></div>
+    <div class="flat"><h4>ORPO</h4><p style="font-size:15.5px;max-width:none;margin:0">把 SFT 和偏好合成一个 loss，连参考模型都不要，从 base 模型一步到位。</p></div>
+    <div class="flat"><h4>SimPO</h4><p style="font-size:15.5px;max-width:none;margin:0">也去掉参考模型，用「按长度归一化的平均 log 概率」当隐式 reward，顺手压一压「越长越容易赢」的毛病。</p></div>
+  </div>
+  <div class="note">还有一个换的是<em>第 2 问</em>而不是式子：<em>RLAIF</em> / Constitutional AI —— 打分的从人换成另一个模型（给它一份写好的原则，让它挑）。训练方法本身不必改变，偏好数据则更容易大规模生成。</div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="rft">
+  <p class="step">08 · 第四种 <span class="tag d" style="margin-left:6px">自己采，再当示范</span></p>
+  <h2>拒绝采样：最直接的一条，<br>也是常见的工业方案</h2>
+
+  <p>做法朴素到不像一个方法：</p>
+  <div class="row4">
+    <div class="flat"><h4>①</h4><p style="font-size:15.5px;max-width:none;margin:0">一个 prompt，让模型采 N 个回答（几个到几十个）</p></div>
+    <div class="flat"><h4>②</h4><p style="font-size:15.5px;max-width:none;margin:0">用 RM（或验证器、或人）挑出最好的那一个</p></div>
+    <div class="flat"><h4>③</h4><p style="font-size:15.5px;max-width:none;margin:0">把它当成一条新示范，做一次<em>普通 SFT</em></p></div>
+    <div class="flat"><h4>④</h4><p style="font-size:15.5px;max-width:none;margin:0">用新模型再采一轮，回到 ①</p></div>
+  </div>
+
+  <p style="margin-top:32px">训练方法仍然是 SFT，所以比较简单、稳定，也不需要 critic。不同之处在于：<em>示范由当前模型生成，再经过筛选。</em>这样模型学到的，是自己真正可能写出的回答中较好的那些。它因此常被用作工业后训练的主力环节；Llama 2 和 Llama 3 的后训练都大量使用了这条路线。</p>
+
+  <div class="demo">
+    <div class="hd"><span class="tag d">实验台</span><span class="t">N 开大一点，挑到的是更好的，还是更会骗分的？</span><span class="sim">模拟数据</span></div>
+    <label class="rl">采样数 N = <span id="nV">8</span></label>
+    <input type="range" id="nSl" min="1" max="64" step="1" value="8">
+    <div class="pool" id="pool"></div>
+    <div class="twin">
+      <div class="box rm"><div class="lbl">被挑中那条的 · 打分器给的分</div><div class="num" id="pickRm"></div></div>
+      <div class="box tq"><div class="lbl">被挑中那条的 · 真实质量</div><div class="num" id="pickTq"></div></div>
+    </div>
+    <div class="chart" id="chart"></div>
+    <div style="display:flex; gap:16px; margin-top:12px; font-size:13.5px; font-weight:800; color:var(--mute)">
+      <span><i class="dot p" style="display:inline-block; vertical-align:-2px"></i> 打分器分数</span>
+      <span><i class="dot v" style="display:inline-block; vertical-align:-2px"></i> 真实质量</span>
+    </div>
+    <p class="cap" id="nCap"></p>
+  </div>
+
+  <p class="big">一旦拿代理分数当目标去挑极值，<u>代理和真实目标就可能逐渐分开</u>。采样池越大，挑到「刚好骗过打分器的答案」的风险也越高。</p>
+
+  <div class="note">它和 RL 的差别也在这儿：拒绝采样只学被选中的那一条，剩下 N−1 条<em>直接扔了</em>；RL 还会利用「每条答案比基准好或差多少」。因此 RL 能用到更多信息，但拒绝采样通常更简单、更稳定。</div>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="grpo">
+  <p class="step">09 · 第五种 <span class="tag v" style="margin-left:6px">机器自动验证</span></p>
+  <h2>RLVR / GRPO：<br>打分的换成一段能跑的代码</h2>
+
+  <p>回到 RLHF 那一圈，只换掉一个零件：<em>打分的从 RM 换成一个验证器</em>。数学题可以比对最终答案，代码题可以跑单元测试，格式要求可以用规则检查。最简单的 reward 是 0 或 1，也可以使用通过率等更细的分数。</p>
+
+  <div class="row3">
+    <div class="card" style="border-color:var(--veri)"><h4>容易扩规模</h4><p style="font-size:16px;max-width:none">题目和标准答案已经存在时，不需要逐条请人比较回答</p></div>
+    <div class="card" style="border-color:var(--veri)"><h4>信号更直接</h4><p style="font-size:16px;max-width:none">通过测试通常比「RM 猜人会不会喜欢」更接近任务目标</p></div>
+    <div class="card" style="border-color:var(--veri)"><h4>较难靠表面功夫刷分</h4><p style="font-size:16px;max-width:none">堆客套话不能让单元测试通过，但验证器设计不完整时仍可能被钻空子</p></div>
+  </div>
+
+  <h3 style="margin-top:48px">GRPO 顺手又删掉一个模型</h3>
+  <p>PPO 里的 critic 会先估一个基准，用来判断这次拿到的分数到底算高还是低。GRPO 换了一种更直接的参照：<em>同一个 prompt 一次采一组（G 个）回答，让组内答案互相比较。</em>高于组内平均的答案往上推，低于平均的往下压，因此不再需要单独的 critic。</p>
+  <div class="fml">优势（简化理解） = 自己这条的分 − <b>这一组的平均分</b>     <span class="cm">// 不再单独训练 critic</span></div>
+
+  <div class="demo">
+    <div class="hd"><span class="tag v">实验台</span><span class="t">一组 8 个回答，组内均值当参照</span></div>
+    <div class="btns"><button id="grpoNext">换一组题看看 →</button></div>
+    <div class="grp" id="grp"></div>
+    <div class="mean">
+      <span>组内平均分</span><span class="pill" id="gMean"></span>
+      <span>这一步学到东西了吗</span><span class="pill" id="gSig"></span>
+    </div>
+    <p class="cap" id="gCap"></p>
+  </div>
+
+  <p>这也解释了 RLVR 的数据配方核心：<em>题的难度最好落在模型「不是全对也不是全错」的区间</em>。如果同一组全对或全错，组内答案没有高低差别，提供不了有效的相对奖励信号。</p>
+
+  <p class="big">最重要的一点：<u>较长的「思考」可以从结果奖励中自己长出来。</u></p>
+  <p>当奖励主要看最终答案是否正确时，模型可能发现「先多推几步再答」更容易拿到高分，于是回答逐渐变长。DeepSeek-R1 报告里的响应长度曲线就展示了这种现象：<em>不必逐条人工示范「要写多长」，模型也可能学会投入更多推理步骤。</em></p>
+
+  <div class="note">限制也很硬：<em>得有验证器。</em>数学、代码、形式化推理有；「写一封得体的邮件」「这个回答有没有冒犯人」没有 —— 那部分还得靠人的偏好。所以今天的流水线两边都要，不是二选一。</div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="distill">
+  <p class="step">10 · 那蒸馏算哪一种</p>
+  <h2>蒸馏不是一种训练算法，<br>是一种数据来源</h2>
+
+  <p>它经常和上面几种并列被提，但它不在同一层：<em>它换的是「答案从哪来」，训练算法照旧。</em></p>
+
+  <div class="row2">
+    <div class="card">
+      <span class="tag d">黑盒 / 序列级</span>
+      <h3 style="margin-top:14px">把强模型的输出当示范</h3>
+      <p style="font-size:16.5px;max-width:none">采一批老师的回答，做一次<em>普通 SFT</em>。DeepSeek 放出的那批 R1-Distill-Qwen / Llama 就是这么来的：用 R1 生成的约 80 万条样本纯 SFT，<em>没做 RL</em>。</p>
+    </div>
+    <div class="card">
+      <span class="tag d">白盒 / logits 级</span>
+      <h3 style="margin-top:14px">对着老师的整个分布学</h3>
+      <p style="font-size:16.5px;max-width:none">老师给的不是一个 token，是每个位置上词表的完整概率分布，学生对着它做 KL。信息量大得多，但要求两边同一套 tokenizer，而且你得有老师的权重。</p>
+    </div>
+  </div>
+
+  <div class="note">学生学到什么，很大程度上取决于老师展示了什么，以及蒸馏数据覆盖了什么。它能高效地把「会做事」搬过去，但能力上限通常会受老师和数据限制。这也正是验证器那条路的价值所在 —— <em>它的信号来自外部世界，不只来自另一个模型</em>。</div>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="glossary">
+  <p class="step">11 · 词汇表</p>
+  <h2>这些词，不必靠上下文猜</h2>
+  <p>这里不重复解释 token、loss 这类常用词，只收录会影响理解、但不一定人人熟悉的术语。</p>
+
+  <div class="row2">
+    <div class="flat"><h4>KL · KL 散度</h4><p style="font-size:15.5px;max-width:none;margin:0">衡量两个概率分布差多远。在本文里，它主要用来限制训练后的模型不要一下偏离参考模型太多。</p></div>
+    <div class="flat"><h4>policy · 策略模型</h4><p style="font-size:15.5px;max-width:none;margin:0">正在生成答案、也正在被训练的模型。RL 语境里的 policy，在这里基本就是「当前模型」。</p></div>
+    <div class="flat"><h4>reference model · 参考模型</h4><p style="font-size:15.5px;max-width:none;margin:0">训练开始前冻结的一份模型副本。它不更新，只负责告诉我们当前模型已经走了多远。</p></div>
+    <div class="flat"><h4>reward model · 奖励模型</h4><p style="font-size:15.5px;max-width:none;margin:0">模仿人类偏好给回答打分的模型。它给的是代理分数，不等于真实质量的绝对刻度。</p></div>
+    <div class="flat"><h4>critic / value · 价值模型</h4><p style="font-size:15.5px;max-width:none;margin:0">先估计「正常情况下大概能拿多少分」，给实际奖励提供一个比较基准，减少训练波动。</p></div>
+    <div class="flat"><h4>online / offline · 在线 / 离线</h4><p style="font-size:15.5px;max-width:none;margin:0">在线指训练循环里由当前模型现场生成答案；离线指先准备好固定数据，再集中训练。</p></div>
+    <div class="flat"><h4>verifier · 验证器</h4><p style="font-size:15.5px;max-width:none;margin:0">用标准答案、单元测试或规则自动检查结果的程序。它比 RM 更直接，但只会检查被明确写进规则的部分。</p></div>
+    <div class="flat"><h4>logits</h4><p style="font-size:15.5px;max-width:none;margin:0">模型为词表里每个 token 给出的原始分数；经过归一化后，才变成下一 token 的概率分布。</p></div>
+  </div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section>
+  <p class="step">12 · 收拢</p>
+  <h2>一张表看完</h2>
+
+  <div class="tblwrap">
+  <table>
+    <thead><tr>
+      <th>方法</th><th>一条样本长什么样</th><th>谁打分</th><th>答案谁生成</th><th>典型模型角色数</th><th>主要代价</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="nm"><i class="sq d"></i>SFT</td>
+        <td>问题 + 一个好答案</td><td>人（写）</td><td>数据集</td><td class="c">1</td>
+        <td>高质量示范贵；很难直接表达答案之间的相对好坏</td>
+      </tr>
+      <tr>
+        <td class="nm"><i class="sq d"></i>蒸馏</td>
+        <td>问题 + 强模型写的答案</td><td>老师模型</td><td>老师</td><td class="c">1</td>
+        <td>能力受老师输出和蒸馏数据覆盖范围限制</td>
+      </tr>
+      <tr>
+        <td class="nm"><i class="sq d"></i>拒绝采样</td>
+        <td>问题 + 自己采的 N 个里最好的</td><td>RM / 验证器</td><td>自己（离线批量采）</td><td class="c">1<span class="mute">（采样时另配 RM）</span></td>
+        <td>扔掉 N−1 条信息；N 很大时更容易挑到会骗分的答案</td>
+      </tr>
+      <tr>
+        <td class="nm"><i class="sq p"></i>RM 训练</td>
+        <td>问题 + （好，坏）</td><td>人（挑）</td><td>数据集</td><td class="c">1</td>
+        <td>离训练分布越远越不可靠；它是代理，不是真人判断</td>
+      </tr>
+      <tr>
+        <td class="nm"><i class="sq p"></i>RLHF / PPO</td>
+        <td>只要问题，答案当场采</td><td>RM</td><td>自己（在线）</td><td class="c">4</td>
+        <td>工程重、难调；可能刷 RM 的分；通常需要 KL 约束</td>
+      </tr>
+      <tr>
+        <td class="nm"><i class="sq p"></i>DPO 家族</td>
+        <td>问题 + （好，坏）</td><td>人（挑）</td><td>数据集</td><td class="c">2<span class="mute">（参考模型可预先算完压到 1）</span></td>
+        <td>固定数据可能逐渐和当前模型不匹配，常用迭代采样补充</td>
+      </tr>
+      <tr>
+        <td class="nm"><i class="sq v"></i>RLVR / GRPO</td>
+        <td>问题 + 可自动判对错的标准答案</td><td>验证器</td><td>自己（在线，一次一组）</td><td class="c">2</td>
+        <td>只覆盖能自动判对错的任务；题难度要卡准</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="cap">「典型模型角色数」是为了帮助理解，不是固定配置：有些角色可以共享参数、提前算好或分开放置。实际工程成本还取决于模型大小、并行方式和生成量。</p>
+</section>
+
+<!-- ============ 13 ============ -->
+<section>
+  <p class="step">13 · 现实</p>
+  <h2>实际很少只选一种，<br>通常会串起来跑几轮</h2>
+
+  <div class="pipe">
+    <div class="ttl">InstructGPT · 模板</div>
+    <div class="yr">2022 · 后来很多流水线的经典起点</div>
+    <div class="flow">
+      <div class="stg" style="border-color:var(--demo)"><div class="s1">SFT</div><div class="s2">约 1.3 万条人写示范</div></div>
+      <div class="arw">→</div>
+      <div class="stg" style="border-color:var(--pref)"><div class="s1">训 RM</div><div class="s2">约 3.3 万条人工比较</div></div>
+      <div class="arw">→</div>
+      <div class="stg" style="border-color:var(--pref)"><div class="s1">PPO</div><div class="s2">在线采样，RM 打分</div></div>
+    </div>
+  </div>
+
+  <div class="pipe">
+    <div class="ttl">Llama 3 · 主力是拒绝采样 + DPO</div>
+    <div class="yr">2024 · 注意：没用 PPO</div>
+    <div class="flow">
+      <div class="stg" style="border-color:var(--pref)"><div class="s1">训 RM</div><div class="s2">用最新的偏好数据</div></div>
+      <div class="arw">→</div>
+      <div class="stg" style="border-color:var(--demo)"><div class="s1">拒绝采样</div><div class="s2">当前模型采样，RM 筛</div></div>
+      <div class="arw">→</div>
+      <div class="stg" style="border-color:var(--demo)"><div class="s1">SFT</div><div class="s2">用筛出来的数据</div></div>
+      <div class="arw">→</div>
+      <div class="stg" style="border-color:var(--pref)"><div class="s1">DPO</div><div class="s2">离线偏好对</div></div>
+    </div>
+    <div class="loop">↻ 整套重复 6 轮，每轮都用<em>上一轮的新模型</em>重新采样、重新标</div>
+  </div>
+
+  <div class="pipe">
+    <div class="ttl">DeepSeek-R1 · 验证器进来了</div>
+    <div class="yr">2025 · 会长篇思考的那一类</div>
+    <div class="flow">
+      <div class="stg" style="border-color:var(--demo)"><div class="s1">① 冷启动 SFT</div><div class="s2">少量长思考链示范，先把话说顺</div></div>
+      <div class="arw">→</div>
+      <div class="stg" style="border-color:var(--veri)"><div class="s1">② 推理 RL</div><div class="s2">GRPO + 规则 reward（对答案 / 跑测试）</div></div>
+      <div class="arw">→</div>
+      <div class="stg" style="border-color:var(--demo)"><div class="s1">③ 拒绝采样 + SFT</div><div class="s2">用 ② 的模型采出约 80 万条重训（约 60 万推理 + 20 万通用）</div></div>
+      <div class="arw">→</div>
+      <div class="stg" style="border-color:var(--pref)"><div class="s1">④ 再一轮 RL</div><div class="s2">这次覆盖全场景，验证器 + 偏好一起用</div></div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:52px">三条流水线的三个共同点</h3>
+  <ul>
+    <li><b>常见顺序是先 SFT。</b>模型先学会按格式开口，后面「自己生成再打分」更容易采到值得奖励的东西。R1-Zero 证明了纯 RL 也能长出推理能力，但输出可读性差、还会中英文混着说 —— 所以正式版仍把冷启动 SFT 加了回来。</li>
+    <li><b>强流水线通常会迭代。</b>采样 → 训 → 用新模型重新采样。因为模型一变，旧数据就可能越来越不匹配，定期更新数据往往能继续带来收益。</li>
+    <li><b>偏好和验证器并存。</b>能自动判对错的任务适合验证器；难以写成明确规则的质量标准，仍要依靠人或模型给出的偏好。</li>
+  </ul>
+
+  <p class="big">再遇到一个没听过的后训练方法，就先拿三个问题问它：<u>一条样本长什么样、谁打分、答案从哪里来。</u>先把位置定住，再看它具体怎么优化。</p>
+</section>
+
+<footer>
+  单页自包含，无外部依赖。文中带数字的说法来自 InstructGPT、LIMA、DPO、Llama 3、DeepSeekMath / DeepSeek-R1 各自的论文与技术报告；标了「示意 / 模拟数据」的实验台是为了讲机制而造的，不是实测曲线。
+</footer>
+
+</main>
+
+<script>
+/* ============ 进度条 + 入场 ============ */
+(function(){
+  var bar = document.getElementById('progbar');
+  function upd(){
+    var h = document.documentElement;
+    var d = h.scrollHeight - h.clientHeight;
+    bar.style.width = (d > 0 ? (h.scrollTop || document.body.scrollTop) / d * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', upd, {passive:true});
+  window.addEventListener('resize', upd);
+  upd();
+
+  document.querySelectorAll('section > *').forEach(function(el){ el.classList.add('reveal'); });
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, {threshold:0.05, rootMargin:'0px 0px -6% 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+})();
+
+/* ============ 03 · SFT loss mask ============ */
+(function(){
+  var toks = [
+    {t:'<|user|>', sp:1, ask:1},
+    {t:'把', ask:1},{t:'这', ask:1},{t:'段', ask:1},{t:'改', ask:1},{t:'短', ask:1},{t:'一', ask:1},{t:'点', ask:1},{t:'。', ask:1},
+    {t:'<|end|>', sp:1, ask:1},
+    {t:'<|assistant|>', sp:1},
+    {t:'好', l:.9},{t:'的', l:.35},{t:'，', l:.2},{t:'改', l:.7},{t:'成', l:.4},{t:'：', l:.25},
+    {t:'「', l:.5},{t:'请', l:.8},{t:'尽', l:.6},{t:'快', l:.3},{t:'回', l:.45},{t:'复', l:.2},{t:'」', l:.4},{t:'。', l:.15},
+    {t:'<|end|>', sp:1, l:.6}
+  ];
+  var strip = document.getElementById('strip'), cap = document.getElementById('mkCap');
+  var bOn = document.getElementById('mkOn'), bOff = document.getElementById('mkOff');
+  var masked = true;
+
+  strip.innerHTML = toks.map(function(k){
+    return '<div class="tk' + (k.sp ? ' sp' : '') + '" data-ask="' + (k.ask ? 1 : 0) + '">'
+         + k.t.replace(/</g,'&lt;').replace(/>/g,'&gt;')
+         + '<div class="slot"></div></div>';
+  }).join('');
+  var nodes = [].slice.call(strip.children);
+
+  function render(){
+    nodes.forEach(function(n, i){
+      var k = toks[i];
+      var off = masked && k.ask;
+      n.className = 'tk' + (k.sp ? ' sp' : '') + (off ? ' off' : ' hit');
+      /* 不挡的时候，问题那半段也被硬拉着去预测 —— 用同一套 loss 条表示 */
+      var lv = k.l != null ? k.l : 0.55;
+      n.lastElementChild.outerHTML = off
+        ? '<div class="x">✕</div>'
+        : '<div class="bar"><i style="height:' + Math.round(lv * 22) + 'px"></i></div>';
+    });
+    nodes = [].slice.call(strip.children);
+    bOn.classList.toggle('on', masked);
+    bOff.classList.toggle('on', !masked);
+    cap.innerHTML = masked
+      ? '红条 = 这个 token 上有 loss。<em>只有回答部分计入训练目标。</em>问题部分模型照样要读，因为它是生成回答的条件。'
+      : '<em>问题部分也计入训练目标了。</em>模型会同时花能力模仿用户怎么提问，角色边界也可能变弱，增加答完后继续补写下一轮对话的风险。';
+  }
+  bOn.onclick = function(){ masked = true; render(); };
+  bOff.onclick = function(){ masked = false; render(); };
+  render();
+})();
+
+/* ============ 05 · Bradley-Terry ============ */
+(function(){
+  var rw = document.getElementById('rw'), rl = document.getElementById('rlo');
+  var out = {
+    rwV:document.getElementById('rwV'), rlV:document.getElementById('rlV'),
+    bD:document.getElementById('bDelta'), vD:document.getElementById('vDelta'),
+    bS:document.getElementById('bSig'), vS:document.getElementById('vSig'),
+    bL:document.getElementById('bLoss'), vL:document.getElementById('vLoss'),
+    cap:document.getElementById('rmCap')
+  };
+  function render(shifted){
+    var a = +rw.value, b = +rl.value, d = a - b;
+    var s = 1 / (1 + Math.exp(-d));
+    var loss = -Math.log(Math.max(s, 1e-12));
+    out.rwV.textContent = a.toFixed(1);
+    out.rlV.textContent = b.toFixed(1);
+    out.vD.textContent = (d >= 0 ? '+' : '') + d.toFixed(1);
+    out.vS.textContent = (s * 100).toFixed(1) + '%';
+    out.vL.textContent = loss.toFixed(3);
+    out.bD.style.width = Math.min(100, Math.abs(d) / 16 * 100) + '%';
+    out.bS.style.width = (s * 100) + '%';
+    out.bL.style.width = Math.min(100, loss / 8 * 100) + '%';
+
+    if (shifted) {
+      out.cap.innerHTML = '两个分数一起 +3，<em>差值一点没变，loss 一模一样（' + loss.toFixed(3) + '）</em>。'
+        + '所以奖励模型的绝对分数<em>不是独立确定的</em>，真正稳定的是同一个 RM 内的相对排序。别直接比较两个不同 RM 的分数，也别把「7.8 分」当成质量的绝对刻度。';
+    } else if (d < 0) {
+      out.cap.innerHTML = '差值是负的 —— <em>模型现在觉得坏的那个更好</em>，loss 冲得很高，梯度会狠狠地把这两个分数往正确方向掰。';
+    } else if (d > 5) {
+      out.cap.innerHTML = 'σ(Δ) 已经贴着 100%，loss 趋近 0 —— <em>这一对它学透了，再拉大差值也换不来什么梯度</em>。RM 训练里绝大部分信号来自那些「人也觉得难分」的对子。';
+    } else {
+      out.cap.innerHTML = 'σ(Δ) 是「模型认为人会挑好答案的概率」。loss 就是拿它做交叉熵：<em>把 Δ 推大，直到模型的排序和人一致</em>。';
+    }
+  }
+  rw.oninput = rl.oninput = function(){ render(false); };
+  document.getElementById('shift').onclick = function(){
+    rw.value = Math.min(8, +rw.value + 3);
+    rl.value = Math.min(8, +rl.value + 3);
+    render(true);
+  };
+  document.getElementById('rmReset').onclick = function(){
+    rw.value = 1.2; rl.value = -0.8; render(false);
+  };
+  render(false);
+})();
+
+/* ============ 06 · KL 拴绳 ============ */
+(function(){
+  var zones = [
+    { max:12, beta:'0（不拴）', rm:98, kl:100, hu:9,
+      out:'当然可以！这是一个非常好的问题！非常好的问题！我非常乐意帮您！非常乐意帮您！当然可以！当然！',
+      cap:'<em>这就是刷分（reward hacking）。</em>它没学会答题，它学会了「哪些词能骗到高分」，然后一直重复。RM 给满分，人一眼就看出是废话 —— 因为模型已经跑到 RM 完全没见过的地方去了。' },
+    { max:34, beta:'很小', rm:88, kl:72, hu:42,
+      out:'当然可以！这确实是个很棒的问题，我非常乐意帮您！以下是我的一些建议供您参考：建议您根据实际情况谨慎设置权限……',
+      cap:'开始跑偏的早期样子：<em>客套话疯长，实质内容缩水</em>。因为「热情、礼貌、结构完整」是 RM 最容易学到、也最容易被过度追求的表面特征。' },
+    { max:66, beta:'合适', rm:74, kl:31, hu:92,
+      out:'设成 644 就行 —— 这个文件不需要执行权限。如果它是脚本，才需要 755。',
+      cap:'<em>这一档才是要的。</em>分数涨了，但还认得出是原来那个模型在说话。现实里 β 就是在这条「reward 涨了多少 / 跑远了多少」的曲线上找一个折中点，没有普适最优值。' },
+    { max:86, beta:'偏大', rm:61, kl:11, hu:74,
+      out:'一般建议设置为 644。对于需要执行的脚本文件，可以设置为 755。具体取值取决于使用场景。',
+      cap:'拴得有点紧了：<em>输出正在退回 SFT 的样子</em> —— 稳，但那些「更利落、更抓重点」的改进也一起被拴住没长出来。' },
+    { max:100, beta:'非常大', rm:52, kl:2, hu:52,
+      out:'一般建议设置为 644。对于需要执行的脚本文件，可以设置为 755。具体取值取决于使用场景。',
+      cap:'<em>和 SFT 模型的输出一模一样。</em>KL 罚项大到压倒了 reward，参数几乎不动 —— 这一整轮 RL 白跑，钱和卡都白烧。' }
+  ];
+  var sl = document.getElementById('kl');
+  var el = {
+    v:document.getElementById('klV'),
+    bRm:document.getElementById('bRm'), vRm:document.getElementById('vRm'),
+    bKl:document.getElementById('bKl'), vKl:document.getElementById('vKl'),
+    bHu:document.getElementById('bHu'), vHu:document.getElementById('vHu'),
+    out:document.getElementById('klOut'), cap:document.getElementById('klCap')
+  };
+  function render(){
+    var x = +sl.value, z = zones[zones.length - 1];
+    for (var i = 0; i < zones.length; i++){ if (x <= zones[i].max){ z = zones[i]; break; } }
+    el.v.textContent = z.beta;
+    el.bRm.style.width = z.rm + '%'; el.vRm.textContent = z.rm;
+    el.bKl.style.width = z.kl + '%'; el.vKl.textContent = z.kl;
+    el.bHu.style.width = z.hu + '%'; el.vHu.textContent = z.hu;
+    el.out.textContent = z.out;
+    el.cap.innerHTML = z.cap;
+  }
+  sl.oninput = render; render();
+})();
+
+/* ============ 08 · best-of-N ============ */
+(function(){
+  /* 固定的模拟池：[打分器给的分, 真实质量]。里面混了几条「刚好骗过打分器」的。 */
+  var P = [
+    [58,55],[63,61],[47,50],[71,68],[55,58],[66,64],[78,74],[60,57],
+    [69,66],[74,71],[52,56],[81,76],[64,62],[57,60],[70,67],[76,73],
+    [62,59],[68,65],[59,63],[73,70],[88,48],[65,68],[71,69],[79,75],
+    [61,64],[84,52],[67,70],[75,72],[58,61],[70,74],[82,77],[63,66],
+    [77,73],[69,72],[86,54],[72,75],[64,67],[80,76],[74,71],[93,44],
+    [66,69],[78,74],[70,73],[85,56],[62,65],[74,72],[68,71],[81,77],
+    [59,63],[76,74],[71,70],[87,58],[65,68],[79,75],[73,72],[61,64],
+    [84,55],[69,71],[77,74],[66,69],[82,78],[72,73],[89,60],[75,72]
+  ];
+  function bestIdx(n){
+    var bi = 0;
+    for (var i = 1; i < n; i++) if (P[i][0] > P[bi][0]) bi = i;
+    return bi;
+  }
+  var sl = document.getElementById('nSl'), pool = document.getElementById('pool');
+  var nV = document.getElementById('nV'), pr = document.getElementById('pickRm'), pt = document.getElementById('pickTq');
+  var cap = document.getElementById('nCap'), chart = document.getElementById('chart');
+
+  pool.innerHTML = P.map(function(_, i){ return '<div class="sm" data-i="' + i + '"></div>'; }).join('');
+  var cells = [].slice.call(pool.children);
+
+  var CK = [1,2,4,8,16,32,64];
+  chart.innerHTML = CK.map(function(n){
+    var b = P[bestIdx(n)];
+    return '<div class="col"><div class="pair">'
+      + '<i class="a" style="height:' + Math.round(b[0]) + '%"></i>'
+      + '<i class="b" style="height:' + Math.round(b[1]) + '%"></i>'
+      + '</div><div class="xl">N=' + n + '</div></div>';
+  }).join('');
+
+  function render(){
+    var n = +sl.value, bi = bestIdx(n), b = P[bi];
+    nV.textContent = n;
+    cells.forEach(function(c, i){
+      c.className = 'sm' + (i < n ? ' act' : '') + (i === bi ? ' pick' : '');
+    });
+    pr.textContent = b[0];
+    pt.textContent = b[1];
+    if (n <= 2) {
+      cap.innerHTML = 'N 很小的时候「挑最好的」几乎没得挑，收益也小。';
+    } else if (n <= 20) {
+      cap.innerHTML = '这一段是纯赚：<em>两个数一起往上走</em>。采样多了确实能翻出更好的回答 —— 这就是拒绝采样和 best-of-N 有效的原因。';
+    } else if (n <= 40) {
+      cap.innerHTML = '<em>分岔了。</em>打分器的分继续涨，真实质量掉下来 —— 被挑中的那条是「刚好摸到打分器软肋」的样本（红色那格）。真实里最好的那些反而落选了。';
+    } else {
+      cap.innerHTML = '<em>在这组模拟数据里，N 继续增大后，挑中的越来越像「打分器的漏洞」，而不是更好的回答。</em>现实里扩大 N 时，也要盯着 RM 分和人评有没有开始背离。';
+    }
+  }
+  sl.oninput = render; render();
+})();
+
+/* ============ 09 · GRPO 组内 baseline ============ */
+(function(){
+  var groups = [
+    { name:'难度合适的一组', r:[1,0,0,1,0,1,0,0],
+      cap:'<em>这一组有信号。</em>对的那三条优势为正（往这个方向多写），错的五条优势为负（少往那边走）。注意：<em>错的样本一样在贡献梯度</em> —— 这正是 RL 比「只留最好那条」的拒绝采样多拿到的东西。' },
+    { name:'太难，全错', r:[0,0,0,0,0,0,0,0],
+      cap:'全错 → 平均分 0 → <em>每一条的优势都是 0</em>。这 8 个回答没有提供组内相对奖励信号。这就是为什么 RLVR 的题库要卡难度：太难的题很难带来有效更新。' },
+    { name:'太简单，全对', r:[1,1,1,1,1,1,1,1],
+      cap:'全对 → 平均分 1 → <em>优势同样全是 0</em>。这组回答也没有提供相对高低信号。对组内比较来说，过难和过易都会降低训练效率。' },
+    { name:'很难，但蒙对一条', r:[0,0,0,0,0,1,0,0],
+      cap:'只对了一条 → 它的优势特别大（+0.88）。<em>这种题通常很有信息量</em>：模型刚好够得着，一次成功就能提供清晰的正向信号。RLVR 的数据配方会重点寻找这类题。' }
+  ];
+  var wrongAns = [38,39,40,41,43,44,45,46];   /* 别撞上正确答案 42 */
+  var i = 0;
+  var box = document.getElementById('grp'), mean = document.getElementById('gMean'),
+      sig = document.getElementById('gSig'), cap = document.getElementById('gCap');
+  function render(){
+    var g = groups[i], m = g.r.reduce(function(a,b){ return a + b; }, 0) / g.r.length;
+    box.innerHTML = g.r.map(function(r, k){
+      var adv = r - m, w = Math.min(50, Math.abs(adv) * 50);
+      var bar = adv === 0 ? '' :
+        (adv > 0
+          ? '<i style="left:50%; width:' + w + '%"></i>'
+          : '<i class="neg" style="left:' + (50 - w) + '%; width:' + w + '%"></i>');
+      return '<div class="ans ' + (r ? 'ok' : 'no') + '">'
+        + '<div class="r"><span>答案 ' + (k + 1) + '</span><span>' + (r ? '✓ 对' : '✗ 错') + '</span></div>'
+        + '<div class="txt">…最终答案 ' + (r ? 42 : wrongAns[k]) + '</div>'
+        + '<div class="advb">' + bar + '</div>'
+        + '<div class="txt" style="margin:6px 0 0">优势 ' + (adv > 0 ? '+' : '') + adv.toFixed(2) + '</div>'
+        + '</div>';
+    }).join('');
+    mean.textContent = m.toFixed(3);
+    sig.textContent = (m === 0 || m === 1) ? '没有，这一步白跑' : '学到了';
+    cap.innerHTML = '<em>' + g.name + '</em> —— ' + g.cap;
+  }
+  document.getElementById('grpoNext').onclick = function(){ i = (i + 1) % groups.length; render(); };
+  render();
+})();
+</script>
+</body>
+</html>
