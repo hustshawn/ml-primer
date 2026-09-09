@@ -220,14 +220,15 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">02</span>三行公式</h2>
-    <p class="lead">没有别的了，就这三行。</p>
+    <p class="lead">先把「读一批数据」和「更新一次参数」分开。</p>
     <div class="formula">
       <div class="eq">
-        <span class="s">每轮 steps</span> <span class="op">=</span> 总题数 <span class="op">÷</span> <span class="b">batch size</span><br>
-        <span class="s">总 steps</span> <span class="op">=</span> 每轮 steps <span class="op">×</span> <span class="e">epoch 数</span><br>
-        <span class="b">batch</span> 越大 <span class="op">→</span> <span class="s">step</span> 越少，但每步更稳
+        <span class="s">每轮 micro-steps</span> <span class="op">=</span> ceil(总题数 <span class="op">÷</span> <span class="b">micro batch size</span>)<br>
+        <span class="s">每轮 optimizer steps</span> <span class="op">=</span> ceil(micro-steps <span class="op">÷</span> 梯度累积步数)<br>
+        <span class="s">总 optimizer steps</span> <span class="op">=</span> 每轮 optimizer steps <span class="op">×</span> <span class="e">epoch 数</span>
       </div>
     </div>
+    <p class="lead" style="font-size:15px;margin-top:14px">本页动画默认每个 batch 都更新一次，所以 micro-step 和 optimizer step 相同。若设置 <b>drop_last</b>，最后不足一个 batch 的数据会被丢掉，此时第一行改用 floor。</p>
   </div>
 </section>
 
@@ -276,7 +277,7 @@
     <div class="qa">
       <span class="tag">显存不够怎么办</span>
       <h3>梯度累积 = 攒几叠再改一次</h3>
-      <p>想要「一叠 64 道」但显存只塞得下 8 道？那就做 8 小叠、把批改意见攒起来，最后<b>只改一次</b>。对模型来说，等于一叠 64 道。</p>
+      <p>想要「一叠 64 道」但显存只塞得下 8 道？那就做 8 个 micro-batch、把梯度攒起来，最后<b>只更新一次</b>。训练日志里的 global step 通常在这次更新后才加 1；前面 8 次读取数据叫 micro-step。</p>
     </div>
 
     <div class="qa">

@@ -616,7 +616,7 @@
     <div class="card">
       <span class="tag d">白盒 / logits 级</span>
       <h3 style="margin-top:14px">对着老师的整个分布学</h3>
-      <p style="font-size:16.5px;max-width:none">老师给的不是一个 token，是每个位置上词表的完整概率分布，学生对着它做 KL。信息量大得多，但要求两边同一套 tokenizer，而且你得有老师的权重。</p>
+      <p style="font-size:16.5px;max-width:none">老师给的不是一个 token，而是每个位置上的概率分布，学生对着它做 KL。最直接的 token-level 做法要求两边词表对齐；tokenizer 不同时，需要额外做 token 映射、序列对齐或其他跨词表蒸馏。关键是能拿到老师的 logits，不一定非要拿到权重。</p>
     </div>
   </div>
 

@@ -251,7 +251,7 @@
   <div class="tldr">
     <div class="top">五个理由 · 先看结论</div>
     <ol>
-      <li><div><strong>每个 token 都是一道题。</strong><span class="why"> 同一段文本，因果 mask 能出 7 道题，双向只能出 1 道 —— 同样的算力，训练信号差 6 倍多。</span></div></li>
+      <li><div><strong>大多数位置都能产生 loss。</strong><span class="why"> 因果语言建模可以在几乎每个位置预测下一个 token；MLM 只在被遮住的位置算 loss。前者监督更密，但不能直接换算成「强几倍」。</span></div></li>
       <li><div><strong>所有任务都能写成「接着写」。</strong><span class="why"> 翻译、分类、摘要、多轮对话可以统一成同一种格式，不用给每个任务单独划分输入和输出。</span></div></li>
       <li><div><strong>已经计算的表示可以复用。</strong><span class="why"> 因果 mask 保证前面的 token 不会因为后面来了新词而改变，这是 KV cache 成立的前提。</span></div></li>
       <li><div><strong>一种零件，堆 N 层。</strong><span class="why"> 没有 cross-attention、没有 encoder/decoder 参数分配问题。越简单的东西越好往上堆、越好切到几千张卡上。</span></div></li>
@@ -353,7 +353,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">03</span>理由一 · 每个 token 都是一道题</h2>
-    <p class="lead">下面 100 个格子 = 一段 100 token 的文本。一次前向传播的<b>成本</b>是固定的（100 个格子都得算），区别在于<b>其中有几个格子真的产生了 loss</b>。</p>
+    <p class="lead">下面 100 个格子 = 一段 100 token 的文本。无论采用哪种目标，输入位置都要参与计算；区别在于<b>其中有几个位置直接产生 loss</b>。位置数能比较监督密度，不能直接代表信息量或总训练效率。</p>
 
     <div class="stage">
       <div class="segs" id="obj-segs">
@@ -367,8 +367,8 @@
       <div class="readout">
         <div class="stat"><div class="lbl">这一遍的成本</div><div class="val">100 <span>token</span></div></div>
         <div class="stat"><div class="lbl">产生 loss 的位置</div><div class="val" id="d-hit" style="color:var(--dc)">99</div></div>
-        <div class="stat"><div class="lbl">信号利用率</div><div class="val" id="d-rate" style="color:var(--dc)">99%</div></div>
-        <div class="stat"><div class="lbl">相对「猜下一个」</div><div class="val" id="d-rel">1.0×</div></div>
+        <div class="stat"><div class="lbl">loss 位置占比</div><div class="val" id="d-rate" style="color:var(--dc)">99%</div></div>
+        <div class="stat"><div class="lbl">loss 位置数 / GPT</div><div class="val" id="d-rel">1.0×</div></div>
       </div>
 
       <div class="sees" id="d-say" style="margin-top:22px"></div>
@@ -376,8 +376,8 @@
 
     <div class="note">
       <span class="tag">公平起见</span>
-      完形填空的每道题<b>质量更高</b> —— 它能同时用上左右两边的上下文，比只能往前看信息更足。这是真的优势。<br><br>
-      即使每道题的信息更完整，<b>6.6 倍的训练信号差距仍然很大</b>。在几万张卡、几万亿 token 的训练规模下，同一次前向能产生多少训练目标，会显著影响总计算成本。
+      完形填空的目标能同时用上左右两边的上下文，单个目标拥有的信息更多。encoder-decoder 还会额外计算 decoder。<br><br>
+      所以这里的 99 对 15 只能说明<b>产生 loss 的位置更密</b>，不能推出训练信号强 6.6 倍，也不能单独解释 decoder-only 为什么成为主流。
     </div>
   </div>
 </section>

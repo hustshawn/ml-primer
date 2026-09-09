@@ -281,7 +281,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
 
 <!-- 4 · 温度 -->
 <section class="reveal">
-  <div class="head"><span class="num">4</span><h2>温度：唯一的旋钮</h2></div>
+  <div class="head"><span class="num">4</span><h2>温度：softmax 前的一个旋钮</h2></div>
   <p class="lede">你在 API 里调的 <b class="mono">temperature</b>，就是在 softmax 之前<b>把所有分数除以 T</b>。拖一下试试。<br>
   <span style="font-size:16px">（各家 API 允许的范围<b>并不一样</b>，而且都比你想的窄 —— 滑块下面有实测的对照表。）</span></p>
 
@@ -298,8 +298,8 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
       </div>
       <div class="slabs">
         <span class="lo">0.1<br><i>冷 · 死板</i></span>
-        <span class="mid">1.0<br><i>Claude 的上限 · 各家的默认值</i></span>
-        <span class="hi">2.0<br><i>OpenAI 的上限</i></span>
+        <span class="mid">1.0<br><i>常见默认值</i></span>
+        <span class="hi">2.0<br><i>部分 API 的上限</i></span>
       </div>
     </div>
 
@@ -314,7 +314,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
     <div class="grid3" style="margin-top:24px">
       <div class="hs" style="background:#E8F1FA">
         <h4 style="font-size:18px">T 小 → 拉大差距</h4>
-        <p class="note" style="font-size:14.5px">强者更强，弱者归零。<br>越来越像「赢家通吃」。<br><b>T→0 就是永远选第一名。</b></p>
+        <p class="note" style="font-size:14.5px">强者更强，弱者归零。<br>越来越像「赢家通吃」。<br><b>最高分唯一时，T→0 会集中到第一名。</b></p>
       </div>
       <div class="hs" style="background:#FFF6DE">
         <h4 style="font-size:18px">T = 1 → 不动</h4>
@@ -334,13 +334,13 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
         <tbody>
           <tr>
             <td>Claude<br>（Anthropic）</td>
-            <td class="r">0.0 – 1.0</td>
-            <td>官方 SDK 里写明「默认 1.0，范围 0.0 到 1.0」。<b>而 Opus 4.6 之后的新模型已经不支持设置了</b> —— 只接受 1.0，填别的值直接报 400，这个参数在新版 Python SDK 里被整个删掉了。</td>
+            <td class="r">视模型而定</td>
+            <td>支持自定义温度的 Claude 模型通常接受 0.0–1.0。<b>从 Opus 4.7 起，部分新模型只接受默认值 1.0</b>；参数仍存在于通用 API / SDK 类型中，是否可调由具体模型决定。</td>
           </tr>
           <tr>
             <td>OpenAI</td>
-            <td class="r">0.0 – 2.0</td>
-            <td>官方 OpenAPI 规范：<span class="mono">minimum: 0 / maximum: 2 / default: 1</span>。</td>
+            <td class="r">通常 0.0 – 2.0</td>
+            <td>许多生成模型接受 0–2，但部分推理模型不支持这个参数。调用时应以具体模型文档为准；还可以使用 <span class="mono">top_p</span> 等采样参数。</td>
           </tr>
           <tr>
             <td>自己跑模型<br>（vLLM / transformers）</td>
@@ -350,7 +350,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
         </tbody>
       </table>
     </div>
-    <p class="note">所以「T 可以无限大」是<b>公式的性质</b>，不是你在 API 里的可调范围。而且超过 1 之后输出质量掉得很快 —— 这就是为什么绝大多数场合，这个值实际就在 <b>0 ~ 1</b> 之间。
+    <p class="note">所以「T 可以无限大」是<b>公式的性质</b>，不是 API 对每个模型都提供的范围。产品还可能提供 <span class="mono">top_p</span>、<span class="mono">top_k</span> 等参数；温度只负责整体压平或拉开 logits。
     <br><br><b>还有一个小坑：</b>T = 0 也不保证每次结果一模一样。Anthropic 文档明确写了「即便 temperature 为 0.0，结果也不会完全确定」—— 因为浮点计算和批处理本身就带抖动，跟 softmax 无关。</p>
   </div>
 </section>

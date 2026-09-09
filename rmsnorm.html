@@ -400,8 +400,8 @@
     </div>
   </div>
 
-  <p style="margin-top:34px">2019 年的 RMSNorm 论文发现：<b>减均值那一步基本没贡献</b>，让训练稳下来的是<b>缩放</b>。</p>
-  <p>于是把它删了。少一遍数据、少一组参数、少一次减法。<span class="mute">效果基本不变。</span></p>
+  <p style="margin-top:34px">2019 年的 RMSNorm 论文提出：<b>很多任务并不依赖减均值带来的 re-centering invariance</b>，只保留缩放也能得到相近效果。</p>
+  <p>于是 RMSNorm 删掉减均值和 bias，只按均方根缩放。它计算更少；是否与 LayerNorm 持平，仍取决于模型和任务。</p>
 </section>
 
 <!-- ============ 6. g ============ -->

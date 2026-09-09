@@ -928,7 +928,7 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
       <li><b>幅度很高。</b>这些维度上的值可达其他维度的 <b>20 倍</b>。</li>
       <li><b>分布范围很广。</b>6.7B 规模上，<b>所有层、约 75% 的序列位置</b>都受影响。</li>
     </ul>
-    <p class="note">于是 int8 量化直接失效：为了容纳那几个 20 倍大的值，缩放系数被拉得极大，剩下 99.9% 的正常值全被压进极少几个量化格子里，信息就没了。</p>
+    <p class="note">于是朴素的统一缩放 int8 量化会明显掉点：为了容纳那几个 20 倍大的值，缩放系数被拉得很大，大量正常值被压进很少的量化格子里。</p>
     <p class="note">LLM.int8() 把离群维度单独用 16 bit 计算，其余超过 99.9% 的值走 8 bit。SmoothQuant 使用一个<b>数学上等价</b>的变换，把量化难度从激活值离线转移到权重上（权重更容易量化，见上面左侧），从而让 W8A8 可用；论文报告最高 1.56× 加速、2× 显存下降，并让 530B 模型在单节点内服务。</p>
     <p class="small">来源：<i>LLM.int8()</i>, arXiv:2208.07339，4.2 节；<i>SmoothQuant</i>, arXiv:2211.10438。</p>
   </div>
@@ -936,7 +936,7 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
   <div class="card dark">
     <div class="big">「权重量化到 4 bit 很常见，激活值量化到 8 bit 就要写论文」—— 差别就在这里。</div>
     <p>你在社区里看到的绝大多数量化格式（GPTQ、AWQ、各种 GGUF 的 Q4）都是 <b>W4A16</b> 一类：<b>只量化权重，激活值老老实实用 16 bit</b>。<br><br>
-    因为权重量化省的是<b>显存和带宽</b>，代价小收益大；而激活值量化省的是<b>算力</b>（让矩阵乘法真的跑在 int8 单元上），但它要面对上面那 6 个维度。</p>
+    因为权重量化省的是<b>显存和带宽</b>，代价小收益大；而激活值量化省的是<b>算力</b>（让矩阵乘法真的跑在 int8 单元上），还要处理输入相关的范围和论文观察到的少数离群维度。</p>
   </div>
 </section>
 
@@ -1000,7 +1000,7 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
   <div class="take"><span class="n2">05</span><p><b>显存四大块里，它是唯一随 batch × 序列长度增长的那一块。</b>公式是一个线性项 ＋ 一个平方项：<span class="mono">34·s·b·h + 5·a·s²·b</span>（每层）。</p></div>
   <div class="take"><span class="n2">06</span><p><b>那个平方项从大约 870 个 token 起就开始主导</b>（临界值 ≈ 6.8 × 每头维度，跟模型多大无关）。它来自 S×S 的注意力分数矩阵；FlashAttention 会避免把这个矩阵完整写入显存。</p></div>
   <div class="take"><span class="n2">07</span><p><b>显存不足时可以使用重计算</b>（activation checkpointing）：只存每层入口，其余在反向时重算。经典代价约 30% 额外时间；选择性重算只处理「大而便宜」的部分，可将这项开销减少 90% 以上。</p></div>
-  <div class="take"><span class="n2">08</span><p><b>推理侧的激活值用完即可释放</b>，所以推理显存账通常只看权重和 KV cache。<b>KV cache 保存的是 K、V 两类激活值</b>。量化里 W8A8 的 A 也是激活值；它比权重难量化，因为 6.7B 以上的模型里有幅度 20 倍的离群维度。</p></div>
+  <div class="take"><span class="n2">08</span><p><b>推理侧的激活值用完即可释放</b>，所以推理显存账通常只看权重和 KV cache。<b>KV cache 保存的是 K、V 两类激活值</b>。量化里 W8A8 的 A 也是激活值；它比权重难量化，因为范围随输入变化，而且 LLM.int8() 在其测试的大模型中观察到了幅度很高的离群维度。</p></div>
 
   <div class="card dark" style="margin-top:34px">
     <div class="big">核心概念</div>

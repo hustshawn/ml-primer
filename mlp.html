@@ -184,7 +184,7 @@
 <section class="hero">
   <div class="step">MLP · Multi-Layer Perceptron（在 Transformer 里也叫 FFN）</div>
   <h1><span>被冷落的</span><span>另一半</span></h1>
-  <p class="sub">所有人都在讲 attention。<br>但每个 Transformer block 里还有另一半 —— <b>MLP</b>，<br>它拿走了 2/3 的参数，存着模型大部分的知识。</p>
+  <p class="sub">所有人都在讲 attention。<br>但每个 Transformer block 里还有另一半 —— <b>MLP</b>，<br>在标准 dense block 里，它约占 2/3 的参数，也参与存取事实关联。</p>
   <div class="formula">摊开 <em>→</em> 掰弯 <em>→</em> 压回</div>
   <div class="scrollhint"><span>↓ 往下滑</span></div>
 </section>
@@ -412,8 +412,8 @@
 <!-- ============ 7. 知识住在这里 ============ -->
 <section class="reveal">
   <div class="step">07 · 它还是仓库</div>
-  <h2>模型的「知识」<br>大多存在 MLP 里</h2>
-  <p>研究者掰开训好的模型看，发现 MLP 的两个大矩阵像一柜子<b>抽屉</b>：</p>
+  <h2>MLP 是事实记忆的<br>一条重要通路</h2>
+  <p>有研究把 MLP 的两个大矩阵解释成一柜子<b>抽屉</b>：</p>
 
   <svg viewBox="0 0 640 300" width="640" role="img" aria-label="MLP 像一柜子键值抽屉：第一个矩阵认出模式，第二个矩阵写回内容">
     <g font-family="-apple-system, PingFang SC, system-ui, sans-serif" font-weight="800">
@@ -442,7 +442,7 @@
   </svg>
   <p class="cap">上下文对上某个模式 → 对应抽屉打开 → 内容被加进这个词的向量里。</p>
 
-  <p style="margin-top:30px">「巴黎是法国的首都」这类<b>事实</b>，主要就存在各层 MLP 的权重里。后来的模型编辑实验（ROME）想把模型记的事实改掉，动手术的位置也是 MLP。</p>
+  <p style="margin-top:30px">在一些模型和事实回忆任务中，中间层 MLP 是重要的干预位置。ROME 也通过修改 MLP 权重来编辑特定事实关联。<b>这说明 MLP 很重要，不等于模型的大部分知识只存在这里。</b></p>
   <p class="mute">出处：<i>Transformer Feed-Forward Layers Are Key-Value Memories</i>，Geva et al.，EMNLP 2021；<i>Locating and Editing Factual Associations in GPT</i>，Meng et al.，2022。</p>
 </section>
 
