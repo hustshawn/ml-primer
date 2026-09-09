@@ -133,7 +133,7 @@ tr.hi td{background:#FFF6DE}
 <div class="hero">
   <span class="kicker">2017 · 一篇论文</span>
   <h1>Attention Is<br>All You <em>Need</em></h1>
-  <p class="sub">它做的事，一句话说完：<br><b style="color:var(--ink)">把「一个词一个词地读」这件事，彻底扔掉。</b></p>
+  <p class="sub">这篇论文去掉了 RNN 的逐步递归：<br><b style="color:var(--ink)">训练时，序列中的各个位置可以并行计算。</b></p>
   <div class="facts">
     <div class="fact"><b>2017.06.12</b><span>arXiv 提交</span></div>
     <div class="fact"><b>8</b><span>位作者 · Google</span></div>
@@ -145,7 +145,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 1 -->
 <section class="reveal">
-  <div class="head"><span class="num">1</span><h2>标题是在跟谁吵架</h2></div>
+  <div class="head"><span class="num">1</span><h2>这篇论文要替代什么</h2></div>
   <p class="lede">Attention 这个机制 2014 年就有了。这篇论文的新意不在发明它，而在<b>把别的全删掉</b>。</p>
 
   <div class="grid2" style="margin-top:28px">
@@ -156,15 +156,15 @@ tr.hi td{background:#FFF6DE}
     </div>
     <div class="ba new">
       <div class="lbl">这篇论文</div>
-      <div class="q">把 RNN 拆了。<br>只留 attention。<br><b>反而更好。</b></div>
-      <p class="note">标题就是这个意思：你需要的<b>只有</b> attention。当年这是很挑衅的一句话。</p>
+      <div class="q">去掉 RNN 主干。<br>只用 attention。<br><b>翻译效果更好。</b></div>
+      <p class="note">标题表达的就是这个主张：序列建模可以不依赖 recurrence 和 convolution。</p>
     </div>
   </div>
 </section>
 
 <!-- 2 -->
 <section class="reveal">
-  <div class="head"><span class="num">2</span><h2>旧世界的病：句子是一根链条</h2></div>
+  <div class="head"><span class="num">2</span><h2>RNN 的两个限制</h2></div>
   <p class="lede">RNN 必须从左到右一个字一个字读。这带来两个要命的毛病。</p>
 
   <div class="card">
@@ -197,11 +197,11 @@ tr.hi td{background:#FFF6DE}
 
   <div class="grid2">
     <div class="card" style="background:#FDEDE7">
-      <h4 class="sh">🚫 病一：没法并行</h4>
+      <h4 class="sh">限制一：难以并行</h4>
       <p class="note" style="font-size:16px">第 n 步必须等第 n−1 步算完。<br>你有 8 张 GPU，也只能一步一步来。<br><b>钱买不到速度。</b></p>
     </div>
     <div class="card" style="background:#FDEDE7">
-      <h4 class="sh">🚫 病二：路太长</h4>
+      <h4 class="sh">限制二：信息路径过长</h4>
       <p class="note" style="font-size:16px">「它」要指回「动物」，信息得穿过 5 层传话游戏。<br>句子越长，越容易传丢。<br><b>长距离依赖学不会。</b></p>
     </div>
   </div>
@@ -209,8 +209,8 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 3 -->
 <section class="reveal">
-  <div class="head"><span class="num">3</span><h2>论文真正的论点，就是这张表</h2></div>
-  <p class="lede">论文 Table 1。三列，看第二列和第三列 —— 那两个 <span class="mono">O(1)</span> 就是全部理由。</p>
+  <div class="head"><span class="num">3</span><h2>Table 1：为什么 self-attention 容易并行</h2></div>
+  <p class="lede">论文 Table 1 比较每层复杂度、顺序操作数和最大路径长度。self-attention 的后两项都是 <span class="mono">O(1)</span>，这解释了它为什么容易并行，也更容易连接远距离位置。</p>
 
   <div class="tblwrap">
   <table class="tbl">
@@ -241,7 +241,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 4 -->
 <section class="reveal">
-  <div class="head"><span class="num">4</span><h2>新做法：每个词直接问全场</h2></div>
+  <div class="head"><span class="num">4</span><h2>Self-Attention：每个位置直接访问全序列</h2></div>
   <p class="lede">不排队了。每个词同时抬头看一眼所有词，问「谁跟我有关」，然后把有关的内容按权重拌进自己。</p>
 
   <div class="card">
@@ -277,7 +277,7 @@ tr.hi td{background:#FFF6DE}
 <!-- 5 -->
 <section class="reveal">
   <div class="head"><span class="num">5</span><h2>Q / K / V：一次图书馆检索</h2></div>
-  <p class="lede">「问全场」这件事，具体怎么做？每个词掏出三个向量。这是整篇论文唯一需要记住的比喻。</p>
+  <p class="lede">「问全场」具体通过三个向量完成。可以用一次图书馆检索来理解 Q、K、V。</p>
 
   <div class="qkv" style="margin-top:28px">
     <div class="qk" style="background:#FDEDE7">
@@ -295,19 +295,19 @@ tr.hi td{background:#FFF6DE}
     <div class="qk" style="background:#E6F6EE">
       <div class="letter" style="color:var(--upd)">V</div>
       <h5>Value · 我能给什么</h5>
-      <p>匹配上之后真正被取走的内容：<br><b>「动物」这个词的全部含义。</b></p>
+      <p>匹配后取出的内容：<br><b>「动物」这个词提供的信息。</b></p>
       <p class="note" style="margin-top:10px">= 书里的正文</p>
     </div>
   </div>
   <p class="note" style="text-align:center;margin-top:22px;font-size:16px">
     三个向量都是同一个词乘三个<b>学出来的</b>矩阵得到的（<span class="mono">W<sup>Q</sup>, W<sup>K</sup>, W<sup>V</sup></span>）。<br>
-    「什么算相关」不是人定的规则 —— 是这三个矩阵在训练中自己学会的。
+    「什么算相关」不是人工规则，而是由这三个矩阵在训练中学出来的。
   </p>
 </section>
 
 <!-- 6 -->
 <section class="reveal">
-  <div class="head"><span class="num">6</span><h2>公式只有四步</h2></div>
+  <div class="head"><span class="num">6</span><h2>计算过程分为四步</h2></div>
   <p class="lede">论文里那个看着吓人的式子 <span class="mono">softmax(QKᵀ/√d<sub>k</sub>)V</span>，拆开就是这四步。</p>
 
   <div class="card">
@@ -380,7 +380,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 8 -->
 <section class="reveal">
-  <div class="head"><span class="num">8</span><h2>糟了，顺序丢了</h2></div>
+  <div class="head"><span class="num">8</span><h2>位置信息需要单独编码</h2></div>
   <p class="lede">「每个词看所有词」有个副作用：打乱词序，结果完全一样。<b>它退化成了一袋词。</b></p>
 
   <div class="grid2" style="margin-top:28px">
@@ -406,7 +406,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 9 -->
 <section class="reveal">
-  <div class="head"><span class="num">9</span><h2>同一个零件，用在三个地方</h2></div>
+  <div class="head"><span class="num">9</span><h2>Attention 在三个位置的用法</h2></div>
   <p class="lede">论文明确列了 attention 的三种用法。第二种，后来变成了所有 GPT 的地基。</p>
 
   <div class="grid3" style="margin-top:28px">
@@ -418,7 +418,7 @@ tr.hi td{background:#FFF6DE}
       <p class="note">写第 3 个词时，<b>只准看前 2 个</b>。未来的位置被设成 −∞，softmax 后权重为 0。</p></div>
     <div class="card" style="margin-top:0"><div class="pill" style="background:#FDEDE7">③ 交叉注意力</div>
       <h4 class="sh" style="margin-top:12px">对照着写</h4>
-      <p class="note">Q 来自译文，K/V 来自原文。<br>这才是「翻译」真正发生的地方。</p></div>
+      <p class="note">Q 来自译文，K/V 来自原文。<br>解码器通过这里读取原文信息。</p></div>
   </div>
 
   <div class="card" style="background:#F3F0EA">
@@ -442,7 +442,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 10 -->
 <section class="reveal">
-  <div class="head"><span class="num">10</span><h2>一层，就四个盒子</h2></div>
+  <div class="head"><span class="num">10</span><h2>一个 Transformer 层的四个组件</h2></div>
   <p class="lede">堆 6 层，就是编码器。论文的 Figure 1 画得复杂，其实骨架只有这么多。</p>
 
   <div class="card grid2">
@@ -454,12 +454,12 @@ tr.hi td{background:#FFF6DE}
       <div style="text-align:center;font-weight:900;font-size:15px;margin-top:6px">⤵ 重复 6 次</div>
     </div>
     <div>
-      <h4 class="sh">残差 = 高速公路</h4>
+      <h4 class="sh">残差连接保留主干</h4>
       <p class="note" style="font-size:15.5px">每个盒子的输出都要<b>加回自己的输入</b>。这样哪怕某层学歪了，原始信息也能原封不动穿过 6 层。没有它，深网络训不起来。</p>
 
-      <h4 class="sh" style="margin-top:24px">💡 这篇论文最反直觉的事实</h4>
+      <h4 class="sh" style="margin-top:24px">参数主要分布在哪里</h4>
       <p class="note" style="font-size:15.5px">
-        标题说 attention 是全部，但按参数量算：<br><br>
+        虽然标题强调 attention，但按参数量计算：<br><br>
         <span class="mono">Attention（Q,K,V,O 四个矩阵）＝ 4 × 512² ≈ <b>105 万</b></span><br>
         <span class="mono">FFN（两个矩阵）＝ 2 × 512 × 2048 ≈ <b>210 万</b></span>
       </p>
@@ -472,7 +472,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 11 -->
 <section class="reveal">
-  <div class="head"><span class="num">11</span><h2>它的真身：一台翻译机</h2></div>
+  <div class="head"><span class="num">11</span><h2>完整结构：编码器—解码器翻译模型</h2></div>
   <p class="lede">别把它想成 ChatGPT。2017 年这篇论文交的作业是<b>英译德</b>，就这么朴素。</p>
 
   <div class="card">
@@ -509,7 +509,7 @@ tr.hi td{background:#FFF6DE}
   </div>
 
   <div class="card">
-    <div class="pill">论文原文的全部配置（基础版）</div>
+    <div class="pill">论文原文配置（基础版）</div>
     <div class="cfg">
       <span class="chip">N = <b>6</b> 层</span>
       <span class="chip">d_model = <b>512</b></span>
@@ -533,7 +533,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 12 -->
 <section class="reveal">
-  <div class="head"><span class="num">12</span><h2>成绩单：更好，而且便宜几十倍</h2></div>
+  <div class="head"><span class="num">12</span><h2>实验结果：效果更好，训练成本更低</h2></div>
   <p class="lede">WMT 2014 英译德。柱子 = 训练花的算力，右边 = BLEU 分数（越高越好）。</p>
 
   <div class="card">
@@ -563,15 +563,15 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 13 -->
 <section class="reveal">
-  <div class="head"><span class="num">13</span><h2>为什么它成了地基，而不只是又一个 SOTA</h2></div>
-  <p class="lede">分数高只让它当年拿了个第一。真正让它统治十年的，是另一件事。</p>
+  <div class="head"><span class="num">13</span><h2>为什么 Transformer 后来成为主流架构</h2></div>
+  <p class="lede">除了当年的翻译结果，Transformer 的并行性也直接影响了后来的采用和扩展。</p>
 
   <div class="card" style="background:var(--ink);color:var(--bg);box-shadow:8px 8px 0 var(--fwd)">
-    <div class="big" style="font-size:clamp(22px,3.6vw,38px);color:#fff">它不是最聪明的模型，<br>它是最<em style="font-style:normal;color:var(--yel)">能吃 GPU</em> 的模型。</div>
+    <div class="big" style="font-size:clamp(22px,3.6vw,38px);color:#fff">它能把更多 GPU<br>有效用于<em style="font-style:normal;color:var(--yel)">模型训练</em>。</div>
     <p style="color:#C9C2B8;margin-top:20px;font-size:16.5px">
-      RNN 时代，你有再多卡也没用 —— 必须一步等一步。<b style="color:#fff">砸钱换不到能力。</b><br><br>
-      Transformer 把「排队」变成「一次矩阵乘」。于是：<b style="color:#fff">更多卡 = 更大模型 = 更强能力</b>，这条链路第一次通了。<br><br>
-      后来的 scaling law、GPT、千亿参数、万卡集群，全都建立在这一个前提上。
+      RNN 必须按时间步顺序计算，增加 GPU 也难以绕过这条串行依赖。<br><br>
+      Transformer 把主要计算改成可以并行执行的矩阵乘法，使更多设备能够参与同一步计算，也让训练更大模型成为可能。<br><br>
+      后来的 scaling law、GPT、千亿参数模型和大规模集群，都依赖这种可并行扩展的计算结构。
     </p>
   </div>
 
@@ -579,7 +579,7 @@ tr.hi td{background:#FFF6DE}
     <div class="card" style="margin-top:24px"><div class="big" style="font-size:32px">2018</div>
       <p class="note" style="font-size:15px"><b>GPT</b>：只留解码器那一半（带遮罩的三角形）。<br><b>BERT</b>：只留编码器那一半。<br>双塔被拆成了两条路线。</p></div>
     <div class="card" style="margin-top:24px"><div class="big" style="font-size:32px">2020</div>
-      <p class="note" style="font-size:15px"><b>Scaling law</b> 被写下来：把参数和数据一起放大，效果可预测地变好。<br>于是变成一场算力竞赛。</p></div>
+      <p class="note" style="font-size:15px"><b>Scaling law</b> 被系统总结：参数、数据和计算量一起扩大时，效果可以按规律预测。<br>算力投入随之快速增加。</p></div>
     <div class="card" style="margin-top:24px"><div class="big" style="font-size:32px">2022+</div>
       <p class="note" style="font-size:15px"><b>ChatGPT</b>。<br>架构骨架和 2017 年这篇论文<b>基本是同一个</b>，只是大了几千倍、加了对齐训练。</p></div>
   </div>
@@ -587,43 +587,43 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 14 -->
 <section class="reveal">
-  <div class="head"><span class="num">14</span><h2>今天的模型，哪些地方已经不听这篇论文了</h2></div>
-  <p class="lede">骨架没变，但零件几乎被换了一轮。这张表能帮你把老论文和现在的代码对上。</p>
+  <div class="head"><span class="num">14</span><h2>今天的模型保留了什么，又改了什么</h2></div>
+  <p class="lede">整体骨架仍在，但许多组件已经更新。这张表把论文中的做法和现在常见的实现对应起来。</p>
 
   <div class="tblwrap">
   <table class="tbl">
     <tr><th>论文里的做法</th><th>今天的做法</th><th>为什么换</th></tr>
-    <tr><td>编码器 + 解码器 双塔</td><td class="m">只留解码器（GPT 路线）</td><td class="m">生成任务一塔就够，简单还好扩</td></tr>
-    <tr><td>后置 LayerNorm<br><span class="mono" style="font-size:12.5px">LayerNorm(x + Sublayer(x))</span></td><td class="m">前置 Pre-Norm<br><span class="mono" style="font-size:12.5px">x + Sublayer(LayerNorm(x))</span></td><td class="m">深层稳定得多，不用小心翼翼调 warmup</td></tr>
+    <tr><td>编码器 + 解码器 双塔</td><td class="m">只留解码器（GPT 路线）</td><td class="m">生成任务可以使用单塔，结构更简单也更容易扩展</td></tr>
+    <tr><td>后置 LayerNorm<br><span class="mono" style="font-size:12.5px">LayerNorm(x + Sublayer(x))</span></td><td class="m">前置 Pre-Norm<br><span class="mono" style="font-size:12.5px">x + Sublayer(LayerNorm(x))</span></td><td class="m">深层训练更稳定，降低 warmup 调参难度</td></tr>
     <tr><td>sin / cos 绝对位置编码</td><td class="m">RoPE、ALiBi（相对位置）</td><td class="m">能撑更长的上下文</td></tr>
     <tr><td>FFN 用 ReLU</td><td class="m">SwiGLU</td><td class="m">同样参数量，效果更好</td></tr>
     <tr><td>LayerNorm</td><td class="m">RMSNorm</td><td class="m">更省算力，效果不掉</td></tr>
-    <tr><td>8 个头，每个头都有自己的 K/V</td><td class="m">GQA / MQA：多个 Q 头共用一份 K/V</td><td class="m">纯粹为了推理 —— KV cache 太吃显存</td></tr>
-    <tr><td>老老实实算 O(n²) 注意力矩阵</td><td class="m">FlashAttention、稀疏 / 滑窗注意力</td><td class="m">在还这篇论文留下的那笔 n² 账</td></tr>
-    <tr class="hi"><td>KV cache</td><td class="m">推理必需品</td><td class="m">论文<b>压根没提</b> —— 它只关心训练，不关心逐字生成的成本</td></tr>
-    <tr><td>65M 参数，做翻译</td><td class="m">千亿参数，什么都做</td><td class="m">那是之后八年的事，跟这篇论文无关</td></tr>
+    <tr><td>8 个头，每个头都有自己的 K/V</td><td class="m">GQA / MQA：多个 Q 头共用一份 K/V</td><td class="m">降低推理时 KV cache 的显存占用</td></tr>
+    <tr><td>直接计算 O(n²) 注意力矩阵</td><td class="m">FlashAttention、稀疏 / 滑窗注意力</td><td class="m">降低 O(n²) attention 的显存或计算开销</td></tr>
+    <tr class="hi"><td>KV cache</td><td class="m">推理必需品</td><td class="m">论文没有讨论；它主要关注训练，而不是逐 token 生成的成本</td></tr>
+    <tr><td>65M 参数，做翻译</td><td class="m">千亿参数，覆盖更多任务</td><td class="m">这是后来模型规模和训练方式继续发展的结果</td></tr>
   </table>
   </div>
 </section>
 
 <!-- PUNCH -->
 <div class="punch reveal">
-  <div class="big">其实标题是错的。</div>
-  <p>你需要的不只是 attention。你还需要：</p>
+  <div class="big">标题省略了不少组件。</div>
+  <p>完整的 Transformer 还需要：</p>
   <div class="cfg">
     <span class="chip">位置编码</span><span class="chip">残差连接</span><span class="chip">LayerNorm</span>
     <span class="chip">FFN（占 2/3 参数）</span><span class="chip">÷√d<sub>k</sub></span><span class="chip">warmup 学习率</span>
     <span class="chip">label smoothing</span><span class="chip">下三角遮罩</span>
   </div>
   <p style="margin-top:26px">
-    少任何一个，它都训不起来。<br><br>
-    但那 5 个词的标题赢了 —— 因为它说对了最重要的那件事：<br>
-    <b style="color:#fff">别再让机器一个字一个字地读。让它一眼看完。</b>
+    这些组件共同保证模型能够表示顺序并稳定训练。<br><br>
+    标题强调的是这篇论文最关键的变化：<br>
+    <b style="color:#fff">去掉 RNN 的递归依赖，让序列位置可以并行计算。</b>
   </p>
 </div>
 
 <p class="src">
-  数据全部取自 arXiv:1706.03762（v7）原文 —— 摘要、Table 1、Table 2、Table 3、第 5 节训练配置。<br>
+  数据全部取自 arXiv:1706.03762（v7）原文，包括摘要、Table 1、Table 2、Table 3 和第 5 节训练配置。<br>
   Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, Polosukhin · 2017-06-12 · NeurIPS 2017
 </p>
 

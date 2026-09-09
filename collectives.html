@@ -204,9 +204,9 @@
 <section>
   <span class="kicker">集合通信 · COLLECTIVES</span>
   <h1>all-reduce<br>是一个<em>动作名</em></h1>
-  <p class="lead">broadcast、scatter、gather、reduce、all-gather、reduce-scatter、all-to-all ——
-  这不是七八个概念，是<b>同一件事的七八种搬法</b>。</p>
-  <p>一群 GPU 手里各有一堆数，现在要把这些数弄到该去的地方。名字听着吓人，其实每个名字只回答两个问题。</p>
+  <p class="lead">broadcast、scatter、gather、reduce、all-gather、reduce-scatter、all-to-all，
+  描述的是<b>同一组数据搬运与聚合方式</b>。</p>
+  <p>一群 GPU 手里各有一组数，现在要把这些数送到需要的位置。每个名字主要回答两个问题。</p>
 
   <div class="g2" style="margin-top:30px">
     <div class="qbox">
@@ -229,7 +229,7 @@
     </div>
   </div>
 
-  <p class="mute" style="margin-top:26px; font-size:16.5px">两个问题 2×2，就是这一族名字的全部结构。剩下一个 <code>all-to-all</code> 是唯一的例外 —— 它根本不做算术，它在做别的事（第 5 节）。</p>
+  <p class="mute" style="margin-top:26px; font-size:16.5px">这两个问题组成的 2×2 结构覆盖了大部分 collective。<code>all-to-all</code> 是例外：它不做 reduce，只重新分发数据（第 5 节）。</p>
   <p class="scrollhint">往下 <span>↓</span></p>
 </section>
 
@@ -259,7 +259,7 @@
 
 <!-- ============ 2 ============ -->
 <section>
-  <div class="head"><span class="num">2</span><h2>名字是拼出来的，不用背</h2></div>
+  <div class="head"><span class="num">2</span><h2>名称由动作和结果范围组成</h2></div>
   <p>四个词根，一个前缀。拼一下就知道这个动作在干什么 —— 这比记住八张图有用得多。</p>
 
   <div class="g2" style="margin-top:24px">
@@ -291,7 +291,7 @@
     </div>
   </div>
 
-  <p style="margin-top:26px">摊成 2×2，就是全部：</p>
+  <p style="margin-top:26px">放进 2×2 表格后，关系如下：</p>
   <div class="tw">
   <table>
     <tr><th style="width:26%">结果落在哪</th><th style="width:37%">只搬，不算</th><th style="width:37%">边搬边加（Reduce）</th></tr>
@@ -363,7 +363,7 @@
   </div>
 
   <div class="note" style="margin-top:24px">
-    <p><b>唯一一个 2 倍的是 all-reduce。</b>其他动作每张卡最多发出 <span class="mono">S</span> 量级，只有 all-reduce 是 <span class="mono">2·(N−1)/N·S</span> —— 因为它等于 reduce-scatter 加 all-gather，走了两趟（第 8 节会把这两趟拆开看）。</p>
+    <p><b>all-reduce 的通信量多一倍。</b>其他动作每张卡最多发出 <span class="mono">S</span> 量级，all-reduce 则是 <span class="mono">2·(N−1)/N·S</span>，因为它由 reduce-scatter 和 all-gather 两个阶段组成（第 8 节会拆开说明）。</p>
   </div>
 </section>
 
@@ -399,7 +399,7 @@ grad /= world_size          <span class="c"># ← 忘了它，等于学习率悄
 
 <span class="c"># 或者直接让通信库做平均</span>
 dist.all_reduce(grad, op=dist.ReduceOp.<span class="g">AVG</span>)</pre>
-    <p class="note" style="font-size:15px">另外注意：<b>浮点加法不满足结合律</b>。不同算法（ring / tree）、不同卡数下加法顺序不同，结果会有末位差异。所以「换了卡数 loss 曲线对不上最后几位」是正常的，不是 bug。</p>
+    <p class="note" style="font-size:15px">另外注意：<b>浮点加法不满足结合律</b>。不同算法（ring / tree）、不同卡数下加法顺序不同，结果会有末位差异。因此「换了卡数后 loss 曲线末位不同」通常来自浮点运算顺序，并非 bug。</p>
   </div>
 </section>
 
@@ -432,12 +432,12 @@ dist.all_reduce(grad, op=dist.ReduceOp.<span class="g">AVG</span>)</pre>
     <div class="note" style="font-size:15px">
       <p>看数字：转置前 GPU1 手里是 <span class="mono">10 / 20 / 30 / 40</span>（都是 2 位数 —— 都是自己的货）；
       转置后 GPU1 手里是 <span class="mono">2 / 20 / 200 / 2000</span>（位数各不相同 —— 四张卡各给它一块，而首位数字全是 2，都是「给 1 号」的那一格）。</p>
-      <p><b>对角线上的格子从来不动</b>（自己给自己的那块），所以每张卡实际只需要发出 <span class="mono">(N−1)/N · S</span>。</p>
+      <p><b>对角线上的格子不需要发送</b>（自己给自己的那块），所以每张卡实际只需发出 <span class="mono">(N−1)/N · S</span>。</p>
     </div>
   </div>
 
   <div class="note" style="margin-top:24px">
-    <p>工程上这件事有个更常用的说法：<b>换一个维度切数据（re-shard）</b>。原来按「谁的数据」切，现在按「谁负责算」切。总量不变，只是切法换了个轴 —— 这就是 all-to-all 的全部含义。</p>
+    <p>工程上通常把这件事叫作 <b>换一个维度切数据（re-shard）</b>。原来按「谁的数据」切，现在按「谁负责算」切；总量不变，只是换了分片轴。all-to-all 在这里负责完成这次重分片。</p>
   </div>
 </section>
 
@@ -463,7 +463,7 @@ dist.all_reduce(grad, op=dist.ReduceOp.<span class="g">AVG</span>)</pre>
     <div class="card">
       <h3>一层 MoE = 两次 all-to-all</h3>
       <p style="font-size:16px"><b>dispatch</b>：把 token 送到专家所在的卡。<br><b>combine</b>：算完把结果原路送回来 —— 因为残差连接要加回原来那个位置。</p>
-      <p style="font-size:15px" class="mute">所以 MoE 的通信不是「多了一点」，是<b>每层多两次全体交换</b>。</p>
+      <p style="font-size:15px" class="mute">因此一层 MoE 需要<b>两次全体交换</b>。</p>
     </div>
     <div class="card">
       <h3>为什么 MoE 特别怕负载不均</h3>
@@ -477,7 +477,7 @@ dist.all_reduce(grad, op=dist.ReduceOp.<span class="g">AVG</span>)</pre>
 
 <!-- ============ 7 ============ -->
 <section>
-  <div class="head"><span class="num">7</span><h2>先看笨办法：为什么不能「都发给 0 号卡」</h2></div>
+  <div class="head"><span class="num">7</span><h2>中心汇总为什么难以扩展</h2></div>
   <p>要做 all-reduce，最直白的写法：所有卡把数据发给 0 号，0 号加完再发回去。逻辑没错，但它有个致命问题。</p>
 
   <div class="card" style="margin-top:22px">
@@ -547,12 +547,12 @@ dist.all_reduce(grad, op=dist.ReduceOp.<span class="g">AVG</span>)</pre>
       <p style="font-size:16px">两个阶段各 <span class="mono">N−1</span> 步，每步发一格（<span class="mono">S/N</span>）。所以每张卡总共发出：</p>
       <p class="mono" style="font-size:clamp(20px,3vw,28px); font-weight:900; color:var(--hot)">2 · (N−1)/N · S</p>
       <p style="font-size:15.5px">N=2 → 1.0 S　　N=8 → 1.75 S<br>N=64 → 1.97 S　　N=1024 → 1.998 S</p>
-      <p style="font-size:16px"><span class="mono">(N−1)/N</span> 很快就趴在 1 上不动了 —— <b>8 卡和 8000 卡，每张卡每步搬的字节数几乎一样</b>。这就是数据并行能撑到几千卡的根本原因。</p>
-      <p style="font-size:15px" class="mute">顺带说：<span class="mono">2·(N−1)/N·S</span> 不只是「一种实现」，它就是 all-reduce 每卡通信量的<b>理论下限</b> —— 没有算法能更省。</p>
+      <p style="font-size:16px"><span class="mono">(N−1)/N</span> 很快接近 1，因此 <b>8 卡和 8000 卡时，每张卡每步搬的字节数几乎一样</b>。这是数据并行可以扩展到几千卡的重要原因。</p>
+      <p style="font-size:15px" class="mute"><span class="mono">2·(N−1)/N·S</span> 也是 all-reduce 每卡通信量的<b>理论下限</b>，不是某个特定实现才有的结果。</p>
     </div>
     <div class="card">
-      <h3>但它省的是带宽，不是延迟</h3>
-      <p style="font-size:16px">ring 要走 <span class="mono">2(N−1)</span> 步，每一步都有固定开销。数据小的时候，时间全花在「跳来跳去」上，跟带宽没关系。</p>
+      <h3>带宽效率高，延迟步数仍随 N 增长</h3>
+      <p style="font-size:16px">ring 要走 <span class="mono">2(N−1)</span> 步，每一步都有固定开销。数据较小时，固定延迟会比传输时间更占主导。</p>
       <p style="font-size:16px">所以通信库还准备了别的算法：<b>tree</b> 把跳数压到 <span class="mono">≈2·log₂N</span>（1024 卡：2046 跳 → 约 20 跳），代价是带宽利用率不如 ring；机内还有让交换机硬件直接做加法的路子。</p>
       <p class="note" style="font-size:15px">选哪个不用你操心 —— NCCL 会按消息大小、卡数、拓扑自己挑。你要知道的只有一件事：<b>小消息看跳数，大消息看带宽</b>。</p>
     </div>
@@ -561,7 +561,7 @@ dist.all_reduce(grad, op=dist.ReduceOp.<span class="g">AVG</span>)</pre>
 
 <!-- ============ 9 ============ -->
 <section>
-  <div class="head"><span class="num">9</span><h2>把数字拨出来看看</h2></div>
+  <div class="head"><span class="num">9</span><h2>交互计算通信时间</h2></div>
   <p>公式摆在那儿不如拨一下。左边拨卡数、数据量、互联带宽，右边是每张卡实际要搬多少、要花多久。</p>
 
   <div class="lab">
@@ -602,49 +602,49 @@ dist.all_reduce(grad, op=dist.ReduceOp.<span class="g">AVG</span>)</pre>
 
 <!-- ============ 10 ============ -->
 <section>
-  <div class="head"><span class="num">10</span><h2>三个会真的咬到你的性质</h2></div>
+  <div class="head"><span class="num">10</span><h2>三个常见的工程约束</h2></div>
 
   <div class="card" style="margin-top:22px">
     <h3>一 · 所有卡必须都调，而且顺序一致</h3>
-    <p style="font-size:16.5px">集合操作不是「发个包出去」，是<b>一场需要全员出席的会</b>。少一张卡调用，或者两张卡调用的顺序不一样，整个 job 就停在那儿，直到通信库的看门狗超时报 NCCL timeout。</p>
-    <pre><span class="c"># 经典死法：某张卡走了不同的分支</span>
+    <p style="font-size:16.5px">集合操作要求<b>所有 rank 参与，而且调用顺序一致</b>。少一张卡调用，或者不同卡的调用顺序不一样，整个 job 就会停住，直到通信库的看门狗报 NCCL timeout。</p>
+    <pre><span class="c"># 常见错误：某张卡走了不同的分支</span>
 if loss.isnan():          <span class="c"># ← 只有 GPU3 上是 True</span>
     continue              <span class="c"># ← GPU3 跳过了这次 all_reduce</span>
-dist.all_reduce(loss)     <span class="r"># ← 另外 7 张卡在这里等 GPU3，永远</span>
+dist.all_reduce(loss)     <span class="r"># ← 另外 7 张卡一直在这里等 GPU3</span>
 
-<span class="c"># 同样会挂：只在 rank0 上打日志，而日志里有个 all_reduce</span>
-<span class="c"># 同样会挂：两张卡上 all_reduce 的张量形状/dtype 不一致</span></pre>
-    <p class="note" style="font-size:15px">调试口诀：<b>看到「所有卡都卡住、GPU 利用率 100% 或 0%、没有报错」，先怀疑 collective 没对齐</b>，而不是怀疑数据加载。</p>
+<span class="c"># 同样会阻塞：只在 rank0 上打日志，而日志里有个 all_reduce</span>
+<span class="c"># 同样会阻塞：不同卡上 all_reduce 的张量形状/dtype 不一致</span></pre>
+    <p class="note" style="font-size:15px">如果出现「所有卡都卡住、GPU 利用率为 100% 或 0%、没有立即报错」，应先检查各 rank 的 collective 是否对齐，再排查数据加载。</p>
   </div>
 
   <div class="g2" style="margin-top:22px">
     <div class="card">
       <h3>二 · 一步的耗时 = 最慢那张卡</h3>
       <p style="font-size:16px">全员到齐才算完，所以一张降频的卡、一条坏网线、一个 rank 数据加载慢了 —— <b>整个集群一起等它</b>。</p>
-      <p style="font-size:16px">规模越大，撞上一个慢节点的概率越高。这是大规模训练最主要的工程痛点，跟算法无关。</p>
+      <p style="font-size:16px">规模越大，出现慢节点的概率越高。这是大规模训练的主要工程问题之一，和算法本身无关。</p>
     </div>
     <div class="card">
       <h3>三 · 通信可以藏在计算后面</h3>
-      <p style="font-size:16px">反向传播是从后往前算的，最后几层的梯度先出来。DDP 不等全部算完，而是把参数分桶，<b>一个桶满了就立刻开始 all-reduce</b>，跟前面几层的反向重叠跑。</p>
-      <p style="font-size:16px">所以「通信占多少时间」和「通信拖慢多少」是两件事 —— 藏得好的话，前者不小，后者可以接近零。</p>
+      <p style="font-size:16px">反向传播从后往前计算，最后几层的梯度先产生。DDP 会把参数分桶，<b>一个桶就绪后立即开始 all-reduce</b>，同时继续计算前面几层的反向。</p>
+      <p style="font-size:16px">因此，通信本身的耗时不等于暴露在总步时中的通信耗时；重叠充分时，后者可以接近零。</p>
     </div>
   </div>
 </section>
 
 <!-- ============ 11 ============ -->
 <section>
-  <div class="head"><span class="num">11</span><h2>一页带走</h2></div>
+  <div class="head"><span class="num">11</span><h2>六点总结</h2></div>
 
-  <div class="take"><span class="n">1</span><p><b>名字是拼的，不是背的。</b><code>All-</code> = 人人拿到完整结果；<code>Reduce</code> = 路上对位相加；<code>Gather</code> = 拼起来；<code>Scatter</code> = 切开发走。看到新名字先拆词。</p></div>
-  <div class="take"><span class="n">2</span><p><b>all-reduce = reduce-scatter + all-gather。</b>它是全家唯一走两趟的，所以每卡通信量是 <span class="mono">2·(N−1)/N·S</span>，别的都是一趟 <span class="mono">(N−1)/N·S</span>。</p></div>
-  <div class="take"><span class="n">3</span><p><b>all-to-all 不聚合也不复制，它是转置。</b>数据总量不变，换的是「按哪个轴切」。MoE 的 token 路由、序列并行换轴、分布式 embedding 查表，全是它。</p></div>
-  <div class="take"><span class="n">4</span><p><b>ring 的意义是「加卡不加通信量」。</b><span class="mono">(N−1)/N</span> 迅速趋近 1，所以每卡搬的字节数跟 N 几乎无关 —— 而中心汇总式的写法，root 的负担随 N 线性增长。</p></div>
+  <div class="take"><span class="n">1</span><p><b>名称可以按组成拆解。</b><code>All-</code> = 人人拿到完整结果；<code>Reduce</code> = 路上对位相加；<code>Gather</code> = 拼起来；<code>Scatter</code> = 切开发走。遇到新名字时先拆词。</p></div>
+  <div class="take"><span class="n">2</span><p><b>all-reduce = reduce-scatter + all-gather。</b>它需要两个阶段，所以每卡通信量是 <span class="mono">2·(N−1)/N·S</span>；其他动作通常是一趟 <span class="mono">(N−1)/N·S</span>。</p></div>
+  <div class="take"><span class="n">3</span><p><b>all-to-all 负责转置式重分片。</b>数据总量不变，变化的是「按哪个轴切」。MoE 的 token 路由、序列并行换轴、分布式 embedding 查表都会用到它。</p></div>
+  <div class="take"><span class="n">4</span><p><b>ring 让每卡通信量几乎不随卡数增加。</b><span class="mono">(N−1)/N</span> 迅速趋近 1；相比之下，中心汇总式写法中 root 的负担会随 N 线性增长。</p></div>
   <div class="take"><span class="n">5</span><p><b>大消息看带宽，小消息看跳数。</b>ring 省带宽（<span class="mono">2(N−1)</span> 跳），tree 省跳数（<span class="mono">≈2log₂N</span> 跳）。库会自己选，你只要知道它在权衡什么。</p></div>
-  <div class="take"><span class="n">6</span><p><b>集合操作是全员会议。</b>少一张卡调用就 hang；一步的耗时等于最慢那张卡。这两条比通信量本身更常成为线上问题。</p></div>
+  <div class="take"><span class="n">6</span><p><b>集合操作要求所有 rank 同步参与。</b>少一张卡调用就会 hang；一步的耗时取决于最慢的那张卡。这两点经常比通信量本身更影响线上运行。</p></div>
 
   <div class="final">
-    <p>一堆 GPU 之间发生的所有事，说到底只有三种：<b>复制</b>（一份变多份）、<b>相加</b>（多份变一份）、<b>换个人拿</b>（份数不变）。</p>
-    <p style="margin-top:16px">那七八个名字，是这三件事的排列组合而已。</p>
+    <p>GPU 之间的 collective 大致可以归为三种动作：<b>复制</b>（一份变多份）、<b>相加</b>（多份变一份）、<b>重新分配</b>（份数不变）。</p>
+    <p style="margin-top:16px">这些名称描述的是三种动作的不同组合。</p>
   </div>
 </section>
 
@@ -708,7 +708,7 @@ const OPS = {
     after(){ const g = blank(); for(let i=0;i<N;i++) g[i][i] = {v:VAL[0][i], o:0}; return g; },
     what:'GPU0 把纸条<em>切成 N 格</em>，第 i 格发给 GPU i。每张卡只拿到 1/N。',
     spell:[['','Scatter']],
-    detail:'和 broadcast 的差别就一个字：broadcast 是<b>复印</b>（每人拿到整条），scatter 是<b>切开</b>（每人拿一段，加起来才是原来那条）。',
+    detail:'broadcast 会<b>复制</b>完整数据（每人拿到整条），scatter 则会<b>切分</b>数据（每人只拿一段，合起来才是原数据）。',
     bytes:'root 发出 (N−1)/N · S',
     where:'root 读了一整批数据，切开发给各卡（不过实践中更常见的是每张卡自己读自己那份，省掉这次通信）。'
   },
@@ -723,7 +723,7 @@ const OPS = {
     },
     what:'每张卡交出自己那一格，GPU0 把它们<em>按顺序拼成</em>一整条。',
     spell:[['','Gather']],
-    detail:'注意是<b>拼接</b>，不是相加 —— 拼完的整条里，四家的数据各占一格，谁也没被合并。这是 gather 和 reduce 唯一的区别。',
+    detail:'这里做的是<b>拼接</b>而不是相加。拼完后，四张卡的数据各占一格，没有被合并；这也是 gather 和 reduce 的主要区别。',
     bytes:'非 root 各发出 S/N',
     where:'把各卡算出的结果收到 rank0 上落盘 / 打印；评测时把各卡的预测收集起来算总指标。'
   },
@@ -763,8 +763,8 @@ const OPS = {
     },
     what:'四条纸条对位相加，<em>然后每张卡都拿到那份和</em>。搬完之后所有卡内容完全一致。',
     spell:[['all','All'],['red','Reduce']],
-    detail:'全家最常用的一个。它的强项不只是「求和」，更是「<b>让所有卡对同一个数达成一致</b>」—— 数据并行靠这个保证 N 份模型永远不跑偏。',
-    bytes:'每卡发出 2 · (N−1)/N · S ← 唯一的 2 倍',
+    detail:'这是最常用的 collective 之一。它完成求和后，会让<b>所有卡得到相同结果</b>；数据并行依靠它同步 N 份模型的梯度。',
+    bytes:'每卡发出 2 · (N−1)/N · S',
     where:'数据并行每步同步梯度；张量并行每层合并部分和；全局 loss / 梯度范数 / token 计数。'
   },
   reducescatter: {
@@ -773,7 +773,7 @@ const OPS = {
     after(){ const g = blank(); for(let i=0;i<N;i++) g[i][i] = {v:SUM[i], o:'s'}; return g; },
     what:'<em>先</em>四条纸条对位相加，<em>再</em>把和切开 —— 每张卡只拿走其中一格。',
     spell:[['red','Reduce'],['','Scatter']],
-    detail:'每张卡拿到的那一格，已经是四张卡在这一格上的<b>完整和</b>（<span class="mono">1111</span> 而不是 <span class="mono">1</span>）。所以它不是「先分工再算」，而是「<b>算完了只留自己该管的那段</b>」。',
+    detail:'每张卡拿到的那一格，已经是四张卡在该位置上的<b>完整和</b>（<span class="mono">1111</span> 而不是 <span class="mono">1</span>）。它先完成归约，再只保留本卡负责的分片。',
     bytes:'每卡发出 (N−1)/N · S',
     where:'ring all-reduce 的前半程；ZeRO 里梯度同步用它（每卡只需要自己负责的那段梯度，全份留着没意义）。'
   },
@@ -945,10 +945,10 @@ function drawRing(moves){
 
   const notes = {
     start: '每张卡一开始只有自己那条（格子里写着自己的编号）。<b>第一阶段（reduce-scatter）：每张卡把一格发给右邻居，邻居收到后加到自己对应那一格上。</b>',
-    rs:    '注意每一步<b>四张卡同时在发，也同时在收</b> —— 四条链路全在跑，没有谁闲着，也没有谁被压爆。这就是它比中心汇总快的原因。',
-    mid:   '第一阶段结束。看：<b>每张卡都有恰好一格加齐了（绿色 Σ），而且四张卡的绿格子各不相同</b> —— 这正好就是 reduce-scatter 的结果：和已经算完，但分散在四张卡上。',
+    rs:    '每一步中，<b>四张卡都在同时发送和接收</b>，四条链路并行工作，因此不会把流量集中到一张卡上。',
+    mid:   '第一阶段结束。<b>每张卡都有一格完成了归约（绿色 Σ），而且四张卡完成的格子各不相同</b>。这就是 reduce-scatter 的结果：归约已经完成，结果分散在四张卡上。',
     ag:    '第二阶段（all-gather）：把绿色格子沿环再传一圈，让每张卡都拿到全部四格。<b>这一圈只搬不算。</b>',
-    end:   '完成。全绿 = 每张卡都拿到了完整的和。总共 <b>2(N−1) = 6 步</b>，每步发一格（S/4），每卡共发出 <b>6/4 = 1.5 S</b> —— 正好是 2·(N−1)/N·S。<br>再看一遍这个结构：<b>all-reduce = reduce-scatter（前 3 步）+ all-gather（后 3 步）</b>。'
+    end:   '完成。全绿表示每张卡都拿到了完整的和。总共 <b>2(N−1) = 6 步</b>，每步发一格（S/4），每卡共发出 <b>6/4 = 1.5 S</b>，正好是 2·(N−1)/N·S。<br>整个过程可以写成：<b>all-reduce = reduce-scatter（前 3 步）+ all-gather（后 3 步）</b>。'
   };
   const el2 = document.getElementById('ring-note');
   if(step === 0) el2.innerHTML = notes.start;
@@ -1051,9 +1051,9 @@ function calc(){
 
   const ring = 2*f*S/B, naive = (N2-1)*S/B;
   document.getElementById('calc-note').innerHTML =
-    `<p>N = <b>${N2}</b> 时，ring 每卡搬 <b>${(2*f).toFixed(3)} S</b>，笨办法让 root 搬 <b>${N2-1} S</b> —— 差 <b>${(naive/ring).toFixed(0)} 倍</b>，而且这个倍数还会随卡数继续涨。</p>` +
-    `<p>最后一行不是「另一种实现」，是<b>反面教材</b>：它把所有流量挤到一张卡的网口上。ring 那一行才是真实的量，且几乎不随 N 变化。</p>` +
-    `<p class="mute">ring 的跳数：<b>${2*(N2-1)}</b> 跳；换成 tree 约 <b>${Math.round(2*Math.log2(N2))}</b> 跳。数据小的时候这个差别就是全部差别。</p>`;
+    `<p>N = <b>${N2}</b> 时，ring 每卡搬 <b>${(2*f).toFixed(3)} S</b>，中心汇总方式让 root 搬 <b>${N2-1} S</b>，相差 <b>${(naive/ring).toFixed(0)} 倍</b>，而且差距会随卡数继续增大。</p>` +
+    `<p>最后一行是中心汇总方式的对照：所有流量都会集中到一张卡的网口上。ring 的每卡通信量则几乎不随 N 变化。</p>` +
+    `<p class="mute">ring 的跳数：<b>${2*(N2-1)}</b> 跳；换成 tree 约 <b>${Math.round(2*Math.log2(N2))}</b> 跳。数据较小时，跳数差异会主导总时间。</p>`;
 }
 document.getElementById('p-s').innerHTML = SS.map((s, i) =>
   `<button data-i="${i}"${i===si?' class="on"':''}>${s.l}</button>`).join('');

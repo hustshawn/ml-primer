@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>残差连接 · 一个加号救了深度学习</title>
+<title>残差连接 · 保留主干并逐层增加改动</title>
 <style>
 :root{
   --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B; --line:#16130F;
@@ -149,8 +149,8 @@ pre .g{color:var(--upd); font-weight:900}
 <!-- ================= HERO ================= -->
 <div class="hero">
   <span class="kicker">残差连接 · RESIDUAL</span>
-  <h1>别重写，<br><em>只贴便签</em></h1>
-  <p class="sub">深网络原来是「传话游戏」，传到第 90 层，原话早没了。<br>残差连接做的事，只有一件：<b>把原话留着。</b></p>
+  <h1>保留主干，<br><em>逐层增加改动</em></h1>
+  <p class="sub">普通层会用新输出替换输入；残差连接保留输入主干，<br>让每一层只需要学习一个<b>增量</b>。</p>
 
   <div class="eqbox">
     <div class="eqrow">
@@ -164,13 +164,13 @@ pre .g{color:var(--upd); font-weight:900}
     <div class="eqrow">
       <span class="formula">out = <b>x +</b> f(x)</span>
     </div>
-    <p class="note" style="text-align:center">全部数学就这么多。一个加号。没有参数，没有算力开销。</p>
+    <p class="note" style="text-align:center">核心就是一个加号。它不增加可训练参数，加法本身的计算开销也很小。</p>
   </div>
 </div>
 
 <!-- ================= 1 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">1</span><h2>问题：传话游戏</h2></div>
+  <div class="head"><span class="num">1</span><h2>没有残差时，层层替换输入</h2></div>
   <p class="lede">神经网络是一层传给下一层。层数一多，每层都想「改写」上一层的话，改到最后就是耳语传话——面目全非。</p>
 
   <div class="card grid2">
@@ -209,17 +209,17 @@ pre .g{color:var(--upd); font-weight:900}
   </div>
 
   <div class="card" style="background:#E8F1FA">
-    <div class="big" style="font-size:clamp(20px,3vw,30px)">这不是「跳过某一层」</div>
-    <p class="note" style="font-size:16px">常见误解。每一层照样算，只是它的输出被 <b class="mono">加</b> 回主干，而不是 <b class="mono">替换</b> 主干。<br>层的职责从「产出新的一切」降级成「产出一点增量」——这就是名字里「残差 / residual」的意思：<b>差值</b>。</p>
+    <div class="big" style="font-size:clamp(20px,3vw,30px)">残差连接不会跳过这一层的计算</div>
+    <p class="note" style="font-size:16px">每一层仍然会计算，只是它的输出被 <b class="mono">加</b> 回主干，而不是用来替换主干。<br>这一层学习的是相对于输入的增量，也就是名称中的「残差 / residual」：<b>差值</b>。</p>
     <p class="note" style="font-size:15px;margin-top:14px;padding-top:14px;border-top:2px dashed #00000022">
-      前 3 节的「层」请先当成一个<b>黑盒</b> —— 它可以是卷积、可以是 attention、可以是任何东西，残差不在乎。<b>第 4 节把盒子打开。</b></p>
+      前 3 节先把「层」当成一个<b>黑盒</b>。它可以是卷积、attention 或其他算子，残差连接只关心输出怎样并回主干。第 4 节会展开 Transformer 里的具体结构。</p>
   </div>
 </section>
 
 <!-- ================= 2 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">2</span><h2>真正致命的是反向：信号被乘到 0</h2></div>
-  <p class="lede">训练要从最后一层往回传「你该往哪改」的信号。每穿过一层，这个信号就被乘一个数。乘 90 次，猜猜剩多少。</p>
+  <div class="head"><span class="num">2</span><h2>反向传播：连乘会让梯度衰减</h2></div>
+  <p class="lede">训练时，梯度从最后一层向前传播。每经过一层，梯度都会乘上该层的局部导数；连续相乘很多次后，数值可能变得很小。</p>
 
   <div class="card">
     <div class="sliderrow">
@@ -262,8 +262,8 @@ pre .g{color:var(--upd); font-weight:900}
 
 <!-- ================= 3 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">3</span><h2>顺带解决：加层不该让模型变差</h2></div>
-  <p class="lede">2015 年发现一件反常识的事：56 层的网络，训练误差比 20 层的<b>还高</b>。不是过拟合——它连训练集都学不好。深度本身成了负担。</p>
+  <div class="head"><span class="num">3</span><h2>残差让新增层更容易退化为恒等映射</h2></div>
+  <p class="lede">2015 年的 ResNet 论文观察到：56 层网络的训练误差比 20 层网络<b>更高</b>。训练集本身都没有拟合好，因此问题不在过拟合，而在深层网络更难优化。</p>
 
   <div class="card grid2">
     <div class="panel" style="background:#FDEDE7">
@@ -279,25 +279,25 @@ pre .g{color:var(--upd); font-weight:900}
   </div>
 
   <div class="card" style="background:var(--ink);color:var(--bg);border-color:var(--ink);box-shadow:8px 8px 0 var(--upd)">
-    <div class="big" style="font-size:clamp(22px,3.4vw,34px)">于是深网络最差也能<span style="color:var(--yel)">退化成浅网络</span></div>
-    <p style="color:#C9C2B8;margin-top:14px;font-size:16.5px">多出来的层用不上就自己「空着」。加层从此只有上限收益、没有下限风险。<br>ResNet 靠这一招，把图像网络从 20 层推到 152 层。同一招原封不动搬进了 Transformer。</p>
+    <div class="big" style="font-size:clamp(22px,3.4vw,34px)">新增层可以学成<span style="color:var(--yel)">接近恒等映射</span></div>
+    <p style="color:#C9C2B8;margin-top:14px;font-size:16.5px">多出来的层如果暂时没有帮助，可以让 <span class="mono">f(x)</span> 接近 0，从而尽量保留原输入。这让深层网络更容易优化。<br>ResNet 借此把图像网络扩展到 152 层，Transformer 也采用了同样的连接方式。</p>
   </div>
 </section>
 
 <!-- ================= 4 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">4</span><h2>插播：残差 ≠ Attention</h2></div>
-  <p class="lede">最容易混的一件事。这两个词根本不在同一个层面上——<b>一个是管道，一个是水。</b></p>
+  <div class="head"><span class="num">4</span><h2>残差连接和 Attention 属于不同层面</h2></div>
+  <p class="lede">残差连接决定子层输出怎样接回主干，Attention 则是一个具体的计算子层。</p>
 
   <div class="card grid2">
     <div class="panel" style="background:#FFF6DE">
-      <h4>残差连接 = 管道怎么接</h4>
-      <p style="font-size:16px">规定「子层算完的东西怎么并回主干」：<b class="mono">加</b>，而不是<b class="mono">替换</b>。<br>它<b>不关心子层里算的是什么</b>。</p>
+      <h4>残差连接 = 输出怎样接回主干</h4>
+      <p style="font-size:16px">子层计算完成后，把结果<b class="mono">加</b>回主干。<br>这种连接方式不限定子层内部使用哪种算子。</p>
       <div class="cost" style="background:#fff">0 个参数</div>
     </div>
     <div class="panel" style="background:#E8F1FA">
-      <h4>Attention = 管道里跑什么水</h4>
-      <p style="font-size:16px">一种具体算子，负责「这个词该去看句子里的哪些词」。<br>它<b>不关心自己是怎么被接进去的</b>。</p>
+      <h4>Attention = 具体计算子层</h4>
+      <p style="font-size:16px">它负责计算一个 token 应该参考序列中的哪些 token。<br>同一个 Attention 算子可以采用不同的连接方式。</p>
       <div class="cost" style="background:#fff">一大堆参数</div>
     </div>
   </div>
@@ -317,7 +317,7 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
       <h4><span class="dot" style="background:var(--bwd)"></span>Attention 子层</h4>
       <div class="rows">
         <div><b>干什么</b><span>跨 token 看别人</span></div>
-        <div><b>看得到别的词吗</b><span>能 —— 而且是全模型<b>唯一</b>能让词之间通信的地方</span></div>
+        <div><b>看得到别的词吗</b><span>能，负责 token 之间的信息传递</span></div>
         <div><b>白板比喻</b><span>抄一眼旁边人的白板，再写便签</span></div>
         <div><b>参数量</b><span>约 <b>1/3</b>（4d²）</span></div>
       </div>
@@ -326,7 +326,7 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
       <h4><span class="dot" style="background:var(--upd)"></span>FFN 子层</h4>
       <div class="rows">
         <div><b>干什么</b><span>每个 token 自己想</span></div>
-        <div><b>看得到别的词吗</b><span>看不到 —— 逐位置独立处理，互不通气</span></div>
+        <div><b>看得到别的词吗</b><span>看不到，逐位置独立处理</span></div>
         <div><b>白板比喻</b><span>只看自己白板，加工一下再写便签</span></div>
         <div><b>参数量</b><span>约 <b>2/3</b>（8d²）</span></div>
       </div>
@@ -334,22 +334,22 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
   </div>
 
   <p class="note" style="font-size:15.5px;margin-top:20px;margin-left:4px">
-    顺带一提，Norm 也是逐 token 的（它在特征维度上归一化，不跨词）。所以<b>信息在句子里流动，全靠 attention 那一个子层</b>。</p>
+    Norm 也是逐 token 的（它在特征维度上归一化，不跨词）。因此在标准 Transformer block 中，<b>token 之间的信息由 attention 子层传递</b>。</p>
 
   <div class="card" style="background:var(--ink);color:var(--bg);border-color:var(--ink);box-shadow:8px 8px 0 var(--pur)">
-    <div class="big" style="font-size:clamp(22px,3.4vw,34px)">一句话验证它们真的无关</div>
+    <div class="big" style="font-size:clamp(22px,3.4vw,34px)">替换子层即可看出两者相互独立</div>
     <p style="color:#C9C2B8;margin-top:14px;font-size:16.5px">
-      把 attention 换成卷积（ResNet）、换成 SSM（Mamba），<b style="color:#fff">残差原封不动照旧</b>。<br>
-      <b style="color:var(--yel)">Mamba 里一个 attention 都没有，但残差一个不少。</b><br><br>
-      反过来，把残差拆掉，attention 照样能算 —— 只是网络一深就训不动了（第 2 节）。<br>
-      两者可以任意组合，说明它们是<b style="color:#fff">正交</b>的两件事。</p>
+      ResNet 的子层是卷积，Mamba 的子层是 SSM，它们都可以保留同样的残差连接。<br>
+      <b style="color:var(--yel)">Mamba 不使用 attention，但仍然使用残差连接。</b><br><br>
+      反过来，attention 在没有残差连接时仍能完成计算，只是深层网络会更难训练（第 2 节）。<br>
+      因此，子层类型和残差连接是两个可以独立选择的设计维度。</p>
   </div>
 </section>
 
 <!-- ================= 5 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">5</span><h2>在 LLM 里长什么样</h2></div>
-  <p class="lede">把上面那两行代码画出来，就是这张图。一个 block 里<b>两条</b>残差：一条包住 Attention，一条包住 FFN。左边那根黄色竖线是主干，它从不被改写，只被加。</p>
+  <p class="lede">把上面两行代码画出来，就是这张图。一个 block 里有<b>两条</b>残差：一条包住 Attention，一条包住 FFN。左侧黄色竖线表示主干，子层输出会作为增量加到上面。</p>
 
   <div class="svgbox">
     <svg viewBox="0 0 500 610" role="img" aria-label="Transformer block 的两条残差连接">
@@ -426,8 +426,8 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
 
 <!-- ================= 6 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">6</span><h2>换个视角：它其实是一块公用白板</h2></div>
-  <p class="lede">「残差流（residual stream）」这个叫法更传神。别把它想成「捷径」，想成一块从第一层传到最后一层的<b>白板</b>：每层过来看一眼，写点东西，传给下一层。</p>
+  <div class="head"><span class="num">6</span><h2>把残差流理解成一块公用白板</h2></div>
+  <p class="lede">可以把 residual stream 想成一块从第一层传到最后一层的<b>白板</b>：每层读取当前内容，写入一个增量，再传给下一层。</p>
 
   <div class="svgbox">
     <svg viewBox="0 0 1000 300" role="img" aria-label="残差流像一块公用白板">
@@ -500,7 +500,7 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
   <div class="card grid2">
     <div class="panel">
       <h4>为什么这个视角有用</h4>
-      <p style="font-size:15.5px">因为它解释了为什么<b>浅层的信息能直接被深层用到</b>——白板上一直在。不需要中间每层都「转述」一遍。</p>
+      <p style="font-size:15.5px"><b>浅层信息可以沿主干直接传到深层</b>，不需要中间每层都重新编码一遍。</p>
     </div>
     <div class="panel">
       <h4>可解释性也靠它</h4>
@@ -511,8 +511,8 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
 
 <!-- ================= 7 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">7</span><h2>代价：白板会越写越挤</h2></div>
-  <p class="lede">一直往上加，数值就一直变大。所以残差从来不单独出现，总带着两个配套。</p>
+  <div class="head"><span class="num">7</span><h2>残差需要归一化和合适的初始化</h2></div>
+  <p class="lede">逐层累加会改变数值尺度，因此现代架构通常会把残差连接和归一化、合适的初始化一起使用。</p>
 
   <div class="card grid3">
     <div class="panel" style="background:#FDEDE7">
@@ -531,7 +531,7 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
 
   <div class="card">
     <div class="big" style="font-size:clamp(20px,3vw,28px)">显存上的一点代价</div>
-    <p class="note" style="font-size:16px">加号本身不要参数、不要算力。但反向传播需要主干上的 <span class="mono">x</span>，所以每个残差点的<b>激活值得留着</b>。这就是训练比推理吃显存的原因之一——不是残差的锅，但残差点是这些激活的落脚处。</p>
+    <p class="note" style="font-size:16px">加号本身不增加参数，计算开销也很小。但反向传播需要主干上的 <span class="mono">x</span>，所以每个残差点的<b>激活值要保留到反向使用</b>，这会占用一部分训练显存。</p>
   </div>
 </section>
 
@@ -544,18 +544,18 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
 x = attn(norm(x))
 x = ffn(norm(x))
 
-<span class="c"># 有残差：现代 LLM 每个 block 的全部内容</span>
+<span class="c"># 有残差：现代 LLM block 的基本结构</span>
 x = <span class="k">x +</span> attn(norm(x))   <span class="c"># ← 加号在这</span>
 x = <span class="k">x +</span> ffn(norm(x))    <span class="c"># ← 加号在这</span>
 </pre>
-    <p class="note" style="font-size:16.5px;font-weight:700;margin-top:20px">两个字符。深度学习能从 20 层做到 100+ 层，一半功劳在这两个字符上。</p>
+    <p class="note" style="font-size:16.5px;font-weight:700;margin-top:20px">这两个加号为梯度提供了直接路径，使 100+ 层网络更容易训练。</p>
   </div>
 </section>
 
 <!-- ================= 9 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">9</span><h2>名词对照</h2></div>
-  <p class="lede">同一件事有很多叫法，看到别慌，都是那个加号。</p>
+  <p class="lede">下面这些名称都和残差连接有关，但强调的对象略有不同。</p>
 
   <div class="tblwrap">
     <table class="tbl">
@@ -568,20 +568,20 @@ x = <span class="k">x +</span> ffn(norm(x))    <span class="c"># ← 加号在�
       <tr><td>子层 / Sub-layer</td><td>被一个残差包住的那个算子本身。Transformer 里就两种：<b>Attention</b> 和 <b>FFN</b></td></tr>
       <tr><td>层 / Layer / Block</td><td>口语里的「一层」= 两个子层 + 两个加号。GPT-3 的 96 层 = 192 个加号（第 4 节）</td></tr>
       <tr><td>Pre-LN / Post-LN</td><td>归一化放在支路里（现代）还是压在主干上（2017 原版）</td></tr>
-      <tr><td>ResNet</td><td>2015 年把这招做火的图像模型，152 层。Transformer 直接继承</td></tr>
+      <tr><td>ResNet</td><td>2015 年系统展示残差连接效果的图像模型，扩展到 152 层。Transformer 延续了这种结构</td></tr>
       <tr><td>Highway network</td><td>更早的近亲，用一个「闸门」控制放多少原话过去。残差是它的极简版：闸门恒开</td></tr>
-      <tr><td>梯度消失 / 爆炸</td><td>残差要治的病：反传信号被连乘成 0 或炸上天（第 2 节）</td></tr>
+      <tr><td>梯度消失 / 爆炸</td><td>深层网络中，反传信号连续相乘后变得过小或过大（第 2 节）</td></tr>
     </table>
   </div>
 </section>
 
 <!-- ================= PUNCH ================= -->
 <div class="punch reveal">
-  <div class="big">层不是流水线上的工人，<br>是围着<span style="color:var(--yel)">同一块白板</span>贴便签的人。</div>
-  <p>加号让「原话」永远不丢 —— 这是<b style="color:#fff">前向</b>。<br>
-  加号让「该怎么改」的信号永远不消失 —— 这是<b style="color:#fff">反向</b>。<br><br>
-  一个不占参数、不占算力的加号，同时解决了这两件事。<br>
-  所以它出现在你见过的每一个 Transformer 里，一个都没落下。</p>
+  <div class="big">每一层都读取同一条<span style="color:var(--yel)">残差流</span>，<br>再把自己的增量写回去。</div>
+  <p>前向时，主干保留已有信息；<br>
+  反向时，恒等路径让梯度可以直接向前传播。<br><br>
+  这个加号不增加可训练参数，计算开销很小，<br>
+  因此几乎所有 Transformer 都会使用残差连接。</p>
 </div>
 
 </div>

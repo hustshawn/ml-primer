@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LoRA · 冻住底模，只训一块很薄的补丁</title>
+<title>LoRA · 冻结底模，只训练低秩更新</title>
 <style>
 :root{
   --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B;
@@ -143,7 +143,7 @@ pre i{color:#8F877C; font-style:normal}
   <span class="kicker">LORA · 图解</span>
   <h1>底模一个字不改<br>只训<em>旁边那块补丁</em></h1>
   <p class="sub">
-    LoRA 不是一种新的训练目标，是<b>「参数怎么改」的一种选择</b>。<br>
+    LoRA 不是新的训练目标，而是<b>「参数怎么改」的一种选择</b>。<br>
     原权重上锁，旁边挂两个瘦矩阵，只有它们有梯度。
   </p>
 
@@ -182,7 +182,7 @@ pre i{color:#8F877C; font-style:normal}
 <!-- ================= 1 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">1</span><h2>它跟「训练」是什么关系</h2></div>
-  <p class="lede">很多人把 LoRA 当成一个训练阶段的名字，跟 SFT、DPO 并列。<b>不是。</b>它们是两个互不干扰的轴。</p>
+  <p class="lede">很多人会把 LoRA 当成一个训练阶段，和 SFT、DPO 并列。实际上，它们属于两个独立维度。</p>
 
   <div class="card">
     <div class="grid2">
@@ -205,8 +205,8 @@ pre i{color:#8F877C; font-style:normal}
     </div>
 
     <p class="note" style="margin-top:22px">
-      所以「用 LoRA 做 SFT」「用 LoRA 做 DPO」都是正常说法 —— <b>LoRA 是横着切的那一刀</b>，跟你在训什么目标无关。
-      唯一不成立的是最后一行：LoRA 的整个前提是<b>「底模已经会了，你只要小改」</b>，从零开始没有「小改」可言。
+      因此「用 LoRA 做 SFT」「用 LoRA 做 DPO」都是正常说法。<b>LoRA 作用在参数更新这一维</b>，与训练目标无关。
+      最后一行不成立，因为 LoRA 以已有底模为起点；从零训练没有可供低秩调整的底模。
     </p>
   </div>
 </section>
@@ -246,15 +246,15 @@ pre i{color:#8F877C; font-style:normal}
     <div>
       <h4>注意红色那三条</h4>
       <p class="note">
-        84 GB 里<b>没有一个字节是「模型」</b>。它们全是「为了知道下一步该怎么改」而存的东西 ——
+        这 84 GB 都是训练状态，用于计算和记录下一步怎样更新参数：
         fp32 主权重是为了小步累加不被 bf16 精度吃掉，m 和 v 是 Adam 给<b>每一个参数</b>各配一份的记账本。
       </p>
       <p class="note">
         换句话说：<b>优化器状态是按「可训练参数个数」收费的</b>，跟模型多大没直接关系。
       </p>
       <p class="note" style="margin-top:20px">
-        <b>LoRA 的全部聪明之处就在这一句：</b>如果可训练参数从 70 亿变成 2000 万，这三条红条就自动缩到几乎为零 ——
-        灰条（冻住的底模）你还得存，但那只是 14 GB，单卡装得下。
+        <b>LoRA 节省显存的关键在这里：</b>如果可训练参数从 70 亿变成 2000 万，这三条红条就会缩到几乎为零。
+        灰条（冻住的底模）仍需保存，但只有 14 GB，单卡可以容纳。
       </p>
       <p class="small">
         原论文在 GPT-3 175B 上量到的正是这件事：训练显存从 <b>1.2 TB 降到 350 GB</b>（省掉的就是冻住那部分的优化器状态），
@@ -266,8 +266,8 @@ pre i{color:#8F877C; font-style:normal}
 
 <!-- ================= 3 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">3</span><h2>凭什么可以只训两条</h2></div>
-  <p class="lede">因为微调真正需要的「改动量」很扁 —— 一个 4096×4096 的改动，往往只需要几个方向就能描述完。</p>
+  <div class="head"><span class="num">3</span><h2>为什么可以只训练两条低秩支路</h2></div>
+  <p class="lede">微调所需的改动量 ΔW 往往是低秩的：一个 4096×4096 的改动，可能只需要少数几个方向就能近似描述。</p>
 
   <div class="card">
     <svg viewBox="0 0 860 250" role="img" aria-label="一个大方阵的改动量可以由一个瘦高矩阵乘一个扁宽矩阵近似">
@@ -296,14 +296,14 @@ pre i{color:#8F877C; font-style:normal}
       <text x="576" y="52" font-size="14" font-weight="900" fill="#16130F">论文里最反直觉的一条结论</text>
       <text x="576" y="86" font-size="13" font-weight="700" fill="#2E2823">在 WikiSQL / MultiNLI 上，同时改</text>
       <text x="576" y="106" font-size="13" font-weight="700" fill="#2E2823">Wq 和 Wv 时，<tspan font-weight="900" fill="#E4572E">r = 1 就够用</tspan>。</text>
-      <text x="576" y="140" font-size="13" font-weight="700" fill="#2E2823">不是「r 越大越好」，而是「改动量本身</text>
-      <text x="576" y="160" font-size="13" font-weight="700" fill="#2E2823">就没那么多维度」—— 论文管这叫</text>
+      <text x="576" y="140" font-size="13" font-weight="700" fill="#2E2823">r 越大不一定越好；改动量本身</text>
+      <text x="576" y="160" font-size="13" font-weight="700" fill="#2E2823">可能只有少数有效维度。论文称为</text>
       <text x="576" y="180" font-size="13" font-weight="900" fill="#7B4FBF">intrinsic rank 很低</text>
-      <text x="576" y="212" font-size="12" font-weight="700" fill="#9A9188">注意：说的是 ΔW 扁，不是 W 扁。</text>
+      <text x="576" y="212" font-size="12" font-weight="700" fill="#9A9188">这里低秩的是 ΔW，不是 W。</text>
     </svg>
     <p class="note" style="margin-top:8px">
-      直觉版：底模已经是个见过整个互联网的通才，你要它「说话客气点、输出固定 JSON、认识你公司的黑话」——
-      这些要求相对它已有的能力，是<b>一层很薄的偏置</b>，不是一次世界观重建。薄东西用瘦矩阵就能表示。
+      直觉上，底模已经具备较广的通用能力。让它「说话客气点、输出固定 JSON、正确使用公司的术语」，
+      通常是在调整已有能力的倾向，所需改动相对较小，因此可以尝试用低秩矩阵表示。
     </p>
   </div>
 </section>
@@ -339,7 +339,7 @@ pre i{color:#8F877C; font-style:normal}
       <path d="M190 236 H222" fill="none" stroke="#16130F" stroke-width="3"/>
       <rect x="222" y="218" width="58" height="36" rx="7" fill="#fff" stroke="#16130F" stroke-width="3" stroke-dasharray="6 4"/>
       <text x="251" y="242" text-anchor="middle" font-size="14" font-weight="900" fill="#7B4FBF">r 维</text>
-      <text x="251" y="288" text-anchor="middle" font-size="12" font-weight="800" fill="#7B4FBF">瓶颈 · 全部信息要挤过这里</text>
+      <text x="251" y="288" text-anchor="middle" font-size="12" font-weight="800" fill="#7B4FBF">r 维瓶颈 · 改动经这里传递</text>
       <path d="M280 236 H312" fill="none" stroke="#16130F" stroke-width="3"/>
 
       <rect x="312" y="198" width="70" height="76" rx="9" fill="#2E6FB7" stroke="#16130F" stroke-width="3"/>
@@ -387,7 +387,7 @@ pre i{color:#8F877C; font-style:normal}
 
 <!-- ================= 5 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">5</span><h2>为什么第 0 步不掉分</h2></div>
+  <div class="head"><span class="num">5</span><h2>为什么第 0 步等于底模</h2></div>
   <p class="lede">A 随机初始化，<b>B 初始化成全零</b>。这个细节比它看起来重要得多。</p>
 
   <div class="card grid2">
@@ -427,7 +427,7 @@ pre i{color:#8F877C; font-style:normal}
         你等于在一个<b>已经被随机扰乱过</b>的模型上做微调，头几百步全在修自己造的伤。
       </p>
       <p class="note">
-        B 归零保证：<b>第 0 步的 LoRA 模型 = 底模</b>。loss 从底模的水平开始降，而不是先爬回来。
+        B 归零使得：<b>第 0 步的 LoRA 模型 = 底模</b>。loss 从底模的水平开始变化，不需要先恢复到底模输出。
         （只让 A 归零不行 —— 那样 A 的梯度也会是零，支路永远长不出来。）
       </p>
       <p class="small">
@@ -441,7 +441,7 @@ pre i{color:#8F877C; font-style:normal}
 
 <!-- ================= 6 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">6</span><h2>参数账，自己拖着看</h2></div>
+  <div class="head"><span class="num">6</span><h2>参数量和 checkpoint 大小</h2></div>
   <p class="lede">下面用 Llama-2-7B 的真实形状算（hidden 4096、intermediate 11008、32 层、总参数 6,738,415,616）。拖 r，换挂法。</p>
 
   <div class="lab">
@@ -456,7 +456,7 @@ pre i{color:#8F877C; font-style:normal}
       <div class="pill" id="tgt">
         <button data-t="qv">只挂 q,v<span class="small" style="display:block;margin:0;font-weight:700">论文原配</span></button>
         <button data-t="attn">整个 attention<span class="small" style="display:block;margin:0;font-weight:700">q,k,v,o</span></button>
-        <button data-t="all" class="on">全部 linear<span class="small" style="display:block;margin:0;font-weight:700">今天的默认</span></button>
+        <button data-t="all" class="on">全部 linear<span class="small" style="display:block;margin:0;font-weight:700">常用配置</span></button>
       </div>
     </div>
 
@@ -493,7 +493,7 @@ pre i{color:#8F877C; font-style:normal}
 
 <!-- ================= 7 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">7</span><h2>α 到底是个啥</h2></div>
+  <div class="head"><span class="num">7</span><h2>α 控制更新的缩放</h2></div>
   <p class="lede">支路输出会先乘一个 <span class="mono">α/r</span> 再加回主路。α 是「补丁的音量旋钮」。</p>
 
   <div class="card grid2">
@@ -578,17 +578,17 @@ pre i{color:#8F877C; font-style:normal}
           在大底模上<b>复现不出全量微调的效果</b>。他们在 LLaMA 7B + Alpaca 上发现：
         </p>
         <p class="note">
-          最关键的超参不是 r，而是<b>一共挂了多少个 adapter</b>；
-          必须挂到 <b>transformer block 里全部的 linear 层</b>才追得上全量微调。
-          而且一旦挂全了，<b>r 取多少对最终效果几乎没影响</b>。
+          在 QLoRA 的实验中，adapter 的覆盖范围比 r 更影响效果；
+          覆盖 <b>transformer block 里全部的 linear 层</b>后，效果才能追上全量微调。
+          在论文测试范围内，覆盖完整后，<b>r 对最终效果的影响很小</b>。
         </p>
         <p class="note" style="margin-top:18px">
-          <b>所以今天的默认答案是：全挂。</b><br>
+          <b>因此常用配置是覆盖全部 linear 层：</b><br>
           <span class="mono" style="font-size:13px">q_proj, k_proj, v_proj, o_proj,<br>gate_proj, up_proj, down_proj</span>
         </p>
         <p class="small">
           通常<b>不</b>挂：embedding、lm_head、LayerNorm/RMSNorm。
-          如果你加了新 token，那 embedding 和 lm_head 要另外单独处理，不是 LoRA 的活。
+          如果加入了新 token，embedding 和 lm_head 需要单独训练或保存。
         </p>
       </div>
     </div>
@@ -630,7 +630,7 @@ pre i{color:#8F877C; font-style:normal}
       <text x="34" y="266" font-size="12.5" font-weight="700" fill="#6E655B">长序列 / 大 batch 下一样会 OOM —— 该动的是 batch 和 gradient checkpointing。</text>
 
       <line x1="600" y1="24" x2="600" y2="284" stroke="#16130F" stroke-width="2" stroke-dasharray="7 6"/>
-      <text x="622" y="46" font-size="14.5" font-weight="900" fill="#1E9E62">真正省掉的只有一件事：</text>
+      <text x="622" y="46" font-size="14.5" font-weight="900" fill="#1E9E62">LoRA 主要减少的是：</text>
       <rect x="622" y="62" width="238" height="86" rx="10" fill="#E6F6EE" stroke="#1E9E62" stroke-width="3"/>
       <text x="640" y="88" font-size="13.5" font-weight="900" fill="#16130F">梯度只需要存 A、B 的</text>
       <text x="640" y="112" font-size="13.5" font-weight="900" fill="#16130F">优化器状态只需要 A、B 的</text>
@@ -643,8 +643,8 @@ pre i{color:#8F877C; font-style:normal}
     </svg>
 
     <p class="note" style="margin-top:10px">
-      一句话记住这节：<b>LoRA 省的是「记账的钱」，不是「算账的钱」</b>。
-      forward 和 backward 该跑多少还是多少，只是不用再为 70 亿个参数各准备一套 Adam 记账本。
+      <b>LoRA 主要减少训练状态显存，对前向和反向计算量影响有限。</b>
+      forward 和 backward 仍需经过完整网络，但不再为 70 亿个参数各准备一套 Adam 状态。
     </p>
   </div>
 </section>
@@ -652,7 +652,7 @@ pre i{color:#8F877C; font-style:normal}
 <!-- ================= 10 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">10</span><h2>推理时怎么工作</h2></div>
-  <p class="lede">训完你有两个选择，取决于你要伺候一个客户还是一百个。点一下切换。</p>
+  <p class="lede">训练完成后有两种部署方式，取决于服务单个模型版本还是多个 adapter。点一下切换。</p>
 
   <div class="lab">
     <div class="labtitle">可交互 · 推理两种模式</div>
@@ -731,7 +731,7 @@ pre i{color:#8F877C; font-style:normal}
 
 <!-- ================= 11 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">11</span><h2>那到底怎么训</h2></div>
+  <div class="head"><span class="num">11</span><h2>一套可用的训练配置</h2></div>
   <p class="lede">从「有一份数据」到「有一个 adapter」，需要你定的东西不多。</p>
 
   <div class="card">
@@ -754,7 +754,7 @@ pre i{color:#8F877C; font-style:normal}
       上表其余数字是社区常规起点，不是论文结论 —— 当默认值用，别当真理。
     </p>
 
-<pre><i># peft + TRL，单卡 QLoRA 微调一个 7B。装的是流程不是魔法。</i>
+<pre><i># peft + TRL：单卡 QLoRA 微调一个 7B 模型</i>
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from trl import SFTTrainer, SFTConfig
@@ -770,7 +770,7 @@ bnb = BitsAndBytesConfig(
 model = AutoModelForCausalLM.from_pretrained(BASE, quantization_config=bnb, device_map="auto")
 model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
 
-<i># 2. 这就是全部的 LoRA 配置</i>
+<i># 2. LoRA 配置</i>
 cfg = LoraConfig(
     r=<b>16</b>,
     lora_alpha=<b>32</b>,                          <i># 缩放 = α/r = 2</i>
@@ -810,8 +810,8 @@ model.save_pretrained("my-adapter")   <i># 存下来的只有 A、B —— 几�
 
 <!-- ================= 12 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">12</span><h2>能干什么，干不了什么</h2></div>
-  <p class="lede">分界线其实很清楚：LoRA 改的是<b>行为方式</b>，不是<b>知识储量</b>。</p>
+  <div class="head"><span class="num">12</span><h2>适用范围</h2></div>
+  <p class="lede">通常可以这样区分：LoRA 更适合调整模型的<b>行为方式</b>；补充大量知识时，应优先考虑 RAG 或继续预训练。</p>
 
   <div class="card grid2">
     <div>
@@ -824,7 +824,7 @@ model.save_pretrained("my-adapter")   <i># 存下来的只有 A、B —— 几�
         <b>·</b> 让小模型模仿大模型在某个窄任务上的表现<br>
         <b>·</b> 让模型稳定地遵守某套业务规则
       </p>
-      <p class="small">共同点：<b>底模其实都会，只是默认不这么做</b>。你在调整倾向，不是灌输。</p>
+      <p class="small">这些任务主要是在调整底模已有能力的倾向，而不是补充大量新知识。</p>
     </div>
     <div>
       <h4><span class="tag no">不适合</span></h4>
@@ -843,24 +843,24 @@ model.save_pretrained("my-adapter")   <i># 存下来的只有 A、B —— 几�
   </div>
 
   <div class="card">
-    <h4>先爬梯子，别一步跳到微调</h4>
+    <h4>先尝试成本较低的方案</h4>
     <div class="ladder">
-      <div class="rung"><span class="lv">0</span><span class="nm">改 prompt</span><span class="ds">成本几分钟。80% 的「模型不听话」到这一步就解决了。</span></div>
-      <div class="rung"><span class="lv">1</span><span class="nm">few-shot 示例</span><span class="ds">把你想要的格式直接摆给它看。比训一版模型快一万倍。</span></div>
+      <div class="rung"><span class="lv">0</span><span class="nm">改 prompt</span><span class="ds">成本最低。格式和指令问题通常先从这里排查。</span></div>
+      <div class="rung"><span class="lv">1</span><span class="nm">few-shot 示例</span><span class="ds">把预期格式和示例直接放进上下文，验证速度远快于训练一版模型。</span></div>
       <div class="rung"><span class="lv">2</span><span class="nm">RAG</span><span class="ds">缺的是「知道」而不是「会做」，就该在这一层解决。</span></div>
       <div class="rung" style="border-color:var(--a); box-shadow:5px 5px 0 var(--a)"><span class="lv" style="background:var(--a)">3</span><span class="nm" style="color:var(--a)">LoRA / QLoRA</span><span class="ds"><b>前三层都试过、还是差一口气的时候</b>。要有数据、要有评测。</span></div>
       <div class="rung"><span class="lv">4</span><span class="nm">继续预训练</span><span class="ds">真的要装新知识、新语言、新上下文长度。要几十上百 GB 语料。</span></div>
       <div class="rung"><span class="lv">5</span><span class="nm">全量微调</span><span class="ds">LoRA 试到 r=128 还追不上，且你有多卡。很少走到这里。</span></div>
     </div>
     <p class="small">
-      顺序不是「越往下越高级」，是<b>越往下越贵、越难回退</b>。跳级的代价通常是：花两周训了个 adapter，发现改 prompt 就能达到同样效果。
+      越往下，成本越高，也越难回退。先试低成本方案，可以避免训练完成后才发现改 prompt 已经能达到同样效果。
     </p>
   </div>
 </section>
 
 <!-- ================= 13 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">13</span><h2>LoRA 家族，一句一个</h2></div>
+  <div class="head"><span class="num">13</span><h2>LoRA 家族常见变体</h2></div>
   <p class="lede">名字很多，但都在动同一个公式里的某一处。知道它动的是哪一处就够了。</p>
 
   <div class="card">
@@ -875,24 +875,24 @@ model.save_pretrained("my-adapter")   <i># 存下来的只有 A、B —— 几�
     </div>
     <p class="small">
       实务建议：<b>先用最原始的 LoRA 跑通全流程、建好评测</b>，再考虑换变体。
-      没有评测的话，你根本分不清 DoRA 带来的是提升还是随机波动。
+      没有评测时，很难区分 DoRA 带来的是稳定提升还是随机波动。
     </p>
   </div>
 </section>
 
 <!-- ================= 14 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">14</span><h2>训完先问自己这几句</h2></div>
-  <p class="lede">按踩坑频率排的。前三条基本能覆盖「我 LoRA 训完没效果」的绝大多数情况。</p>
+  <div class="head"><span class="num">14</span><h2>训练后的检查项</h2></div>
+  <p class="lede">下面按常见程度列出训练后需要检查的项目。</p>
 
   <div class="card">
     <div class="axisgrid" style="grid-template-columns:1.1fr 1.9fr">
       <div class="hd">自查</div><div class="hd">出问题时长什么样</div>
       <div class="rh">lr 是不是还停在 2e-5</div><div class="bad">loss 几乎不降，输出跟底模没区别。LoRA 要 1e-4 量级。</div>
-      <div class="rh">trainable % 对不对</div><div class="bad">打出来远小于预期 → target_modules 名字没匹配上。不报错，只是白训。</div>
+      <div class="rh">trainable % 对不对</div><div class="bad">打出来远小于预期 → target_modules 名字没匹配上。程序不一定报错，但训练基本无效。</div>
       <div class="rh">有没有跟底模对比过</div><div class="bad">没有 baseline，你无法知道提升来自训练还是来自 prompt 变了。每次都要跑一遍底模。</div>
       <div class="rh">是不是在灌知识</div><div class="bad">语气对了、事实开始胡编 → 该换 RAG，不是加 epoch。</div>
-      <div class="rh">epoch 是不是太多</div><div class="bad">训练集上完美，稍微换个问法就崩 → 死记硬背了，降到 1~2 轮。</div>
+      <div class="rh">epoch 是不是太多</div><div class="bad">训练集上很好，稍微换个问法就明显退化 → 可能出现死记硬背，可降到 1~2 轮。</div>
       <div class="rh">有没有测通用能力</div><div class="bad">目标任务好了，但常识、多轮、其他语言退化 → 灾难性遗忘。降 lr、减 epoch、或在数据里掺一点通用样本。</div>
       <div class="rh">merge 前的精度</div><div class="bad">merge 完效果掉 → 大概是 merge 进了 4bit 底座。改成 merge 进 bf16 原模。</div>
     </div>
@@ -901,12 +901,12 @@ model.save_pretrained("my-adapter")   <i># 存下来的只有 A、B —— 几�
 
 <!-- ================= PUNCH ================= -->
 <div class="punch reveal">
-  <div class="big">整页压成四句</div>
+  <div class="big">四点总结</div>
   <p>
-    <b>1 ·</b> LoRA 不是训练阶段，是<b>「哪些参数有梯度」这一层的选择</b> —— 跟 SFT / DPO 正交，可以任意组合。<br><br>
+    <b>1 ·</b> LoRA 选择<b>哪些参数参与训练</b>，与 SFT / DPO 这类训练目标正交，可以组合使用。<br><br>
     <b>2 ·</b> 机理只有一个加号：<span class="mono">h = W₀x + (α/r)·BAx</span>。W₀ 上锁，A 随机、<b>B 归零</b>（所以第 0 步等于底模）。<br><br>
-    <b>3 ·</b> 省的是<b>优化器状态和梯度</b>，不是 activation、不是反向传播 —— 长序列该 OOM 还是会 OOM。<br><br>
-    <b>4 ·</b> 推理要么 <b>merge 掉换零开销</b>，要么<b>保留旁路换热切换</b>。二选一，看你伺候一个客户还是一百个。
+    <b>3 ·</b> 它主要减少<b>优化器状态和梯度</b>占用；activation 和反向传播仍然存在，因此长序列仍可能 OOM。<br><br>
+    <b>4 ·</b> 推理时可以 <b>merge 进权重以消除额外路径</b>，也可以<b>保留旁路以便切换多个 adapter</b>。
   </p>
 </div>
 
@@ -922,9 +922,9 @@ const PER_R = {
   all:  4*(H+H) + 2*(H+I) + (I+H)      /* + gate,up,down */
 };
 const TIPS = {
-  qv:   '2021 论文的原始配置。同样的参数预算下它已经不差，但 QLoRA 论文指出：在大底模上这么挂<b>追不上全量微调</b>。今天不建议作为默认。',
+  qv:   '2021 论文的原始配置。同样的参数预算下效果不错，但 QLoRA 论文指出：在大底模上只挂 q、v <b>追不上全量微调</b>，因此通常不作为默认配置。',
   attn: '只挂 attention 的四个投影。比只挂 q,v 好，但 MLP 占了 transformer 里大部分参数 —— 完全没碰它们。',
-  all:  '今天的默认。QLoRA 论文的结论是：<b>挂满全部 linear 层是追上全量微调的必要条件</b>，而且一旦挂满，r 取多少对效果影响就很小了。'
+  all:  '常用配置。QLoRA 论文的实验显示：<b>覆盖全部 linear 层是追上全量微调的必要条件</b>；覆盖完整后，r 对效果的影响较小。'
 };
 const RANKS = [1,2,4,8,16,32,64,128];
 
@@ -969,7 +969,7 @@ const MODES = {
   keep: {
     cost: '多两次小矩阵乘',
     cap:  'N 个 adapter',
-    tip:  '底模只装一份，A/B 按请求挑。100 个客户各一版：底模 13.5 GB + 100×40 MB ≈ <b>17.5 GB</b>，而不是 100 份 13.5 GB。代价是多两个 kernel —— 吞吐场景基本无感，batch=1 的低延迟场景要实测。'
+    tip:  '底模只装一份，A/B 按请求选择。100 个客户各一版：底模 13.5 GB + 100×40 MB ≈ <b>17.5 GB</b>，而不是 100 份 13.5 GB。代价是多两个 kernel；吞吐场景通常影响较小，batch=1 的低延迟场景需要实测。'
   }
 };
 document.querySelectorAll('#mode button').forEach(b=>{
