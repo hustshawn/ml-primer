@@ -373,13 +373,13 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
   <div class="stage" style="border-left-color:var(--fwd)">
     <h4>① 预训练 Pretraining <small>万亿 token · 千卡 · 数周 · 千万美元级</small></h4>
-    <p>只做一件事：猜下一个词。喂全互联网。这一步造出所有的知识和语言能力。</p>
+    <p>只做一件事：猜下一个词。喂大规模语料。这一步形成大部分通用知识和语言能力。</p>
     <div class="out">出 base model：只会续写，不会听指令</div>
   </div>
 
   <div class="stage" style="border-left-color:var(--yel)">
     <h4>② 继续预训练 <small>百亿 token 级 · 几十卡 · 几天</small></h4>
-    <p>灌行业语料、新语言、或者把上下文从 8K 扩到 128K。<b>真正要「教新知识」时做这一步</b>，不是 LoRA。</p>
+    <p>灌行业语料、新语言，或者把上下文从 8K 扩到 128K。要系统性吸收大量领域语料时常用这一步；少量新事实也可以通过 SFT / LoRA 写入，只是稳定性和容量有限。</p>
     <div class="out">出 领域 base model</div>
   </div>
 
@@ -391,11 +391,11 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
   <div class="stage" style="border-left-color:var(--upd)">
     <h4>④ 偏好对齐 / RL <small>让它答得「好」，而不只是「像」</small></h4>
-    <p style="margin-bottom:12px">SFT 只会模仿；这一步告诉它什么答案更受欢迎、什么是对的。</p>
+    <p style="margin-bottom:12px">SFT 主要模仿示范；这一步进一步告诉它什么答案更受欢迎、什么结果能被验证。</p>
     <ul style="margin-left:18px;font-size:15.5px;color:var(--muted)">
-      <li><b>RLHF（PPO）</b>：人标 A/B 偏好 → 训一个打分模型 → 强化学习。最强也最难，显存里要同时放 4 个模型。</li>
+      <li><b>RLHF（PPO）</b>：人标 A/B 偏好 → 训一个打分模型 → 强化学习。经典但工程复杂，常要同时维护 policy、reference、reward 和 value 等模型角色。</li>
       <li><b>DPO</b>：直接拿偏好对训，不要打分模型。简单稳定，入门首选。</li>
-      <li><b>GRPO / RLVR</b>：答案能自动判对错（数学、代码）→ 让模型自己一题采样几十个答案，对的加分。<b>这就是 reasoning model 的来源</b> —— 也是你在推理端看到 output token 暴涨、TPOT 变成主要成本的原因。</li>
+      <li><b>GRPO / RLVR</b>：答案能自动判对错（数学、代码）→ 让模型自己一题采样多份答案，再按验证结果更新。<b>这是训练 reasoning model 的一条重要路线</b>；推理蒸馏和 SFT 也能把长推理行为迁移到其他模型。</li>
     </ul>
     <div class="out">出 chat / reasoning model</div>
   </div>
@@ -408,7 +408,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
 <!-- ================= 8 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">8</span><h2>LoRA：你 90% 的场合只需要这个</h2></div>
+  <div class="head"><span class="num">8</span><h2>LoRA：常用的低成本微调选择</h2></div>
   <p class="lede">冻住原权重，旁边挂两个「瘦矩阵」，只训它们。参数量降到 0.1%~1%。</p>
 
   <div class="card grid2">
@@ -441,7 +441,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
       <div class="membar" style="height:34px"><span style="width:9%;background:var(--upd)"></span><span style="width:91%;background:#F1EDE6;color:var(--muted)">4bit 底座 · 游戏卡能跑</span></div>
       <p class="note" style="margin-top:20px">
         <b>能干什么：</b>风格、格式、口吻、领域术语、输出结构。<br>
-        <b>干不了什么：</b>灌大量新知识 —— 那要继续预训练，或者干脆用 RAG。<br><br>
+        <b>不擅长什么：</b>稳定灌入大量、频繁更新的知识 —— 这类需求通常考虑继续预训练或 RAG。<br><br>
         <b>推理端：</b>可以 merge 回权重（零额外开销），也可以一个 base 挂多个 LoRA 动态切换。
       </p>
     </div>
@@ -614,7 +614,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
   <div class="big">先问一句：<br>这事真的需要训练吗？</div>
   <p>按这个顺序试，能停在哪就停在哪：<br>
   <b style="color:#fff">Prompt → RAG → LoRA → 继续预训练 → 全量训练</b><br><br>
-  实际工作里，八成的「我要微调」用前两步就解决了。<br>
+  实际工作里，很多「我要微调」的问题用前两步就能解决。<br>
   训练是最后手段，不是第一反应。</p>
 </div>
 

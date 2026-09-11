@@ -444,7 +444,7 @@ dist.all_reduce(grad, op=dist.ReduceOp.<span class="g">AVG</span>)</pre>
 <!-- ============ 6 ============ -->
 <section>
   <div class="head"><span class="num">6</span><h2>all-to-all 用在哪：MoE 的 token 路由</h2></div>
-  <p>最典型的场景。MoE 层里有一堆「专家」（每个专家就是一个 MLP），专家太多装不下，于是<b>一张卡放一个专家</b>。</p>
+  <p>最典型的场景。MoE 层里有一堆「专家」（每个专家就是一个 MLP），专家会分布到多张卡上；<b>一张卡可以放一个或多个专家</b>，也可能用并行方式切一个专家。</p>
   <p>但 token 是按数据切的 —— GPU0 手上的 token，router 说它该去 3 号专家。数据在 0 号卡，专家在 3 号卡。<b>只能把 token 送过去。</b></p>
 
   <div class="lab">
@@ -636,7 +636,7 @@ dist.all_reduce(loss)     <span class="r"># ← 另外 7 张卡一直在这里�
   <div class="head"><span class="num">11</span><h2>六点总结</h2></div>
 
   <div class="take"><span class="n">1</span><p><b>名称可以按组成拆解。</b><code>All-</code> = 人人拿到完整结果；<code>Reduce</code> = 路上对位相加；<code>Gather</code> = 拼起来；<code>Scatter</code> = 切开发走。遇到新名字时先拆词。</p></div>
-  <div class="take"><span class="n">2</span><p><b>all-reduce = reduce-scatter + all-gather。</b>它需要两个阶段，所以每卡通信量是 <span class="mono">2·(N−1)/N·S</span>；其他动作通常是一趟 <span class="mono">(N−1)/N·S</span>。</p></div>
+  <div class="take"><span class="n">2</span><p><b>ring all-reduce 可以拆成 reduce-scatter + all-gather。</b>在 ring 算法里，每卡通信量是 <span class="mono">2·(N−1)/N·S</span>。all-reduce 也可以用 tree 等算法实现，不一定显式分成这两个阶段。</p></div>
   <div class="take"><span class="n">3</span><p><b>all-to-all 负责转置式重分片。</b>数据总量不变，变化的是「按哪个轴切」。MoE 的 token 路由、序列并行换轴、分布式 embedding 查表都会用到它。</p></div>
   <div class="take"><span class="n">4</span><p><b>ring 让每卡通信量几乎不随卡数增加。</b><span class="mono">(N−1)/N</span> 迅速趋近 1；相比之下，中心汇总式写法中 root 的负担会随 N 线性增长。</p></div>
   <div class="take"><span class="n">5</span><p><b>大消息看带宽，小消息看跳数。</b>ring 省带宽（<span class="mono">2(N−1)</span> 跳），tree 省跳数（<span class="mono">≈2log₂N</span> 跳）。库会自己选，你只要知道它在权衡什么。</p></div>

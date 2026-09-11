@@ -527,7 +527,7 @@ tr.hi td{background:#FFF6DE}
       <span class="chip">训练 <b>10 万</b>步 / 12 小时</span>
     </div>
     <p class="note" style="margin-top:16px">大版本：d_model 1024、d_ff 4096、16 个头、213M 参数、30 万步、8 张 P100 跑 3.5 天。<br>
-    ——<b>整篇论文的算力，还不到今天一次 LoRA 微调。</b></p>
+    以今天的大模型训练规模看，这次实验不算大；但 LoRA 微调横跨不同模型、数据量和步数，不能拿「一次 LoRA」当固定单位比较。</p>
   </div>
 </section>
 
@@ -581,7 +581,7 @@ tr.hi td{background:#FFF6DE}
     <div class="card" style="margin-top:24px"><div class="big" style="font-size:32px">2020</div>
       <p class="note" style="font-size:15px"><b>Scaling law</b> 被系统总结：参数、数据和计算量一起扩大时，效果可以按规律预测。<br>算力投入随之快速增加。</p></div>
     <div class="card" style="margin-top:24px"><div class="big" style="font-size:32px">2022+</div>
-      <p class="note" style="font-size:15px"><b>ChatGPT</b>。<br>架构骨架和 2017 年这篇论文<b>基本是同一个</b>，只是大了几千倍、加了对齐训练。</p></div>
+      <p class="note" style="font-size:15px"><b>ChatGPT</b>。<br>沿用了 decoder-only Transformer 路线，并加入后训练。具体架构和参数规模没有公开，不能简单写成「大了几千倍」。</p></div>
   </div>
 </section>
 
