@@ -156,6 +156,13 @@ h3 em{font-style:normal; color:var(--acc)}
       <p class="d">encoder-only / encoder-decoder / decoder-only 的全部差别，<b>只是一张 attention mask</b> —— 允不允许往后看。往后看一眼就能作弊，所以必须涂掉答案，所以一遍前向只出得了 15% 的题，所以缓存也存不住。<b>下三角形一刀切掉「未来」，这一串问题全部消失。</b>附一节诚实的反例：换成多任务微调，赢的就不是它了。</p>
       <div class="meta"></div>
     </a>
+
+    <a class="card" href="engram.html" data-sections="14">
+      <div class="chips"><span class="chip">条件记忆 / Engram</span><span class="chip live">可交互 · 哈希 / 闸门 / 配比滑块</span></div>
+      <h3>有些事该<em>查</em>，<br>不该<em>算</em></h3>
+      <p class="d">模型里唯一的「查表」动作是 input embedding，而它的<b>钥匙只有一个 token</b> —— 所以「Alexander the Great 是个人名」这种纯粹该背的东西，它只能用 6 层硬算出来。这一页讲把那个动作放大：<b>钥匙从一个 token 扩成一个短语，位置从第 0 层挪到中间层</b>。组合数比格子数多 8 个数量级，于是碰撞、闸门、装第几层依次登场。收尾是两件反直觉的事：<b>推理题比知识题涨得更多</b>，以及<b>纯靠算力是次优的</b>。</p>
+      <div class="meta"></div>
+    </a>
   </div>
 </section>
 
