@@ -169,7 +169,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 <!-- ================= 1 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">1</span><h2>一圈四步，重复一百万次</h2></div>
-  <p class="lede">整个训练就是这四步循环。别的全是「怎么把这四步塞进显卡」的工程问题。</p>
+  <p class="lede">训练反复执行这四步。后面的显存、并行和精度问题，都是为了让这套循环能在目标规模上稳定运行。</p>
 
   <div class="card">
     <div class="loop">
@@ -182,14 +182,14 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
       <div class="step s4"><div class="n">STEP 4 · UPDATE</div><h4>拧旋钮</h4>
         <p>优化器让每个权重<br>沿梯度反方向挪一小步<br>（步长 = learning rate）。</p></div>
     </div>
-    <div class="loopnote">没人教它语法、事实、推理 —— 只压「猜下一个词」这一件事，能力是副产品</div>
+    <div class="loopnote">预训练通常只定义「预测下一个 token」这个目标，语言、事实和推理模式从大量训练数据中逐步形成</div>
   </div>
 </section>
 
 <!-- ================= 2 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">2</span><h2>Loss 就是「有多意外」</h2></div>
-  <p class="lede">唯一要记的公式：loss = −log(正确答案的概率)。猜中了≈0，猜歪了→很大。</p>
+  <p class="lede">先记这个公式：loss = −log(正确答案的概率)。正确答案的概率越高，loss 越接近 0。</p>
 
   <div class="card grid2">
     <div>
@@ -214,15 +214,15 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
         <text x="56" y="26" font-size="13" font-weight="800" fill="#16130F">p=0.001 → loss 6.9</text>
         <text x="150" y="182" font-size="12" font-weight="700" fill="#6E655B">正确答案的概率 →</text>
       </svg>
-      <p class="note">训练前期 loss 从 ~10 掉到 ~2 就是模型「学会说人话」的过程。</p>
+      <p class="note">训练前期 loss 从 ~10 降到 ~2，说明模型预测训练文本的能力明显提高。</p>
     </div>
   </div>
 </section>
 
 <!-- ================= 3 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">3</span><h2>显存账本：训练 ≈ 推理的 8 倍</h2></div>
-  <p class="lede">这是从推理跨到训练最该先看的一页。同一个 7B 模型，bf16：</p>
+  <div class="head"><span class="num">3</span><h2>显存账本：权重之外还有训练状态</h2></div>
+  <p class="lede">下面按 bf16 权重、bf16 梯度和 AdamW 的常见混合精度配置，计算同一个 7B 模型的模型状态：</p>
 
   <div class="card mem">
     <div class="memlab"><b>推理</b><i>14 GB　·　2 字节/参数</i></div>
@@ -251,16 +251,16 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 <!-- ================= 4 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">4</span><h2>第五个吃显存的：激活值</h2></div>
-  <p class="lede">反向传播要用到前向的每一个中间结果，所以前向算出来的东西<b>不能扔</b>。这是你在推理端从没遇到的开销。</p>
+  <p class="lede">反向传播需要前向阶段保存的中间结果，因此训练还要为激活值预留显存。这部分开销在普通自回归推理中通常小得多。</p>
 
   <div class="grid2">
     <div class="card" style="margin-top:24px">
       <h4 style="font-size:21px;font-weight:900">它随什么涨？</h4>
       <p class="note" style="font-size:16px;margin-top:10px">
         激活值 ∝ <b>batch × 序列长度 × 层数</b><br><br>
-        把 batch 或 context 翻倍，它就翻倍。长上下文训练之所以贵，主要贵在这里，不在权重。
+        把 batch 或 context 翻倍，这部分占用也会近似翻倍。长上下文训练中，激活显存可能超过模型状态。
       </p>
-      <span class="cost" style="margin-top:16px;display:inline-block">实践里：OOM 第一反应就是砍 batch</span>
+      <span class="cost" style="margin-top:16px;display:inline-block">出现 OOM 时，通常先检查 micro batch</span>
     </div>
     <div class="card" style="margin-top:24px;background:#E8F1FA">
       <h4 style="font-size:21px;font-weight:900">Gradient Checkpointing</h4>
@@ -280,7 +280,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 <!-- ================= 5 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">5</span><h2>一张卡装不下 → 四种切法</h2></div>
-  <p class="lede">你在推理端只需要 TP。训练要把下面几种叠着用（业内叫 3D / 4D 并行）。</p>
+  <p class="lede">推理部署中常见 TP；大规模训练还会按模型大小和集群拓扑组合下面几种并行方式，通常称为 3D / 4D 并行。</p>
 
   <div class="grid2" style="margin-top:26px">
     <div class="panel">
@@ -314,7 +314,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
         <div class="gpu"><div style="background:var(--bwd)">左</div></div>
         <div class="gpu"><div style="background:var(--bwd)">右</div></div>
       </div>
-      <span class="cost">必须同机 NVLink，跨机会被网络掐死</span>
+      <span class="cost">通常放在单机 NVLink 组内，跨机成本很高</span>
     </div>
 
     <div class="panel">
@@ -331,18 +331,18 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
   </div>
 
   <div class="card" style="background:var(--ink);color:var(--bg);border-color:var(--ink);box-shadow:8px 8px 0 var(--bwd)">
-    <div class="big" style="font-size:clamp(22px,3.4vw,34px)">每一步都要全集群同步一次梯度。</div>
+    <div class="big" style="font-size:clamp(22px,3.4vw,34px)">每个数据并行组都要按 step 同步梯度。</div>
     <p style="color:#C9C2B8;margin-top:14px;font-size:16.5px">
-      所以训练里<b style="color:#fff">网络是一等公民</b>（NVLink / EFA / InfiniBand）。<br>
-      推理只在 TP 组内通信，训练是几百上千张卡每步握一次手 —— 一张慢卡拖垮全队。
+      训练性能很依赖<b style="color:#fff">卡间互联</b>（NVLink / EFA / InfiniBand）。<br>
+      数据并行组通常每步都要同步梯度；其中一张卡变慢，会延长整个组的 step time。
     </p>
   </div>
 </section>
 
 <!-- ================= 6 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">6</span><h2>精度：训练不能像推理那样狂量化</h2></div>
-  <p class="lede">你习惯 int8 / fp4 越小越好。训练不行 —— 梯度是很小的数，低精度会直接把它抹成 0。</p>
+  <div class="head"><span class="num">6</span><h2>精度：训练更在意动态范围</h2></div>
+  <p class="lede">推理量化主要压缩权重和计算；训练还要表示梯度和优化器状态。精度过低时，小梯度可能发生下溢或被舍入掉。</p>
 
   <div class="grid3">
     <div class="card" style="margin-top:24px">
@@ -362,7 +362,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
     </div>
   </div>
   <p class="note" style="margin-top:20px;font-size:17px;text-align:center;font-weight:800;color:var(--ink)">
-    一句话记：<span style="background:var(--yel);padding:3px 8px;border-radius:6px">训练要动态范围，推理只要够用的分辨率。</span>
+    可以这样区分：<span style="background:var(--yel);padding:3px 8px;border-radius:6px">训练更关注动态范围和更新精度，推理更关注部署成本。</span>
   </p>
 </section>
 
@@ -394,7 +394,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
     <p style="margin-bottom:12px">SFT 主要模仿示范；这一步进一步告诉它什么答案更受欢迎、什么结果能被验证。</p>
     <ul style="margin-left:18px;font-size:15.5px;color:var(--muted)">
       <li><b>RLHF（PPO）</b>：人标 A/B 偏好 → 训一个打分模型 → 强化学习。经典但工程复杂，常要同时维护 policy、reference、reward 和 value 等模型角色。</li>
-      <li><b>DPO</b>：直接拿偏好对训，不要打分模型。简单稳定，入门首选。</li>
+      <li><b>DPO</b>：直接使用偏好对训练，不单独维护奖励模型。流程接近普通监督学习。</li>
       <li><b>GRPO / RLVR</b>：答案能自动判对错（数学、代码）→ 让模型自己一题采样多份答案，再按验证结果更新。<b>这是训练 reasoning model 的一条重要路线</b>；推理蒸馏和 SFT 也能把长推理行为迁移到其他模型。</li>
     </ul>
     <div class="out">出 chat / reasoning model</div>
@@ -402,7 +402,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
   <div class="stage" style="border-left-color:var(--pur)">
     <h4>＋ 蒸馏 Distillation</h4>
-    <p>大模型生成答案，小模型学着答。你在生产上部署的那些便宜小模型，多半是这么来的。</p>
+    <p>大模型生成答案或概率分布，小模型学习这些输出。蒸馏常用于把能力迁移到更小、部署成本更低的模型。</p>
   </div>
 </section>
 
@@ -450,8 +450,8 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
 <!-- ================= 9 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">9</span><h2>真正的主角是数据</h2></div>
-  <p class="lede">架构决定上限，数据决定你实际拿到什么。微调阶段尤其如此。</p>
+  <div class="head"><span class="num">9</span><h2>数据质量和配比会直接影响结果</h2></div>
+  <p class="lede">模型架构和训练方法相同，数据质量、覆盖范围和配比不同，最终能力也会不同。微调阶段尤其明显。</p>
 
   <div class="grid4">
     <div class="card" style="margin-top:24px;padding:22px"><div class="big" style="font-size:34px">去重</div>
@@ -461,20 +461,19 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
     <div class="card" style="margin-top:24px;padding:22px"><div class="big" style="font-size:34px">Packing</div>
       <p class="note">多条短样本拼满一个 context，别让 padding 白烧 GPU。<br><i>≈ 推理端的连续批处理</i></p></div>
     <div class="card" style="margin-top:24px;padding:22px"><div class="big" style="font-size:34px">1000&gt;10万</div>
-      <p class="note">1000 条精挑的样本，往往打败 10 万条脏数据。</p></div>
+      <p class="note">少量高质量样本可能比大量低质量数据更有效。</p></div>
   </div>
 
   <div class="card" style="background:#FDEDE7">
     <h4 style="font-size:21px;font-weight:900">⚠️ 灾难性遗忘</h4>
-    <p class="note" style="font-size:16px;margin-top:8px">只喂你的领域数据，模型的通用能力会明显退化（会说行话了，但不会聊天了）。
-    标准做法：<b>掺 5%~20% 的通用数据</b>，并且用低学习率、少 epoch。</p>
+    <p class="note" style="font-size:16px;margin-top:8px">只使用领域数据，模型的部分通用能力可能退化。常见做法是<b>混入 5%~20% 的通用数据</b>，并使用较低学习率和较少 epoch。</p>
   </div>
 </section>
 
 <!-- ================= 10 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">10</span><h2>算力：两个公式就能估成本</h2></div>
-  <p class="lede">你已经会算推理吞吐了，训练也一样简单。</p>
+  <p class="lede">训练成本可以先用两个近似公式估算，再用实际 MFU 校准。</p>
 
   <div class="grid2" style="margin-top:26px">
     <div class="panel" style="background:#E8F1FA">
@@ -500,7 +499,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
     <div class="grid2" style="margin-top:22px">
       <div>
         <h4 style="font-size:19px;font-weight:900">MFU</h4>
-        <p class="note">实际 FLOPs ÷ 峰值 FLOPs。大规模训练能到 <b>35%~55% 就算不错</b>。<br>这就是训练端的「吞吐指标」，对应你熟的 tokens/s。</p>
+        <p class="note">实际 FLOPs ÷ 峰值 FLOPs。这里把 <b>35%~55%</b> 作为大规模训练的参考区间。MFU 用来衡量硬件峰值算力有多少转化成了模型计算。</p>
       </div>
       <div>
         <h4 style="font-size:19px;font-weight:900">Chinchilla 20:1</h4>
@@ -549,11 +548,11 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
   <div class="card">
     <div class="pill" style="background:#FDEDE7">会坏的地方（按出现频率排）</div>
     <p class="note" style="font-size:16px;margin-top:14px;line-height:2">
-      <b>1. OOM</b> —— 永远第一名。砍 batch → 开 gradient checkpointing → 上 ZeRO/FSDP。<br>
-      <b>2. NaN</b> —— 查 lr、精度、有没有脏样本。<br>
-      <b>3. dataloader 喂不上</b> —— GPU 在等 CPU，MFU 莫名很低。<br>
-      <b>4. 千卡里挂了一张卡</b> —— 整个 step 挂掉。<b>checkpoint 频率 = 你能承受亏几小时</b>。<br>
-      <b>5. straggler</b> —— 一张慢卡决定整个集群的 step time。
+      <b>1. OOM</b>：减小 micro batch → 开 gradient checkpointing → 使用 ZeRO/FSDP。<br>
+      <b>2. NaN</b>：检查 lr、精度和异常样本。<br>
+      <b>3. dataloader 跟不上</b>：GPU 等待 CPU，MFU 会下降。<br>
+      <b>4. 设备或进程故障</b>：任一关键 rank 退出都可能中断整个 step。checkpoint 间隔决定最多需要重跑多久。<br>
+      <b>5. straggler</b>：最慢的卡会决定整个同步组的 step time。
     </p>
   </div>
 </section>
@@ -566,7 +565,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
   <div class="tblwrap">
   <table class="tbl">
     <tr><th>你在推理端熟悉的</th><th>训练里对应的东西</th></tr>
-    <tr><td>前向传播</td><td>一模一样 —— 但中间结果必须留着给反向用</td></tr>
+    <tr><td>前向传播</td><td>计算过程相同，但训练要保存反向传播所需的中间结果</td></tr>
     <tr><td>KV cache 吃显存</td><td>激活值吃显存（∝ batch × seq_len × 层数）</td></tr>
     <tr><td>用显存换算力（cache 复用）</td><td>反过来：gradient checkpointing 用算力换显存</td></tr>
     <tr><td>tokens/s 吞吐</td><td>MFU（35%~55% 算好）</td></tr>
@@ -577,7 +576,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
     <tr><td>temperature / top-p 采样</td><td>RL 阶段真的要采样：GRPO 一道题采 8~64 个答案</td></tr>
     <tr><td>base / instruct / reasoning 三种权重</td><td>分别是 预训练 / SFT / RL 三个阶段的出口</td></tr>
     <tr><td>多 LoRA 共享一个 base 服务</td><td>那些 adapter 就是 LoRA 微调训出来的</td></tr>
-    <tr><td>NVLink / EFA 只在 TP 组内忙</td><td>每一步全集群 all-reduce 梯度 —— 网络是一等公民</td></tr>
+    <tr><td>TP 组内持续通信</td><td>训练还要在 DP 组内按 step 同步梯度，其他并行组也有各自的通信</td></tr>
   </table>
   </div>
 </section>
@@ -590,19 +589,19 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
   <div class="card road">
     <div class="rstep"><div class="rn"></div><div>
       <h4>手推一遍反向传播</h4>
-      <p>Karpathy 的 <span class="mono">micrograd</span>，两小时。看懂梯度是怎么一层层传回去的 —— 这是唯一必须亲手过一遍的东西。</p></div></div>
+      <p>可以用 Karpathy 的 <span class="mono">micrograd</span> 手推一次反向传播，理解梯度如何沿计算图传回各个参数。</p></div></div>
     <div class="rstep"><div class="rn"></div><div>
       <h4>跑通 nanoGPT</h4>
       <p>在莎士比亚文本上训 10 分钟，亲眼看 loss 从 4 掉到 1.5，输出从乱码变成像样的句子。四步循环从此不再抽象。</p></div></div>
     <div class="rstep"><div class="rn"></div><div>
       <h4>用 HF TRL + LoRA 微调一个 7B</h4>
-      <p>单卡。重点不是效果，是<b>亲手撞一次 OOM</b>，然后靠调 batch / checkpointing / QLoRA 把它压进去。第 3、4 节的账本会瞬间变具体。</p></div></div>
+      <p>在单卡上调整 batch、checkpointing 和 QLoRA，观察这些设置怎样改变显存占用。这样可以把第 3、4 节的显存账本和实际运行对应起来。</p></div></div>
     <div class="rstep"><div class="rn"></div><div>
       <h4>多卡：读 ZeRO 论文，跑 FSDP 或 DeepSpeed</h4>
-      <p>这是你和纯推理背景的人拉开差距的地方 —— 你本来就懂通信和拓扑。</p></div></div>
+      <p>重点观察分片方式、通信量和拓扑如何共同影响 step time。</p></div></div>
     <div class="rstep"><div class="rn"></div><div>
       <h4>做一次 DPO</h4>
-      <p>拿同一批 prompt 对比 SFT 前 / SFT 后 / DPO 后的输出。你会第一次真切感到「对齐」是什么意思。</p></div></div>
+      <p>用同一批 prompt 对比 SFT 前、SFT 后和 DPO 后的输出，观察偏好训练改变了哪些回答行为。</p></div></div>
     <div class="rstep"><div class="rn"></div><div>
       <h4>读真实技术报告</h4>
       <p>Chinchilla（配比）、Llama 3（工程细节、故障率）、DeepSeek-V3（MoE + fp8 + 并行策略）。这些比教科书有用得多。</p></div></div>
@@ -614,8 +613,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
   <div class="big">先问一句：<br>这事真的需要训练吗？</div>
   <p>按这个顺序试，能停在哪就停在哪：<br>
   <b style="color:#fff">Prompt → RAG → LoRA → 继续预训练 → 全量训练</b><br><br>
-  实际工作里，很多「我要微调」的问题用前两步就能解决。<br>
-  训练是最后手段，不是第一反应。</p>
+  很多需求用 Prompt 或 RAG 就能解决；只有需要稳定改变模型行为或权重中的能力时，才继续评估微调和训练。</p>
 </div>
 
 </div>

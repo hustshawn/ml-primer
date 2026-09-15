@@ -200,36 +200,36 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
       <div class="idx">通常占最大头</div>
       <h3>预训练</h3>
       <div class="en">PRE-TRAINING</div>
-      <div class="meta">读完整个互联网<br><b>猜下一个字</b></div>
-      <div class="out">得到：会续写的大脑</div>
+      <div class="meta">读取大规模文本<br><b>预测下一个 token</b></div>
+      <div class="out">得到：Base 模型</div>
     </div>
     <div class="fx b">
       <span class="cap">第二段</span>
       <div class="idx">通常远小于预训练</div>
       <h3>监督微调</h3>
       <div class="en">SFT</div>
-      <div class="meta">抄几万篇范文<br><b>照着标准答案学</b></div>
-      <div class="out">得到：会聊天的助手</div>
+      <div class="meta">学习示范问答<br><b>按要求生成回答</b></div>
+      <div class="out">得到：Instruct 模型</div>
     </div>
     <div class="fx c">
       <span class="cap">第三段</span>
       <div class="idx">规模看数据和配方</div>
       <h3>偏好对齐</h3>
       <div class="en">ALIGNMENT</div>
-      <div class="meta">两个答案二选一<br><b>学人类的口味</b></div>
-      <div class="out">得到：好用又安全</div>
+      <div class="meta">比较多个回答<br><b>学习偏好与边界</b></div>
+      <div class="out">得到：更符合偏好的模型</div>
     </div>
     <div class="fx d">
       <span class="cap">第四段</span>
       <div class="idx">算力占比在涨</div>
       <h3>推理强化</h3>
       <div class="en">REASONING RL</div>
-      <div class="meta">自己做题、自己对答案<br><b>只奖励做对的</b></div>
-      <div class="out">得到：会长时间思考</div>
+      <div class="meta">生成多个解答、自动验证<br><b>按结果更新</b></div>
+      <div class="out">得到：推理能力更强的模型</div>
     </div>
   </div>
 
-  <div class="flownote">第 2、3、4 段统称「后训练 Post-training」——它不是一种方法，是一个筐</div>
+  <div class="flownote">第 2、3、4 段统称「后训练 Post-training」；这是阶段总称，不是单一方法</div>
 </div>
 
 <!-- ================= 1 · 打分的人 ================= -->
@@ -264,7 +264,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
         <div class="tagx" style="background:var(--s4);color:#fff">推理 RL</div>
       </div>
     </div>
-    <p class="note" style="font-size:16px"><b>为什么要有第三、四段？</b>因为「好」有两种：一种是<b>说不清但能感觉到</b>的好（礼貌、有用、不啰嗦）→ 只能让人挑；另一种是<b>能被机器验证</b>的好（数学题、代码）→ 干脆让机器判，还能无限量地判。</p>
+    <p class="note" style="font-size:16px"><b>第三、四段的信号不同。</b>礼貌、有用、简洁等偏好通常靠人或 AI 比较回答；数学答案、单元测试等结果可以由程序自动验证。能自动验证的任务不需要逐条人工打分，也更容易扩大训练规模。</p>
   </div>
 </section>
 
@@ -288,19 +288,19 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
       <div class="pb"><span>偏好对齐</span><div class="bar"><i style="width:1.5%;background:var(--s3)"></i></div><span class="v">几万~百万对</span></div>
       <div class="pb"><span>推理 RL</span><div class="bar"><i style="width:1%;background:var(--s4)"></i></div><span class="v">几万道题</span></div>
     </div>
-    <p class="note" style="font-size:16px">大部分通用语言能力和世界知识来自预训练。SFT、LoRA 和其他后训练也能写入新事实或技能，但少量微调不适合承担大量、频繁更新且必须可追溯的知识；这种需求通常优先考虑 RAG，需要系统性吸收领域分布时再考虑继续预训练。</p>
+    <p class="note" style="font-size:16px">大部分通用语言能力和世界知识来自预训练。SFT、LoRA 和其他后训练也能写入新事实或技能，但少量微调不适合承载大量、频繁更新且必须可追溯的知识。前一种需求通常优先考虑 RAG；需要系统性吸收领域语料时，再考虑继续预训练。</p>
   </div>
 </section>
 
 <!-- ================= 3 · 逐段展开 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">3</span><h2>四段各自在干什么</h2></div>
-  <p class="lede">每段一张卡：一句话本质 ＋ 数据长什么样 ＋ 这一格里都有哪些方法。</p>
+  <p class="lede">每张卡先说明训练信号和数据形式，再列出属于这一阶段的常见方法。</p>
 
   <!-- 3.1 预训练 -->
   <div class="stage" style="border-left-color:var(--s1)">
     <h3>① 预训练 <small>PRE-TRAINING · 自监督</small></h3>
-    <div class="oneline">把整个互联网遮住最后一个字，让模型猜。猜错了就改自己。重复十万亿次。</div>
+    <div class="oneline">从大规模文本中预测下一个 token，根据预测误差更新权重。</div>
 
     <div class="demo">
       <div class="lbl">训练数据长这样 —— 就是普通文本，没有任何标注</div>
@@ -310,7 +310,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
       <div class="pb hit"><span>首都 ✅</span><div class="bar"><i style="width:62%"></i></div><span class="v">0.62</span></div>
       <div class="pb"><span>城市</span><div class="bar"><i style="width:20%"></i></div><span class="v">0.20</span></div>
       <div class="pb"><span>香蕉</span><div class="bar"><i style="width:1%"></i></div><span class="v">0.001</span></div>
-      <p class="note">没人教它地理、语法、编程、推理。<b>这些全是「拼命猜下一个字」的副产品。</b></p>
+      <p class="note">训练数据不需要逐条标注地理、语法、编程或推理知识。模型在持续预测下一个 token 的过程中逐步学到这些模式。</p>
     </div>
 
     <div class="kv">
@@ -325,15 +325,15 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
       <div class="vrow"><span class="vn">因果语言建模 CLM</span><p>猜<b>下一个</b>字。GPT、Llama、DeepSeek 等许多主流生成式模型使用这个目标。</p></div>
       <div class="vrow"><span class="vn">掩码语言建模 MLM</span><p>做<b>完形填空</b>（BERT 那一派）。常用于向量、检索、重排、分类和 token 标注等理解任务。</p></div>
       <div class="vrow"><span class="vn">继续预训练 CPT / DAPT</span><p>拿别人训好的 Base 模型，<b>继续喂大量领域语料</b>（医疗、法律、代码、中文）。它适合系统性吸收领域分布和大量语料，但不是唯一能写入新知识的方法。</p></div>
-      <div class="vrow"><span class="vn">中期训练 / 退火 Annealing</span><p>预训练<b>快结束时换菜</b>：削掉低质网页，加大教科书、数学、代码比例，同时把学习率降下来。便宜、见效快，是近两年模型能力跃升的隐形功臣。</p></div>
-      <div class="vrow"><span class="vn">长上下文扩展</span><p>用少量长文档接着训，把位置编码「拉长」，让 8K 变 128K / 1M。属于预训练尾巴上的一道工序。</p></div>
+      <div class="vrow"><span class="vn">中期训练 / 退火 Annealing</span><p>在预训练后期减少低质量网页，提高教科书、数学和代码的比例，同时降低学习率。它用较小的追加成本调整训练末期的数据分布。</p></div>
+      <div class="vrow"><span class="vn">长上下文扩展</span><p>用长文档继续训练，并调整位置编码相关设置，把上下文窗口从 8K 扩到 128K / 1M。通常安排在预训练后期。</p></div>
     </div>
   </div>
 
   <!-- 3.2 SFT -->
   <div class="stage" style="border-left-color:var(--s2)">
     <h3>② 监督微调 <small>SFT / INSTRUCTION TUNING · 有标准答案</small></h3>
-    <div class="oneline">给它看几万篇「标准范文」，让它学会：人一提问，就该好好回答。</div>
+    <div class="oneline">用示范问答继续训练，让模型学会按指令生成回答。</div>
 
     <div class="demo">
       <div class="lbl">训练数据长这样 —— 成对出现，答案是人写的</div>
@@ -354,9 +354,9 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
     <div class="vars">
       <div class="lbl">这一格里的各种方法</div>
       <div class="vrow"><span class="vn">全参微调 Full FT</span><p>所有权重都改。效果上限最高，显存最贵（约等于重训一遍）。</p></div>
-      <div class="vrow"><span class="vn">PEFT：LoRA / QLoRA</span><p><b>冻住原模型，只外挂一小片可训练的补丁</b>（常见只有 0.1%~1% 的参数）。显存降一个量级，效果多数场景够用。QLoRA = 把底模压成 4bit 再挂 LoRA，单卡就能微调很大的模型。<br>同类还有 Adapter / Prefix-tuning / Prompt-tuning / (IA)³ —— 思路都是「别动主体，加个小旋钮」。</p></div>
-      <div class="vrow"><span class="vn">知识蒸馏 Distillation</span><p><b>让强模型当老师出题又给答案，小模型照抄。</b>今天绝大多数开源小模型的对话能力都来自这一步。<br>抄文字叫黑盒蒸馏；连老师的概率分布一起抄叫白盒蒸馏（效果更好，但要能拿到老师的内部输出）。</p></div>
-      <div class="vrow"><span class="vn">自造数据自己学</span><p>范文太贵，就让模型<b>自己写一堆答案，只留下对的那些，再拿去 SFT</b>。<br>拒绝采样微调（RFT / RAFT）、STaR、Self-Instruct 都是这一套。它是 SFT 和 RL 之间的过渡形态。</p></div>
+      <div class="vrow"><span class="vn">PEFT：LoRA / QLoRA</span><p>冻结原模型，只训练额外的小矩阵，常见可训练参数占 0.1%~1%。QLoRA 进一步把底模量化到 4bit，再训练 LoRA。Adapter / Prefix-tuning / Prompt-tuning / (IA)³ 也属于 PEFT。</p></div>
+      <div class="vrow"><span class="vn">知识蒸馏 Distillation</span><p>用强模型生成训练答案，让小模型学习这些输出。只使用生成文本通常称为黑盒蒸馏；同时使用老师的概率分布称为白盒蒸馏，后者需要访问老师的内部输出。</p></div>
+      <div class="vrow"><span class="vn">模型生成训练数据</span><p>让模型生成候选答案，筛掉不合格的样本，再用保留下来的数据做 SFT。拒绝采样微调（RFT / RAFT）、STaR、Self-Instruct 都使用了类似流程。</p></div>
       <div class="vrow"><span class="vn">安全微调</span><p>专门喂「该拒绝的问题 + 得体的拒绝方式」。红队攻出来的漏洞，会变成下一轮的训练数据。</p></div>
     </div>
   </div>
@@ -364,7 +364,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
   <!-- 3.3 对齐 -->
   <div class="stage" style="border-left-color:var(--s3)">
     <h3>③ 偏好对齐 <small>PREFERENCE ALIGNMENT / RLHF · 只有好坏，没有标准答案</small></h3>
-    <div class="oneline">「什么是好回答」写不成范文，但人一眼能挑出来。那就让它学人的口味。</div>
+    <div class="oneline">当任务没有唯一标准答案时，可以通过回答之间的偏好比较来训练。</div>
 
     <div class="demo">
       <div class="lbl">训练数据长这样 —— 不是答案，是一次投票</div>
@@ -372,29 +372,29 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
         <div class="abx"><div class="t">回答 A</div>根据相关规定，此问题涉及多个层面，建议您咨询专业人士……</div>
         <div class="abx win"><div class="t">回答 B　👉 人选了这个</div>可以。你需要做三件事：1) …… 2) …… 3) ……</div>
       </div>
-      <p class="note">两个都不算错。B 只是<b>更有用</b>。这种「说不清但感觉得到」的标准，只能靠比较来教。<br>它治的是 SFT 治不了的病：啰嗦、和稀泥、瞎编、该拒绝时不拒绝。</p>
+      <p class="note">两个回答都可能没有明确的事实错误，但 B 更符合标注者对有用性的判断。偏好比较可以训练简洁、有用、少编造和在适当情况下拒绝等行为。</p>
     </div>
 
     <div class="kv">
       <div><b>监督信号</b><span>A 比 B 好（一次比较）</span></div>
       <div><b>数据量</b><span>几万 ~ 上百万对</span></div>
       <div><b>时间</b><span>几天，中等算力</span></div>
-      <div><b>产物</b><span>「有人味」的模型：<br>能用、听得懂、有边界</span></div>
+      <div><b>产物</b><span>更符合偏好、<br>边界更明确的模型</span></div>
     </div>
 
     <div class="vars">
       <div class="lbl">同一个目标，三条技术路线</div>
-      <div class="vrow"><span class="vn">路线一：RLHF<small>RM ＋ PPO</small></span><p><b>先用人的投票训一个「打分器」（奖励模型 RM），再用强化学习让模型去讨好这个打分器。</b>ChatGPT 就是靠这条路出圈的。<br>效果强，但要同时伺候四个模型、调参痛苦、还会「钻打分器的空子」（reward hacking）。</p></div>
-      <div class="vrow"><span class="vn">路线二：DPO 一家<small>免打分器</small></span><p><b>不用单独训练奖励模型，直接优化 chosen 相对 rejected、相对参考模型的 log-prob 差。</b>训练流程接近普通监督学习，是常见的离线偏好优化方法。<br>同族：IPO、KTO（只需标「这条好/不好」，不用成对）、ORPO（SFT 和对齐一步做完）、SimPO。</p></div>
-      <div class="vrow"><span class="vn">路线三：AI 来投票<small>RLAIF / 宪法 AI</small></span><p>人工投票太慢太贵，那就<b>写一份原则清单（"宪法"），让 AI 按清单去评判 AI</b>。人只负责写规则，不再逐条打分。可扩展性大幅提升，也是「AI 反馈」这一支的起点。</p></div>
-      <div class="vrow"><span class="vn">顺带一提</span><p>训那个<b>奖励模型本身</b>也是一次训练（目标是「给好答案打高分」）。它训不好，后面全白干。</p></div>
+      <div class="vrow"><span class="vn">路线一：RLHF<small>RM ＋ PPO</small></span><p>先用偏好数据训练奖励模型 RM，再用强化学习提高策略模型获得的奖励。训练时通常需要维护 policy、reference、reward 和 value 等模型角色，也要防止 reward hacking。</p></div>
+      <div class="vrow"><span class="vn">路线二：DPO 家族<small>免显式奖励模型</small></span><p>不单独训练奖励模型，直接优化 chosen、rejected 与参考模型之间的 log-prob 关系。训练流程接近监督学习，是常见的离线偏好优化方法。同族包括 IPO、KTO、ORPO 和 SimPO。</p></div>
+      <div class="vrow"><span class="vn">路线三：AI 反馈<small>RLAIF / 宪法 AI</small></span><p>先写出一组原则，再让另一个模型依据这些原则比较回答。人工主要负责制定和检查规则，不必逐条完成全部偏好标注。</p></div>
+      <div class="vrow"><span class="vn">奖励模型训练</span><p>奖励模型本身也要训练，目标是让偏好答案得到更高分。奖励模型的误差会继续影响后面的强化学习。</p></div>
     </div>
   </div>
 
   <!-- 3.4 RL -->
   <div class="stage" style="border-left-color:var(--s4)">
     <h3>④ 推理强化学习 <small>RLVR · 奖励能被机器验证</small></h3>
-    <div class="oneline">数学题和代码有一个好处：<b>对错不用问人</b>。那就让模型自己刷题，刷对了就加强。</div>
+    <div class="oneline">数学题和代码结果可以自动验证，因此能用验证结果直接构造奖励。</div>
 
     <div class="demo">
       <div class="lbl">这是一个循环，不是一份数据集</div>
@@ -404,7 +404,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
         <div class="rlx"><div class="n">STEP 3</div><h5>机器判分</h5><p>答案对不对？测试过不过？<b>不需要人。</b></p></div>
         <div class="rlx"><div class="n">STEP 4</div><h5>加强对的</h5><p>让「做对的那些写法」以后更容易被写出来。</p></div>
       </div>
-      <div class="loopback">↻ 转几万圈之后，模型自己学会了：先慢慢想、多检查、发现不对就回头 ——「长思维链」是被奖励逼出来的，没人教过它</div>
+      <div class="loopback">↻ 反复训练后，能获得更高奖励的解题策略会更常出现，其中可能包括展开步骤、检查答案和修改错误。</div>
     </div>
 
     <div class="kv">
@@ -416,12 +416,12 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
     <div class="vars">
       <div class="lbl">这一格里的各种方法</div>
-      <div class="vrow"><span class="vn">结果奖励 ORM</span><p><b>只看最终答案对不对</b>，中间怎么绕的不管。简单、不易被钻空子，是目前主流。</p></div>
-      <div class="vrow"><span class="vn">过程奖励 PRM</span><p><b>每一步都打分</b>。信号密集、学得快，但要标「每一步对不对」，贵，而且容易被钻空子。</p></div>
-      <div class="vrow"><span class="vn">算法：PPO / GRPO / RLOO</span><p>都是「怎么把奖励变成权重更新」的具体做法。GRPO 的思路很直观：<b>同一题采样一组答案，比组内平均分高的就鼓励，低的就抑制</b>，因此省掉了额外的价值网络 —— 便宜，DeepSeek-R1 用它出名。</p></div>
-      <div class="vrow"><span class="vn">Agentic RL</span><p>把奖励挂在<b>多轮、带工具的任务</b>上：能不能查对资料、跑通脚本、改完这个 bug。奖励来自真实环境的执行结果。这是当下最热的前沿。</p></div>
-      <div class="vrow"><span class="vn">自我改进 / 自我对弈</span><p>模型自己出题、自己解、自己筛，把成功轨迹回灌成训练数据，滚雪球。摆脱人工数据上限的方向。</p></div>
-      <div class="vrow"><span class="vn">推理蒸馏</span><p>让大推理模型把「想的过程」完整写出来，<b>小模型照抄这个思考过程</b>。这就是那些「7B 也会做数学」的小模型的来历 —— 严格说它落在 SFT 格里。</p></div>
+      <div class="vrow"><span class="vn">结果奖励 ORM</span><p>只根据最终答案是否正确给奖励，不评价中间步骤。实现简单，也减少了过程标注的需求。</p></div>
+      <div class="vrow"><span class="vn">过程奖励 PRM</span><p>对中间步骤分别打分，信号更密，但需要判断每一步是否正确，标注和验证成本更高。</p></div>
+      <div class="vrow"><span class="vn">算法：PPO / GRPO / RLOO</span><p>这些算法负责把奖励转成权重更新。GRPO 会对同一题采样一组答案，以组内相对得分计算优势，因此不需要额外的价值网络。DeepSeek-R1 使用了 GRPO。</p></div>
+      <div class="vrow"><span class="vn">Agentic RL</span><p>把奖励放在多轮、带工具的任务上，例如资料是否查对、脚本是否跑通、bug 是否修复。奖励来自环境中的执行结果。</p></div>
+      <div class="vrow"><span class="vn">自我改进 / 自我对弈</span><p>模型生成题目和解答，再筛选成功轨迹作为后续训练数据。这类方法试图减少对人工数据的依赖。</p></div>
+      <div class="vrow"><span class="vn">推理蒸馏</span><p>让大模型生成带推理步骤的答案，再用这些答案训练小模型。训练形式通常仍属于 SFT。</p></div>
     </div>
   </div>
 </section>
@@ -429,7 +429,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 <!-- ================= 4 · 全家谱 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">4</span><h2>名词归位表</h2></div>
-  <p class="lede">你听过的词，一个不落地塞进那四段（外加一段「模型手术」）。看不懂细节没关系，只要知道<b>它属于哪一格</b>。</p>
+  <p class="lede">下面按训练阶段归类常见名词，另列一组不属于训练阶段的模型操作。先看它属于哪一类，细节可以之后再查。</p>
 
   <div class="tree">
     <div class="branch a">
@@ -437,7 +437,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
       <div class="leaf"><div class="ln">因果语言建模<small>Causal LM / next-token</small></div><p>猜下一个字。所有生成式大模型的地基。</p></div>
       <div class="leaf"><div class="ln">掩码语言建模<small>Masked LM</small></div><p>完形填空。BERT 一派，现多用于检索／向量模型。</p></div>
       <div class="leaf"><div class="ln">继续预训练<small>CPT / DAPT</small></div><p>在现成 Base 上继续喂大量领域语料，系统性吸收领域分布和材料。</p></div>
-      <div class="leaf"><div class="ln">中期训练 · 退火<small>Mid-training / Annealing</small></div><p>末期换高质量数据 ＋ 降学习率，性价比极高。</p></div>
+      <div class="leaf"><div class="ln">中期训练 · 退火<small>Mid-training / Annealing</small></div><p>末期提高高质量数据占比，同时降低学习率。</p></div>
       <div class="leaf"><div class="ln">长上下文扩展<small>Long-context extension</small></div><p>把窗口从 8K 拉到 128K／1M。</p></div>
     </div>
 
@@ -449,7 +449,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
       <div class="leaf"><div class="ln">LoRA / QLoRA<small>参数高效 PEFT</small></div><p>冻住主体，只训一小片补丁。资源有限时常用。</p></div>
       <div class="leaf"><div class="ln">Adapter / Prefix / Prompt-tuning<small>PEFT 其它形态</small></div><p>思路相同：别动主体，加个小旋钮。</p></div>
       <div class="sublbl">按「答案从哪来」分</div>
-      <div class="leaf"><div class="ln">人工标注</div><p>最贵、最准，是质量的天花板。</p></div>
+      <div class="leaf"><div class="ln">人工标注</div><p>通常成本较高，质量取决于任务设计、标注规范和质检。</p></div>
       <div class="leaf"><div class="ln">蒸馏<small>Distillation（黑盒／白盒）</small></div><p>抄强模型的输出，或连它的概率分布一起抄。</p></div>
       <div class="leaf"><div class="ln">拒绝采样 / STaR / Self-Instruct<small>Rejection sampling FT</small></div><p>模型自产答案，筛掉错的，再学回去。</p></div>
       <div class="leaf"><div class="ln">安全微调<small>Safety FT ← 红队</small></div><p>把攻击案例变成「该怎么拒绝」的训练数据。</p></div>
@@ -457,7 +457,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
     <div class="branch c">
       <div class="bh">三 · 偏好对齐 <small>人（或 AI）只说哪个更好</small></div>
-      <div class="leaf"><div class="ln">RLHF<small>奖励模型 RM ＋ PPO</small></div><p>先训打分器，再用 RL 去讨好它。ChatGPT 的成名路线。</p></div>
+      <div class="leaf"><div class="ln">RLHF<small>奖励模型 RM ＋ PPO</small></div><p>先训练奖励模型，再用强化学习优化策略模型。</p></div>
       <div class="leaf"><div class="ln">奖励模型训练<small>Reward modeling</small></div><p>把「人的口味」压进一个打分模型里。RLHF 的前置步骤。</p></div>
       <div class="leaf"><div class="ln">DPO<small>Direct Preference Optimization</small></div><p>跳过显式奖励模型，直接优化偏好对。常用于离线对齐。</p></div>
       <div class="leaf"><div class="ln">IPO / KTO / ORPO / SimPO<small>DPO 家族</small></div><p>各自的变体：KTO 不用成对标注，ORPO 把 SFT 和对齐合成一步。</p></div>
@@ -469,8 +469,8 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
       <div class="leaf"><div class="ln">RLVR<small>可验证奖励 RL</small></div><p>数学答案、单元测试、编译通过 —— 奖励不来自人。</p></div>
       <div class="leaf"><div class="ln">GRPO / PPO / RLOO / REINFORCE++</div><p>把奖励变成权重更新的具体算法。GRPO 省掉 critic，是常见选择之一。</p></div>
       <div class="leaf"><div class="ln">结果奖励 ORM vs 过程奖励 PRM</div><p>只看结果，还是每步都评。前者稳，后者快但贵。</p></div>
-      <div class="leaf"><div class="ln">Agentic RL<small>工具 / 多轮 / 环境</small></div><p>奖励来自真实执行：脚本跑通了吗？bug 修好了吗？当下最热。</p></div>
-      <div class="leaf"><div class="ln">自我对弈 / 自我改进<small>Self-play, self-improve</small></div><p>自己出题自己解，成功轨迹回灌。突破人工数据上限。</p></div>
+      <div class="leaf"><div class="ln">Agentic RL<small>工具 / 多轮 / 环境</small></div><p>奖励来自实际执行结果，例如脚本是否跑通、bug 是否修复。</p></div>
+      <div class="leaf"><div class="ln">自我对弈 / 自我改进<small>Self-play, self-improve</small></div><p>模型生成任务和解答，再把成功轨迹用于后续训练。</p></div>
     </div>
 
     <div class="branch e">

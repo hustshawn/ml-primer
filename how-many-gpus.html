@@ -309,7 +309,7 @@
   <div class="wrap">
     <div class="kicker">How many GPUs · 训练资源估算</div>
     <h1>「要几张卡？」<br>这问题<em>没法直接回答</em></h1>
-    <p class="sub">因为它不是一个问题，是<b>三个独立约束的交集</b>。<br>先搞清楚要问什么，再算——顺序反了就只能瞎猜。</p>
+    <p class="sub">卡数要同时满足<b>显存、算力和互联</b>三个约束。<br>先把训练配置问清楚，再分别计算。</p>
   </div>
 </header>
 
@@ -345,20 +345,20 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">01</span>先问清这几件事</h2>
-    <p class="lead">按「不知道就根本没法算」排序。<b>P0 缺一个，答案就能差一到两个数量级</b>；P1 影响 30%–3× 的系数。</p>
+    <p class="lead">下面按影响大小排序。<b>P0 缺一项，结果可能相差一到两个数量级</b>；P1 主要影响 30%–3× 的系数。</p>
 
     <div class="ask">
       <div class="item p0"><span class="p">P0</span>
         <h4>训练方式</h4>
-        <p>全参 + Adam / LoRA / QLoRA / 继续预训练 / DPO / PPO。这一项<b>单独就能让答案差 16 倍</b>——同一个 70B、4k 序列、<b>两边都开梯度重算</b>：全参 ZeRO-3 要 16 张 H100，QLoRA 一张就够。下面的估算器可以按这个设置切给你看。</p>
+        <p>全参 + Adam / LoRA / QLoRA / 继续预训练 / DPO / PPO。这一项<b>单独就能让答案差 16 倍</b>。以同一个 70B、4k 序列为例，<b>两边都开梯度重算</b>时，全参 ZeRO-3 要 16 张 H100，QLoRA 一张就够。下面的估算器可以切换这些设置。</p>
       </div>
       <div class="item p0"><span class="p">P0</span>
         <h4>模型规模与架构</h4>
-        <p>参数量 N、层数 L、hidden size h、head 数 a。还必须问<b>是 dense 还是 MoE</b>——MoE 显存看总参数，算力看激活参数，两者能差 10 倍。</p>
+        <p>需要参数量 N、层数 L、hidden size h 和 head 数 a。还要确认<b>是 dense 还是 MoE</b>：MoE 的显存取决于总参数量，算力取决于每个 token 激活的参数量，两者能差 10 倍。</p>
       </div>
       <div class="item p0"><span class="p">P0</span>
         <h4>序列长度 + micro batch</h4>
-        <p>激活显存的主要来源。长上下文场景下它是显存的<b>主项</b>，不是零头——70B 在 4k 序列下不开重算，激活单独就要 85 GB。</p>
+        <p>这两项决定激活显存。长上下文场景下，激活可能成为显存的<b>主项</b>：70B 在 4k 序列下不开重算，激活单独就要 85 GB。</p>
       </div>
       <div class="item p0"><span class="p">P0</span>
         <h4>数据量 × epoch</h4>
@@ -366,7 +366,7 @@
       </div>
       <div class="item p0"><span class="p">P0</span>
         <h4>时间预算</h4>
-        <p>一晚 / 一周 / 一个月。<b>没有 deadline，就不存在「该买多少卡」这个问题</b>——显存下限那几张卡总能跑完，只是慢。</p>
+        <p>一晚 / 一周 / 一个月。没有 deadline，只能算出能跑起来的显存下限，算不出应该准备多少卡。</p>
       </div>
       <div class="item p1"><span class="p">P1</span>
         <h4>精度与优化器</h4>
@@ -477,11 +477,14 @@
         <div class="k"><i style="background:var(--seg-a)"></i>激活 A</div><div>永远全亮 —— <b>stage 1/2/3 都不切激活</b></div>
       </div>
       <div class="punch">
-        这是最容易踩的坑：<b>加卡能摊薄状态显存，摊不薄激活显存。</b>激活是每个数据并行副本自己的，上面这三个 stage（ZeRO-DP）从头到尾没碰它。激活撑爆了只有三条路 —— 开 gradient checkpointing、上张量/序列并行、或者砍 batch 和序列长度。
+        <b>加卡能摊薄状态显存，摊不薄激活显存。</b>每个数据并行副本仍要保存自己的激活，ZeRO-DP 的 stage 1/2/3 不会切这部分。激活超出单卡容量时，需要开 gradient checkpointing、使用张量/序列并行，或者减小 batch 和序列长度。
       </div>
-      <div class="punch">
-        <b>一个容易被拿来反驳的细节：</b>ZeRO 论文里确实有一个切激活的机制 —— ZeRO-R 的 <code>P_a</code>（Partitioned Activation Checkpointing），论文举的例子把 100B 模型的 33 GB 激活压到每卡约 2 GB。但它是<b>沿张量并行组切的，不是沿数据并行组</b>。也就是说：它靠的是 TP，不是靠加 DP 的卡。所以「加卡摊不薄激活」这个操作结论不变，只是别把它说成「ZeRO 完全没有切激活的手段」。
-      </div>
+      <details class="assume">
+        <summary>严格说：ZeRO-R 也提供激活分片</summary>
+        <div class="body">
+          <p>ZeRO-R 的 <code>P_a</code>（Partitioned Activation Checkpointing）可以切激活。论文中的示例把 100B 模型的 33 GB 激活降到每卡约 2 GB，但它<b>沿张量并行组切分，不沿数据并行组切分</b>。因此，增加 DP 卡数仍不会摊薄激活；需要依靠 TP。</p>
+        </div>
+      </details>
     </div>
   </div>
 </section>
@@ -489,7 +492,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">04</span>约束 B：算力 —— 算出时长</h2>
-    <p class="lead">总计算量 <span class="m">C ≈ 6 · N · D</span>（前向 2ND + 反向 4ND），耗时 = <span class="m">C ÷ (卡数 × 单卡峰值 × MFU)</span>。<b>峰值必须用 dense 列</b>——厂商 spec 里带 sparsity 的数字是 ×2 虚标。</p>
+    <p class="lead">总计算量 <span class="m">C ≈ 6 · N · D</span>（前向 2ND + 反向 4ND），耗时 = <span class="m">C ÷ (卡数 × 单卡峰值 × MFU)</span>。<b>峰值要用 dense 列</b>；带 sparsity 的数字需要特定稀疏结构，常规训练不能直接使用。</p>
 
     <div class="stage acc-comp">
       <div class="ctl">
@@ -536,7 +539,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">05</span>校准：MFU 该取多少</h2>
-    <p class="lead">MFU（Model FLOPs Utilization）是全式子里唯一靠猜的数。好在可以用<b>已公开的真实训练成本反推</b>——下面用 LLaMA-1 论文自己报的 GPU-hours 验算 <span class="m">6ND</span>。</p>
+    <p class="lead">MFU（Model FLOPs Utilization）是公式里最难预先确定的数，可以用<b>已公开的训练成本反推</b>。下面用 LLaMA-1 论文报告的 GPU-hours 验算 <span class="m">6ND</span>。</p>
 
     <div class="tblwrap">
       <table class="tbl">
@@ -550,7 +553,7 @@
     </div>
 
     <div class="punch blue">
-      65B 那行还能<b>独立对上第二个数据</b>：论文说「2048 张 A100、约 380 token/s/GPU」，1.4T ÷ (2048×380) = 1.80e6 秒 = <b>20.8 天</b>，正好是论文里的「约 21 天」。两条路算出同一个数 —— 说明 <span class="m">6ND</span> 这个近似是靠得住的，剩下的全部不确定性都压在 MFU 上。
+      65B 还可以用第二组数据核对。论文报告「2048 张 A100、约 380 token/s/GPU」，1.4T ÷ (2048×380) = 1.80e6 秒 = <b>20.8 天</b>，与论文里的「约 21 天」一致。这说明 <span class="m">6ND</span> 适合做量级估算，主要不确定性来自 MFU。
     </div>
 
     <div class="tblwrap" style="margin-top:22px">
@@ -597,7 +600,7 @@
       <div class="punch violet">
         同代对比：机内比跨机快 <b>9×</b>（p5）到 <b>48×</b>（p4d）。<br>
         注意这是<b>标称峰值之间</b>的比较：两边的实际可达带宽都明显更低，所以它是个量级判断，不是实测吞吐。<br>
-        但杀死跨机 TP 的<b>不只是带宽</b>。张量并行每层的前向和反向都要 all-reduce <b>激活</b>：通信次数极多、每次的量不大、而且全部<b>挡在关键路径上</b>——这种模式对<b>延迟</b>比对带宽敏感得多。有实测数字的两侧：EFA 的单向 MPI 延迟约 <b>15.5 µs</b>，NVLink 的实测点对点延迟在 <b>1–4 µs</b> 量级。带宽差 9× 再叠上延迟差 4–15 倍，MFU 就崩了。
+        跨机 TP 还受到<b>延迟</b>限制。张量并行在每层前向和反向中都要 all-reduce 激活，通信次数多、单次数据量不大，并且处在关键路径上。已有测量中，EFA 的单向 MPI 延迟约 <b>15.5 µs</b>，NVLink 的点对点延迟在 <b>1–4 µs</b> 量级。带宽和延迟差距叠加后，MFU 会明显下降。
       </div>
     </div>
 
@@ -612,7 +615,7 @@
     </div>
 
     <div class="punch violet">
-      把三层拼起来的那个等式：<span class="m"><b>global batch = micro batch × 梯度累积 × DP degree</b></span>。global batch 是<b>收敛需求</b>，micro batch 是<b>显存约束</b>，梯度累积是中间那个免费的调节旋钮。搞混这三个，就会一边 OOM 一边不知道该动哪个。
+      三者的关系是：<span class="m"><b>global batch = micro batch × 梯度累积 × DP degree</b></span>。global batch 主要由收敛需求决定，micro batch 受显存限制，梯度累积用来连接两者。出现 OOM 时，先确认需要调整的是 micro batch，而不是 global batch。
     </div>
   </div>
 </section>
@@ -641,7 +644,7 @@
     </div>
 
     <div class="punch">
-      <b>一句话决策：</b>先用 02 算出显存下限 → 向上取整到整机 8 卡 → 用 04 看这个规模跑完要多久 → 如果超了 deadline，加卡（DP/ZeRO 方向加，别动 TP）→ 如果还是塞不下，换更大显存的卡而不是加更多小卡，因为<b>激活显存不会被加卡摊薄</b>。
+      <b>实际估算顺序：</b>先用 02 算显存下限 → 向上取整到整机 8 卡 → 用 04 估算时长 → 超过 deadline 时沿 DP/ZeRO 方向加卡 → 仍然放不下时换更大显存的卡。最后一步不能靠增加小显存卡解决，因为<b>激活显存不会被 DP 卡数摊薄</b>。
     </div>
   </div>
 </section>
@@ -666,7 +669,7 @@
     <div class="qa">
       <span class="tag">加卡的边界</span>
       <h3>ZeRO-DP 不切激活，所以加卡有天花板</h3>
-      <p>状态显存能被 G 摊薄到接近零，激活显存<b>一点不变</b>。当激活单独就超过卡容量时（70B / 4k 序列 / 不开重算 = 85 GB），加到一万张卡也照样 OOM。这时候要动的是 gradient checkpointing、TP、SP，不是卡数。上面的估算器把「激活」单独画成绿色，就是为了让这条线可见。（严格说 ZeRO-R 的 <code>P_a</code> 能切激活，但那是沿<b>张量并行</b>组切的 —— 还是不靠加 DP 的卡。）</p>
+      <p>状态显存能随 G 增大而继续分摊，激活显存不会随 DP 卡数变化。当激活单独超过卡容量时（70B / 4k 序列 / 不开重算 = 85 GB），继续增加 DP 卡仍然会 OOM。这时需要使用 gradient checkpointing、TP、SP，或者减小序列长度和 micro batch。ZeRO-R 的例外说明见第 03 节折叠区。</p>
     </div>
 
     <div class="qa">
@@ -677,8 +680,8 @@
 
     <div class="qa">
       <span class="tag">厂商 spec</span>
-      <h3>带 sparsity 的 TFLOPS 是 ×2 虚标，而且常常还是整机数</h3>
-      <p>规格表里常常并排给「dense」和「with sparsity」两列，后者需要 2:4 结构化稀疏才能达到，常规训练用不上。<b>估算一律用 dense 列。</b>更坑的是有些表连单位都不是单卡：NVIDIA 的 HGX B300 把 FP16/BF16 写成 <code>36 PFLOPS</code>，那是<b>整机 8 卡</b>的<b>sparse</b> 值，脚注里才说「dense 是 sparse 的一半」—— 真正能用来估算的单卡 dense 峰值是 <code>36 ÷ 8 ÷ 2 = 2.25 PFLOPS</code>。<b>少除一次，时间预估就乐观 2 倍；少除两次，乐观 16 倍。</b></p>
+      <h3>不要直接使用 sparsity TFLOPS，还要确认是单卡还是整机</h3>
+      <p>规格表通常同时给出「dense」和「with sparsity」两列。后者依赖 2:4 结构化稀疏，常规训练应使用 dense 列。还要确认数字是单卡还是整机：NVIDIA 的 HGX B300 把 FP16/BF16 写成 <code>36 PFLOPS</code>，这是<b>整机 8 卡</b>的<b>sparse</b> 值，脚注说明 dense 是 sparse 的一半。因此单卡 dense 峰值是 <code>36 ÷ 8 ÷ 2 = 2.25 PFLOPS</code>。<b>少除一次，时间预估会乐观 2 倍；少除两次，会乐观 16 倍。</b></p>
     </div>
 
     <div class="qa">

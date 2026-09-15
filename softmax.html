@@ -137,6 +137,11 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
 .api td:first-child{color:var(--ink); font-weight:900; white-space:nowrap}
 .api td.r{font-family:ui-monospace,Menlo,monospace; font-weight:900; color:var(--ink); white-space:nowrap}
 .apiwrap{overflow-x:auto; border:3px solid var(--ink); border-radius:16px; background:#fff; margin-top:18px}
+.api-note{margin-top:28px; border-top:2px dashed #00000024; padding-top:18px}
+.api-note summary{cursor:pointer; font-size:15px; font-weight:900; list-style:none}
+.api-note summary::-webkit-details-marker{display:none}
+.api-note summary::before{content:"▸ "; color:var(--muted)}
+.api-note[open] summary::before{content:"▾ "}
 
 /* where it lives */
 .loc{border:3px solid var(--ink); border-left-width:14px; border-radius:16px; padding:22px; background:#fff; margin-top:18px}
@@ -238,10 +243,10 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
     <div class="card" style="margin-top:22px;background:#FFF6DE">
       <div class="pill" style="background:#fff">理由二</div>
       <h4 style="font-size:21px;font-weight:900;margin-top:12px">该拉开差距</h4>
-      <p class="note" style="font-size:15px">分数差 1 分，概率差不该只有一点点。<br>e 让<b>领先者拿走更大份额</b>，同时垫底的不会被清零。</p>
+      <p class="note" style="font-size:15px">指数会把分数差变成比例差。<br>高分项获得更大权重，低分项仍保持正值。</p>
     </div>
     <div class="card" style="margin-top:22px;background:#E8F1FA">
-      <div class="pill" style="background:#fff">理由三 · 真正的原因</div>
+      <div class="pill" style="background:#fff">理由三 · 和训练目标配合</div>
       <h4 style="font-size:21px;font-weight:900;margin-top:12px">求导特别好看</h4>
       <p class="note" style="font-size:15px">和训练用的 loss 配在一起，梯度化简成一句话：<br><b class="mono" style="font-size:17px">预测 − 正确答案</b><br>训练时最省事的形式，就长这样。</p>
     </div>
@@ -262,7 +267,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
         <div class="pb"><span class="k">冷</span><div class="bar"><i style="width:0%"></i></div><span class="v">0%</span></div>
         <div class="pb"><span class="k">香蕉</span><div class="bar"><i style="width:0%"></i></div><span class="v">0%</span></div>
       </div>
-      <div class="why">✕ 阶梯式跳变 → <b>没有梯度 → 没法训练</b></div>
+      <div class="why">✕ argmax 不可导，不能直接用于标准反向传播</div>
     </div>
     <div class="hs" style="background:#E6F6EE">
       <h4><span class="dot" style="background:var(--ok)"></span>软办法：softmax</h4>
@@ -275,7 +280,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
       <div class="why">✓ 处处平滑 → <b>能求导 → 能训练</b></div>
     </div>
   </div>
-  <p class="note" style="margin-left:6px">「大的拿大头，小的也留一点」—— 这个「留一点」不是善良，是<b>为了让梯度有路可走</b>。训练全靠它。<br>
+  <p class="note" style="margin-left:6px">softmax 给高分项更大权重，同时保留其他项的非零概率。输出连续可导，因此可以直接配合梯度法训练。<br>
   <span style="font-size:14px">（冷知识：名字其实起偏了。它逼近的是 argmax「指出谁最大」，不是 max「最大值是多少」。）</span></p>
 </section>
 
@@ -283,7 +288,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
 <section class="reveal">
   <div class="head"><span class="num">4</span><h2>温度：softmax 前的一个旋钮</h2></div>
   <p class="lede">你在 API 里调的 <b class="mono">temperature</b>，就是在 softmax 之前<b>把所有分数除以 T</b>。拖一下试试。<br>
-  <span style="font-size:16px">（各家 API 允许的范围<b>并不一样</b>，而且都比你想的窄 —— 滑块下面有实测的对照表。）</span></p>
+  <span style="font-size:16px">公式允许任意正数；产品 API 是否开放这个范围，要看具体模型。</span></p>
 
   <div class="card">
     <div class="treadout">
@@ -325,40 +330,41 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
         <p class="note" style="font-size:14.5px">大家越来越接近。<br>「香蕉」也开始有机会。<br><b>数学上 T→∞ 就是纯抽签。</b></p>
       </div>
     </div>
-    <p class="note"><b>注意：温度不改变谁是第一名</b>，只改变第一名领先多少。所以它调的是「敢不敢冒险」，不是「聪不聪明」。</p>
+    <p class="note"><b>温度不改变 logits 的排序</b>，只改变分布的集中程度。温度调的是采样分布，不会直接提高模型能力。</p>
 
-    <div class="pill" style="margin-top:28px;background:#FDEDE7">容易被误会的一点：T 在数学上可以无限大，但产品里不行</div>
-    <div class="apiwrap">
-      <table class="api">
-        <thead><tr><th>在哪调</th><th>实际允许的范围</th><th>依据</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>Claude<br>（Anthropic）</td>
-            <td class="r">视模型而定</td>
-            <td>支持自定义温度的 Claude 模型通常接受 0.0–1.0。<b>从 Opus 4.7 起，部分新模型只接受默认值 1.0</b>；参数仍存在于通用 API / SDK 类型中，是否可调由具体模型决定。</td>
-          </tr>
-          <tr>
-            <td>OpenAI</td>
-            <td class="r">通常 0.0 – 2.0</td>
-            <td>许多生成模型接受 0–2，但部分推理模型不支持这个参数。调用时应以具体模型文档为准；还可以使用 <span class="mono">top_p</span> 等采样参数。</td>
-          </tr>
-          <tr>
-            <td>自己跑模型<br>（vLLM / transformers）</td>
-            <td class="r">任意正数</td>
-            <td>源码里就是个 float，默认 1.0，<b>没有上限检查</b>。想试 T = 50 只能在这里试。</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="note">所以「T 可以无限大」是<b>公式的性质</b>，不是 API 对每个模型都提供的范围。产品还可能提供 <span class="mono">top_p</span>、<span class="mono">top_k</span> 等参数；温度只负责整体压平或拉开 logits。
-    <br><br><b>还有一个小坑：</b>T = 0 也不保证每次结果一模一样。Anthropic 文档明确写了「即便 temperature 为 0.0，结果也不会完全确定」—— 因为浮点计算和批处理本身就带抖动，跟 softmax 无关。</p>
+    <details class="api-note">
+      <summary>各家 API 支持的 temperature 范围</summary>
+      <div class="apiwrap">
+        <table class="api">
+          <thead><tr><th>在哪调</th><th>实际允许的范围</th><th>依据</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Claude<br>（Anthropic）</td>
+              <td class="r">视模型而定</td>
+              <td>支持自定义温度的 Claude 模型通常接受 0.0–1.0。<b>从 Opus 4.7 起，部分新模型只接受默认值 1.0</b>；参数仍存在于通用 API / SDK 类型中，是否可调由具体模型决定。</td>
+            </tr>
+            <tr>
+              <td>OpenAI</td>
+              <td class="r">通常 0.0 – 2.0</td>
+              <td>许多生成模型接受 0–2，但部分推理模型不支持这个参数。调用时应以具体模型文档为准；还可以使用 <span class="mono">top_p</span> 等采样参数。</td>
+            </tr>
+            <tr>
+              <td>自己跑模型<br>（vLLM / transformers）</td>
+              <td class="r">任意正数</td>
+              <td>源码里就是个 float，默认 1.0，<b>没有上限检查</b>。想试 T = 50 只能在这里试。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">「T 可以无限大」是公式的性质，不代表每个 API 都开放相同范围。产品还可能提供 <span class="mono">top_p</span>、<span class="mono">top_k</span> 等采样参数。T = 0 也不保证每次结果完全一致；Anthropic 文档明确说明了这一点，浮点计算和批处理都可能影响最终结果。</p>
+    </details>
   </div>
 </section>
 
 <!-- 5 · 在 LLM 里的位置 -->
 <section class="reveal">
   <div class="head"><span class="num">5</span><h2>在大模型里，它出现在两个地方</h2></div>
-  <p class="lede">很多人只知道第一个。第二个其实更关键。</p>
+  <p class="lede">一个在模型输出端，另一个在每层 attention 内部。</p>
 
   <div class="loc" style="border-left-color:var(--hot)">
     <h4>① 出口：挑下一个词</h4>
@@ -368,7 +374,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
 
   <div class="loc" style="border-left-color:var(--pur)">
     <h4>② 内部：注意力决定「看哪里」</h4>
-    <p>每读一个词，模型给前文每个词打一个「相关度」分 → softmax → 变成一组和为 1 的权重 → 按权重把前文混合起来。<br><b>Attention 的那个「注意力分配」，本体就是一次 softmax。</b>一个模型跑一遍，这里要做几十万次。</p>
+    <p>每读一个词，模型给前文每个词计算一个相关度分数 → softmax → 变成一组和为 1 的权重 → 按权重混合前文信息。<br>Attention 的权重计算中包含一次 softmax，并且会在各层、各个 head 和各个位置重复执行。</p>
     <div class="chain"><span>它和每个前文词的相关度</span><span>→</span><span class="me">SOFTMAX</span><span>→</span><span>注意力权重，和为1</span><span>→</span><span>加权取信息</span></div>
   </div>
 </section>
@@ -411,7 +417,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
   <div class="big">记三句就够</div>
   <p>
     <b>1 ·</b> softmax = <b>套个 e，再各自除以总和</b>。目的只有一个：让一堆乱数变成加起来是 1 的概率。<br><br>
-    <b>2 ·</b> 为什么要「软」？因为硬着来（只留第一名）<b>没有梯度，模型就没法训练</b>。<br><br>
+    <b>2 ·</b> softmax 连续可导，可以直接配合梯度法训练；argmax 不能直接用于标准反向传播。<br><br>
     <b>3 ·</b> temperature 就是<b>进 softmax 前先除以 T</b>。它只改变第一名领先多少，不改变谁是第一名。
   </p>
 </div>
