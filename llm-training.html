@@ -148,9 +148,9 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
 <!-- ================= HERO ================= -->
 <div class="hero">
-  <span class="kicker">给已经懂推理的你</span>
+  <span class="kicker">从推理到训练</span>
   <h1>训练 = 推理<br><em>+ 两步</em></h1>
-  <p class="sub">你熟悉的前向传播，就是训练的第一步。<br>剩下要补的，只有「算错多少」和「怎么改」。</p>
+  <p class="sub">推理里的前向传播，就是训练的第一步。<br>剩下要补的，只有「算错多少」和「怎么改」。</p>
 
   <div class="eqbox">
     <div class="eqrow">
@@ -174,7 +174,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
   <div class="card">
     <div class="loop">
       <div class="step s1"><div class="n">STEP 1 · FORWARD</div><h4>猜</h4>
-        <p>「今天天气真 ___」<br>模型输出一整个概率分布。<br><b>这一步你已经会了。</b></p></div>
+        <p>「今天天气真 ___」<br>模型输出一整个概率分布。<br><b>这一步和推理的前向传播完全相同。</b></p></div>
       <div class="step s2"><div class="n">STEP 2 · LOSS</div><h4>对答案</h4>
         <p>真答案是「好」。<br>模型给「好」的概率越低，loss 越大。<br>loss = 惊讶程度。</p></div>
       <div class="step s3"><div class="n">STEP 3 · BACKWARD</div><h4>追责</h4>
@@ -200,7 +200,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
         <div class="pb"><span>冷</span><div class="bar"><i style="width:12%"></i></div><span class="v">0.12</span></div>
         <div class="pb"><span>香蕉</span><div class="bar"><i style="width:1%"></i></div><span class="v">0.001</span></div>
       </div>
-      <p class="note">推理时你在这里做采样（temperature / top-p）。<br>训练时你在这里<b>算账</b>。</p>
+      <p class="note">推理阶段，这里用来做采样（temperature / top-p）。<br>训练阶段，这里用来<b>算账</b>。</p>
     </div>
     <div>
       <div class="pill" style="background:#E8F1FA">−log 曲线：越不确定，罚得越狠</div>
@@ -269,7 +269,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
         显存大降，算力多花约 30%。
       </p>
       <p style="margin-top:16px;font-weight:800;font-size:16px;border-top:2px dashed #16130F;padding-top:14px">
-        📌 和你熟的方向正好相反：<br>
+        📌 和推理侧的方向正好相反：<br>
         推理：<span class="mono">用显存换算力</span>（KV cache）<br>
         训练：<span class="mono">用算力换显存</span>（重算）
       </p>
@@ -309,7 +309,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
     <div class="panel">
       <h4><span class="dot" style="background:var(--bwd)"></span>TP · 张量并行</h4>
-      <p>把每个大矩阵横竖切开，<b>一层内部</b>就要通信。你在推理端已经熟这个。</p>
+      <p>把每个大矩阵横竖切开，<b>一层内部</b>就要通信。推理阶段的张量并行用的是同一种切法。</p>
       <div class="gpus">
         <div class="gpu"><div style="background:var(--bwd)">左</div></div>
         <div class="gpu"><div style="background:var(--bwd)">右</div></div>
@@ -368,7 +368,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
 <!-- ================= 7 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">7</span><h2>四段流水线 —— 和你在推理端见过的模型对上号</h2></div>
+  <div class="head"><span class="num">7</span><h2>四段流水线：分别产出哪个可部署的模型</h2></div>
   <p class="lede">同一家的 base / instruct / reasoning 三种权重，就是这条流水线上的三个出口。</p>
 
   <div class="stage" style="border-left-color:var(--fwd)">
@@ -386,7 +386,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
   <div class="stage" style="border-left-color:var(--bwd)">
     <h4>③ SFT 指令微调 <small>几千 ~ 几十万条（问，答）对 · 单机 · 几小时</small></h4>
     <p>给它示范怎么对话。技术要点：<b>只在「答」的部分算 loss</b>，把 prompt 部分 mask 掉。</p>
-    <div class="out">出 instruct model：你平时调 API 用的就是它</div>
+    <div class="out">出 instruct model：多数聊天类 API 背后就是这个版本</div>
   </div>
 
   <div class="stage" style="border-left-color:var(--upd)">
@@ -484,7 +484,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
     <div class="panel" style="background:#FDEDE7">
       <div class="pill" style="background:#fff">推理</div>
       <div class="big mono" style="margin-top:14px">2 × N</div>
-      <p style="margin-top:10px">每生成一个 token 的 FLOPs。<br>你早就知道这个。</p>
+      <p style="margin-top:10px">每生成一个 token 的 FLOPs，推理成本估算用的就是这个式子。</p>
     </div>
   </div>
 
@@ -512,7 +512,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 <!-- ================= 11 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">11</span><h2>盯仪表盘：三种 loss 曲线</h2></div>
-  <p class="lede">训练时你 80% 的时间在看这一张图。</p>
+  <p class="lede">训练过程里，这是最常盯着看的一张图。</p>
 
   <div class="grid3">
     <div class="card" style="margin-top:24px">
@@ -559,12 +559,12 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 
 <!-- ================= 12 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">12</span><h2>翻译表：你熟的 ⇄ 训练里的</h2></div>
-  <p class="lede">直接把已有的直觉搬过去。</p>
+  <div class="head"><span class="num">12</span><h2>翻译表：推理侧 ⇄ 训练侧</h2></div>
+  <p class="lede">推理侧的直觉，大多能直接搬过去用。</p>
 
   <div class="tblwrap">
   <table class="tbl">
-    <tr><th>你在推理端熟悉的</th><th>训练里对应的东西</th></tr>
+    <tr><th>推理侧的概念</th><th>训练里对应的东西</th></tr>
     <tr><td>前向传播</td><td>计算过程相同，但训练要保存反向传播所需的中间结果</td></tr>
     <tr><td>KV cache 吃显存</td><td>激活值吃显存（∝ batch × seq_len × 层数）</td></tr>
     <tr><td>用显存换算力（cache 复用）</td><td>反过来：gradient checkpointing 用算力换显存</td></tr>
@@ -584,7 +584,7 @@ h2{font-size:clamp(26px,4.2vw,42px); font-weight:900; letter-spacing:-.02em; lin
 <!-- ================= 13 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">13</span><h2>动手顺序（照这个来最快）</h2></div>
-  <p class="lede">你已经有推理的底子，前三步会比一般人快得多。</p>
+  <p class="lede">已经了解推理侧实现的读者，前三步会更快上手。</p>
 
   <div class="card road">
     <div class="rstep"><div class="rn"></div><div>
