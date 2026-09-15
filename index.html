@@ -160,7 +160,7 @@ h3 em{font-style:normal; color:var(--acc)}
     <a class="card" href="engram.html" data-sections="14">
       <div class="chips"><span class="chip">条件记忆 / Engram</span><span class="chip live">可交互 · 哈希 / 闸门 / 配比滑块</span></div>
       <h3>有些事该<em>查</em>，<br>不该<em>算</em></h3>
-      <p class="d">模型里唯一的「查表」动作是 input embedding，而它的<b>钥匙只有一个 token</b> —— 所以「Alexander the Great 是个人名」这种纯粹该背的东西，它只能用 6 层硬算出来。这一页讲把那个动作放大：<b>钥匙从一个 token 扩成一个短语，位置从第 0 层挪到中间层</b>。组合数比格子数多 8 个数量级，于是碰撞、闸门、装第几层依次登场。收尾是两件反直觉的事：<b>推理题比知识题涨得更多</b>，以及<b>纯靠算力是次优的</b>。</p>
+      <p class="d">Engram 给模型增加了一种短语查表机制：用 2～3 个 token 组成钥匙，在中间层取出对应的记忆向量。页面会解释它为什么需要哈希、多头和上下文闸门，以及实验中它怎样影响知识、推理和显存占用。</p>
       <div class="meta"></div>
     </a>
   </div>

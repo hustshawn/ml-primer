@@ -167,7 +167,7 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
   <div class="wrap">
     <span class="kick">条件记忆 · <b>CONDITIONAL MEMORY</b></span>
     <h1>有些事该<em class="l">查</em>，<br>不该<em class="c">算</em></h1>
-    <p class="sub">神经网络里几乎每个动作都是「算」—— 乘一遍矩阵、加权平均一遍。<b>「按地址取一行」这个动作，模型只在最开头用了一次，之后再也没有。</b>这一页讲的就是把它补回来：什么内容值得存起来查，什么内容必须现场算。</p>
+    <p class="sub">神经网络里几乎每个动作都是「算」：乘一遍矩阵、加权平均一遍。<b>「按地址取一行」这个动作，现在的主流模型基本只在最开头用一次。</b>这一页讲的就是把它补回来：什么内容值得存起来查，什么内容必须现场算。</p>
   </div>
 </header>
 
@@ -185,11 +185,11 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
     <div class="vsbox l">
       <h4>查表</h4>
       <div class="t">这个我背过</div>
-      <p>「三七二十一」——<b>不算，直接说</b>。快，但只对「事先背过的那些」有效。</p>
+      <p>「三七二十一」：<b>不算，直接说</b>。快，但只对「事先背过的那些」有效。</p>
     </div>
   </div>
-  <p class="note">人两样都用，而且用得很自然：该背的背下来，该算的现场算。<b>Transformer 只有前一种。</b>它没有一个「按地址取一行」的动作，所以哪怕是「Alexander the Great 是个人名」这种纯粹该背的东西，它也只能用矩阵乘一层一层现场推出来。</p>
-  <p class="note">Engram 补的就是这个缺口 —— 加一张巨大的表，把该背的那部分从算力里挪到内存里。<b>这一页只有一条主线：这个「查」的动作怎么加进去，加进去之后模型哪里变了。</b></p>
+  <p class="note">人两样都用，而且用得很自然：该背的背下来，该算的现场算。<b>Transformer 的中间层基本只有「现算」，没有按地址直接取出短语记忆的模块。</b>所以哪怕是「Alexander the Great 是个人名」这种纯粹该背的东西，它也只能用矩阵乘一层一层现场推出来。</p>
+  <p class="note">Engram 补的就是这个缺口：加一张巨大的表，把该背的那部分从算力里挪到内存里。这一页只有一条主线：这个「查」的动作怎么加进去，加进去之后模型哪里变了。</p>
 </section>
 
 <!-- ==================================================================
@@ -198,9 +198,9 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
 <div class="act reveal"><span class="no">一</span><span class="tt">这个想法</span><span class="rule"></span></div>
 
 <section class="reveal">
-  <div class="head"><span class="num">01</span><h2>模型其实早就会查表 —— 只不过只会查一个字</h2></div>
-  <p class="lede">这件事很容易被忽略：<b>input embedding 本来就是一次查表。</b>token ID 是下标，embedding 矩阵是表，<code>E[id]</code> 取出一行。没有乘法，O(1)，表多大都不影响这一步的耗时。</p>
-  <p class="note">问题在于这张表的<b>钥匙只有一个 token</b>。而语言里最该背下来的那些东西 —— 人名、机构名、固定搭配、套话 —— 几乎都是<b>好几个 token 连在一起</b>才成立的。<code>Alexander the Great</code> 是三个 token，模型手上没有「这三个连着」那一行。</p>
+  <div class="head"><span class="num">01</span><h2>模型其实早就会查表，只不过只查一个字</h2></div>
+  <p class="lede"><b>input embedding 本来就是一次查表。</b>token ID 是下标，embedding 矩阵是表，<code>E[id]</code> 取出一行。没有矩阵乘；从算法上看，这是 O(1) 查找，表变大不会增加查找次数。</p>
+  <p class="note">问题在于这张表的<b>钥匙只有一个 token</b>。而语言里最该背下来的那些东西，人名、机构名、固定搭配、套话，几乎都是<b>好几个 token 连在一起</b>才成立的。<code>Alexander the Great</code> 是三个 token，模型手上没有「这三个连着」那一行。</p>
 
   <div class="card">
     <div class="lbl">同一个动作 · 三处不同</div>
@@ -255,14 +255,14 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
       <text x="712" y="230" font-size="12" fill="#6B6156">第 0 层 → 中间层</text>
       <defs><marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#141210"/></marker></defs>
     </svg>
-    <p class="note" style="margin-top:6px">整页记住这一句就够了：<b>Engram 就是把 input embedding 那个动作放大 —— 钥匙从一个 token 扩成一个短语，位置从第 0 层挪到中间层。</b></p>
-    <p class="small">注意它是<b>新加</b>的模块，不是把 input embedding 改大 —— 原来的输入 embedding 和输出 unembedding 一个字没动。第 ③ 点不是细节：早期同类工作都把表塞在第 0 层，挪到中间层才有第 11 节那件好事。</p>
+    <p class="note" style="margin-top:6px"><b>Engram 就是把 input embedding 那个动作放大：钥匙从一个 token 扩成一个短语，位置从第 0 层挪到中间层。</b></p>
+    <p class="small">它是<b>新加</b>的模块，不是把 input embedding 改大，原来的输入 embedding 和输出 unembedding 一个字没动。第 ③ 点在第 11 节会用到：早期同类工作都把表塞在第 0 层，挪到中间层才能提前预取。</p>
   </div>
 </section>
 
 <section class="reveal">
   <div class="head"><span class="num">02</span><h2>查不到「一个短语」，就只能一层一层拼出来</h2></div>
-  <p class="lede">上面那句「拿不到那一行」听起来抽象。它的实际后果长这样 —— 给模型喂 <code>Diana, Princess of Wales</code>，把每一层的中间状态翻译成人话读出来，你会看到它<b>用了 6 层去把这个名字拼出来</b>。</p>
+  <p class="lede">「拿不到那一行」的实际后果长这样：给模型喂 <code>Diana, Princess of Wales</code>，把每一层的中间状态翻译成人话读出来，可以看到<b>表示到第 6 层才明确指向这个名字</b>。</p>
 
   <div class="card">
     <div class="lbl">点一下层号 · 看它在这一层「以为」自己在说什么</div>
@@ -275,15 +275,15 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
   </div>
 
   <div class="card dk">
-    <div class="big">这 6 层里没有推理，只有拼装。</div>
-    <p style="margin-top:14px">Wales → 一个地名 → 一个头衔 → 具体是谁。每一步都不需要「想」，只需要「知道」。<b>模型在用顺序深度换一件本该 O(1) 的事</b> —— 说白了就是在运行时把一张静态表重新算了一遍。</p>
-    <p style="margin-top:12px">而且这不是个别案例。语言里这种<b>局部的、静态的、高度定型的</b>内容占了很大一块：人名、地名、机构名、术语、成语、套话。它们全都符合「该背，不该算」。</p>
+    <div class="big">这个例子里，前 6 层的可读变化主要是在逐步拼出名字。</div>
+    <p style="margin-top:14px">Wales → 一个地名 → 一个头衔 → 具体是谁。探针显示，模型把不少前层深度用在了识别这个固定名称上。<b>这类局部、静态的模式，本来可以通过查表直接提供。</b></p>
+    <p style="margin-top:12px">这也不是个别案例。语言里有很多局部、静态、高度定型的内容：人名、地名、机构名、术语、成语、套话。这类内容更适合直接记住。</p>
   </div>
 </section>
 
 <section class="reveal">
-  <div class="head"><span class="num">03</span><h2>那就给短语建表 —— 可是钥匙会爆炸</h2></div>
-  <p class="lede">想法很直接：既然「一个 token 一行」不够，那就「一个短语一行」。但只要真去数一下要几行，这条路立刻走不通。</p>
+  <div class="head"><span class="num">03</span><h2>那就给短语建表，可是钥匙会爆炸</h2></div>
+  <p class="lede">想法很直接：「一个 token 一行」不够，那就「一个短语一行」。但只要真去数一下要几行，这条路立刻走不通。</p>
 
   <div class="card">
     <div class="two" style="margin-top:0">
@@ -306,7 +306,7 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
         <p class="small">这已经是论文里「内存不限量」实验的最大档了。</p>
       </div>
     </div>
-    <p class="note" style="margin-top:22px"><b>差 8 个数量级。</b>所以「一个短语一格」根本不是选项 —— 从一开始就只能是「很多短语挤在同一格」。于是这个想法要落地，必须先回答两个问题：</p>
+    <p class="note" style="margin-top:22px"><b>差 8 个数量级。</b>「一个短语一格」从一开始就不是选项，只能是「很多短语挤在同一格」。于是这个想法要落地，得先回答两个问题：</p>
     <div class="vs" style="margin-top:18px">
       <div class="vsbox l" style="border-color:var(--ink); background:#F3F0EA">
         <h4 style="color:var(--ink)">问题 A</h4>
@@ -330,7 +330,7 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
 
 <section class="reveal">
   <div class="head"><span class="num">04</span><h2>从短语到格子号：压一下，再哈希</h2></div>
-  <p class="lede">钥匙取的是<b>后缀</b> n-gram —— 从当前位置往前数两三个 token，最后一个一定是当前这个。然后不查任何索引，<b>直接用哈希把它算成下标</b>。</p>
+  <p class="lede">钥匙取的是<b>后缀</b> n-gram：从当前位置往前数两三个 token，最后一个一定是当前这个。然后不查任何索引，<b>直接用哈希把它算成下标</b>。</p>
 
   <div class="card">
     <div class="lbl">点句子里任意一个 token，看它这一步的钥匙和格子号</div>
@@ -339,16 +339,16 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
     <div class="two" style="margin-top:22px">
       <div>
         <div class="lbl">先压一下：同一个词别占好几个格</div>
-        <p class="note" style="margin-top:8px">分词器为了能<b>无损还原</b>原文，会把语义上同一个词切成好几个不同的 ID：<code>Apple</code> / <code>␣apple</code> / <code>APPLE</code> 各占一个。对查表来说这是纯浪费 —— 同一个词的记忆被拆到几个格子里，每个都学不透。</p>
+        <p class="note" style="margin-top:8px">分词器为了能<b>无损还原</b>原文，会把语义上同一个词切成好几个不同的 ID：<code>Apple</code> / <code>␣apple</code> / <code>APPLE</code> 各占一个。对查表来说这是纯浪费：同一个词的记忆被拆到几个格子里，每个都学不透。</p>
         <p class="note">所以先过一道归一化（NFKC、小写等），把它们塌到同一个规范 ID 上。</p>
         <div class="eq" id="canonBox">—</div>
-        <p class="small">在 128k 的分词器上，这一步让有效词表<b>缩小 23%</b>。它不是可选的小优化 —— 拿掉它是掉点最狠的三个改动之一。</p>
+        <p class="small">在 128k 的分词器上，这一步让有效词表<b>缩小 23%</b>。它不是可选的小优化，拿掉它是掉点最狠的三个改动之一。</p>
       </div>
       <div>
         <div class="lbl">再哈希：算出下标，不查索引</div>
-        <p class="note" style="margin-top:8px">哈希的好处是<b>不需要知道这个短语存不存在</b>。给什么短语都能算出一个格子号，算完直接去取。这也意味着<b>地址只跟 token ID 有关</b> —— 这一点在第 11 节会变成一个很大的便宜。</p>
+        <p class="note" style="margin-top:8px">哈希的好处是<b>不需要知道这个短语存不存在</b>。给什么短语都能算出一个格子号，算完直接去取。这也意味着<b>地址只跟 token ID 有关</b>。第 11 节会利用这一点，把 Engram 表放到主机内存，并提前取回当前需要的行。</p>
         <div class="eq">下标 = 哈希(压缩后的 n-gram) mod 格子总数</div>
-        <p class="note">而且不止哈希一次。27B 的配置：<b>2-gram 和 3-gram 各来一遍，每种开 8 个不同的哈希头</b> —— 一共 <b>16 次查表</b>，取出的 16 段向量拼成 1280 维。</p>
+        <p class="note">而且不止哈希一次。27B 的配置：<b>2-gram 和 3-gram 各来一遍，每种开 8 个不同的哈希头</b>，一共 <b>16 次查表</b>，取出的 16 段向量拼成 1280 维。</p>
         <p class="small">哈希函数是一个轻量的乘法-XOR 哈希，每张表的格子数取质数。论文没给具体常数，下面演示用的是同一族里的 FNV-1a，只作示意。</p>
       </div>
     </div>
@@ -357,13 +357,13 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
     <div class="slots" id="slotsN2"></div>
     <div class="slots" id="slotsN3"></div>
     <p class="note" id="keyRead" style="font-family:ui-monospace,Menlo,monospace; font-size:14px"></p>
-    <p class="note"><b>全程没有一次矩阵乘</b>，只有 16 次数组下标访问。这就是「查」和「算」的区别 —— 表从 5B 涨到 100B，这一步的耗时不变。</p>
+    <p class="note"><b>全程没有一次矩阵乘</b>，只有 16 次数组下标访问。从算法上看，表从 5B 涨到 100B，查找次数仍是 16 次；实际延迟还会受缓存和数据传输影响。</p>
   </div>
 </section>
 
 <section class="reveal">
   <div class="head"><span class="num">05</span><h2>撞是必然的，所以别指望躲开它</h2></div>
-  <p class="lede">回到问题 B。10¹⁵ 个短语挤 10⁷ 个格子，两个毫不相干的短语落到同一格是<b>必然事件</b>，不是意外。所以做法不是消灭碰撞，而是<b>让一次碰撞只脏掉向量的一小片</b> —— 这就是为什么要开 8 个头。</p>
+  <p class="lede">回到问题 B。10¹⁵ 个短语挤 10⁷ 个格子，两个毫不相干的短语落到同一格是<b>必然事件</b>。所以做法不是消灭碰撞，而是<b>把单次碰撞的影响限制在部分向量上</b>，这就是为什么要开 8 个头。</p>
 
   <div class="card">
     <div class="ctl">
@@ -373,23 +373,23 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
     </div>
     <div class="two" style="margin-top:8px">
       <div>
-        <div class="lbl">一次碰撞污染掉的比例</div>
+        <div class="lbl">一次单头碰撞影响的比例（示意）</div>
         <div class="alpha" id="polluteRead" style="color:var(--comp)">—</div>
         <p class="note" id="polluteText"></p>
       </div>
       <div>
-        <div class="lbl">拼出来的向量 · 红色 = 被撞脏的那一片</div>
+        <div class="lbl">拼出来的向量 · 红色 = 发生碰撞的片段</div>
         <div class="bars" id="polluteBars" style="height:80px"></div>
       </div>
     </div>
-    <p class="note">关键是每个头有<b>自己的表和自己的哈希函数</b>。两个短语在头 1 撞上了，在头 2 几乎不会再撞 —— 想全撞上，概率小到可以忽略。所以脏的永远只是一小片，而不是整条向量。</p>
+    <p class="note">每个头有<b>自己的表和自己的哈希函数</b>。一个头发生碰撞时，其他头通常仍能提供未碰撞的片段。因此，多头能降低一次碰撞影响整条向量的风险。</p>
     <p class="small">有后续工作专门研究了这里的碰撞，结论是碰撞噪声更像<b>一种正则化</b>而不是纯损失。这条不是原论文的结论，我也只看了摘要级别的信息。</p>
   </div>
 </section>
 
 <section class="reveal">
   <div class="head"><span class="num">06</span><h2>取出来的东西不一定对，所以前面加一道闸门</h2></div>
-  <p class="lede">碰撞不是唯一的麻烦。表里的向量是<b>静态的、跟上下文无关的</b> —— 就算没撞，一词多义也会给你错的那个意思。所以查完不能直接用，得先问一句：<b>这条记忆跟我现在在说的事对得上吗？</b></p>
+  <p class="lede">碰撞不是唯一的麻烦。表里的向量是<b>静态的、跟上下文无关的</b>，就算没撞，一词多义也会给你错的那个意思。所以查完不能直接用，得先问一句：<b>这条记忆跟我现在在说的事对得上吗？</b></p>
 
   <div class="card">
     <p class="note" style="margin-top:0">问法就是 attention 那一套：<b>当前的 hidden state 当 Query</b>（它已经过了前面的 attention，带着全局上下文），<b>查出来的记忆当 Key 和 Value</b>。点积算出一个 0~1 之间的标量闸门 α，乘上去。</p>
@@ -407,21 +407,21 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
         <div class="alpha" id="gRead" style="color:var(--vio)">—</div>
       </div>
     </div>
-    <p class="note" style="margin-top:18px">这道闸门把第 5 节剩下的问题接住了：<b>撞出来的那一片跟上下文对不上，α 自动把它压掉。</b>所以这两节其实是一件事的两半 —— 多头负责让脏的只占一小片，闸门负责把那一小片按下去。</p>
-    <p class="small">闸门之后还有一道很短的因果卷积（kernel = 4）补一点非线性。消融里去掉它只掉一点点，是整个模块里最不关键的部件 —— 而闸门本身拿掉就掉得很惨。</p>
+    <p class="note" style="margin-top:18px">这道闸门也能减轻碰撞带来的问题。<b>多头把碰撞的影响分散到部分向量；上下文闸门再根据当前 hidden state，决定组合后的记忆该保留多少。</b></p>
+    <p class="small">闸门之后还有一道很短的因果卷积（kernel = 4）补一点非线性。消融里去掉它只掉一点点，是整个模块里最不关键的部件；而闸门本身拿掉就掉得很惨。</p>
   </div>
 
   <div class="card">
     <div class="lbl">闸门在什么地方会亮</div>
     <div id="heatBox"></div>
-    <p class="note">规律很干净：<b>多 token 的专有名词，和固定套话。</b>而且因为钥匙是<b>后缀</b> n-gram，闸门亮在某个 token 上，意思是「<b>到这个 token 为止的那个短语</b>被认出来了」——所以亮的位置总在短语结尾。</p>
+    <p class="note">亮的地方有两类：<b>多 token 的专有名词，和固定套话。</b>因为钥匙是<b>后缀</b> n-gram，闸门亮在某个 token 上，意思是「<b>到这个 token 为止的那个短语</b>被认出来了」，所以亮的位置总在短语结尾。</p>
     <p class="small">标出来的短语是论文明确点到的；每个 token 的具体强度是示意，不是复刻热力图数值。</p>
   </div>
 </section>
 
 <section class="reveal">
   <div class="head"><span class="num">07</span><h2>装在哪：残差里多一项，而且只装少数层</h2></div>
-  <p class="lede">接法保守到有点无聊 —— <code>H ← H + Engram(输入)</code>，然后照常走 Attention 和 MLP/MoE。真正有讲究的是<b>装在第几层</b>，这里有个漂亮的两难。</p>
+  <p class="lede">接法很保守：<code>H ← H + Engram(输入)</code>，然后照常走 Attention 和 MLP/MoE。有讲究的是<b>装在第几层</b>，这里有个两难。</p>
 
   <div class="card">
     <svg viewBox="0 0 900 240" role="img" aria-label="Engram 以残差相加的方式插在部分层的入口，后面照常是 Attention 和 MoE" style="width:100%; height:auto">
@@ -461,9 +461,9 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
     <div class="two" style="margin-top:22px">
       <div>
         <div class="lbl">两难</div>
-        <p class="note" style="margin-top:8px"><b>要插得早</b> —— 才能在骨干花掉深度之前就把局部模式卸掉，不然第 2 节那 6 层还是白烧了。</p>
-        <p class="note"><b>又要插得晚</b> —— 闸门那个 Query 用的是当前 hidden state，插在第 1 层它还没积累起全局上下文，判不准该不该采信。</p>
-        <p class="note">实测的甜点是<b>第 2 层</b>：刚过一轮 attention，两头都刚好够用。而<b>拆成两个各放一半，比挤在一层更好</b>。</p>
+        <p class="note" style="margin-top:8px"><b>要插得早</b>，才能在骨干花掉太多深度之前提供局部模式，减少第 2 节那类逐层重建。</p>
+        <p class="note"><b>又要插得晚</b>，闸门那个 Query 用的是当前 hidden state，插在第 1 层它还没积累起全局上下文，判不准该不该采信。</p>
+        <p class="note">实测的甜区是<b>第 2 层</b>：刚过一轮 attention，两头都刚好够用。<b>拆成两个各放一半，比挤在一层更好</b>。</p>
       </div>
       <div>
         <div class="lbl">12 层小模型上扫一遍（验证 loss，低=好）</div>
@@ -486,27 +486,27 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
 
 <section class="reveal">
   <div class="head"><span class="num">08</span><h2>它到底存了什么</h2></div>
-  <p class="lede">最直接的探针：训练照旧，<b>推理时把这张表的输出整个掐掉</b>，骨干一个字不改，看还剩多少分。结果是一条很干净的分界线。</p>
+  <p class="lede">最直接的探针：训练照旧，<b>推理时把这张表的输出整个掐掉</b>，骨干一个字不改，看还剩多少分。</p>
 
   <div class="card">
     <div class="lbl">掐掉之后保留的成绩（占原成绩的百分比）</div>
     <div id="ablBox" style="margin-top:18px"></div>
-    <p class="note" style="margin-top:18px"><b>事实型知识塌了</b>（TriviaQA 只剩 29%），<b>阅读理解几乎没事</b>（C3 还有 93%）。读懂一段给定的文本靠骨干的 attention；而「这个人是谁」这类不看上下文就得知道的东西，主要就落在这张表里。</p>
-    <p class="small">论文自己标了口径：这种事后抑制会造成训练-推理不一致，混合能力的任务上噪声大，所以只当压力测试看，重点是两个极端。</p>
+    <p class="note" style="margin-top:18px"><b>事实型知识塌了</b>（TriviaQA 只剩 29%），<b>阅读理解几乎没事</b>（C3 还有 93%）。读懂一段给定的文本靠骨干的 attention；「这个人是谁」这类不看上下文就得知道的东西，主要落在这张表里。</p>
+    <p class="small">论文自己说明了：这种事后抑制会造成训练-推理不一致，混合能力的任务上噪声大，所以只当压力测试看，重点是两个极端。</p>
   </div>
 
   <div class="card dk">
     <div class="big">但「它存着知识」这句话，有三处会带偏。</div>
-    <div class="take" style="margin-top:8px"><span class="n">01</span><p><b>存的单位不是「一条事实」，是「一个短语 → 一段向量」。</b>钥匙是<b>表面形式</b>，不是语义。所以它不是「知道 Diana 是谁」，而是「看到 <code>princess of wales</code> 这几个词连着，先给你一段向量」。这段向量能不能变成答案，还得靠后面的骨干。</p></div>
-    <div class="take"><span class="n">02</span><p><b>一个格子不对应一条知识。</b>会撞，而且一次要取 16 段拼起来。所以单个格子是个叠加态 —— 你没法从里面「读出」一条事实。这跟数据库、知识库是两码事：不能查、不能列、不能一条条核。</p></div>
+    <div class="take" style="margin-top:8px"><span class="n">01</span><p><b>存的单位是「一个短语 → 一段向量」，不是一条事实。</b>钥匙是<b>表面形式</b>，不是语义。它不知道 Diana 是谁，只是看到 <code>princess of wales</code> 这几个词连着，先给出一段向量。这段向量能不能变成答案，还得靠后面的骨干。</p></div>
+    <div class="take"><span class="n">02</span><p><b>一个格子不对应一条知识。</b>会撞，而且一次要取 16 段拼起来，单个格子是个叠加态，没法从里面「读出」一条事实。所以它跟数据库、知识库是两码事：不能查、不能列、不能一条条核。</p></div>
     <div class="take"><span class="n">03</span><p><b>它不是唯一的知识存放处。</b>掐掉之后 TriviaQA 还剩 29%，说明骨干里还有一份。FFN 作为 key-value 记忆的那套机制并没被替换掉。</p></div>
-    <p class="small" style="margin-top:16px">更准的说法：<b>它存的是「短语的先验」，而这些先验恰好是大量事实知识的入口</b> —— 因为事实的抓手往往就是专有名词和固定搭配，而那正好是 n-gram 能锁定的东西。</p>
+    <p class="small" style="margin-top:16px">更准的说法：<b>它存的是「短语的先验」，而这些先验恰好是大量事实知识的入口</b>。事实往往挂在专有名词和固定搭配上，正好是 n-gram 能锁定的东西。</p>
   </div>
 </section>
 
 <section class="reveal">
   <div class="head"><span class="num">09</span><h2>意外的那一份：模型等于变深了</h2></div>
-  <p class="lede">如果这张表的作用只是「存知识」，那涨分应该集中在知识题上。实际不是 —— <b>推理题涨得更多</b>。这是整件事里最反直觉的一块，也是它真正的价值所在。</p>
+  <p class="lede">如果这张表的作用只是「存知识」，涨分应该集中在知识题上。实际不是：<b>推理题涨得更多</b>。</p>
 
   <div class="card">
     <div class="lbl">同参数、同 FLOPs、同数据，只是把 17 个专家换成了这张表</div>
@@ -526,16 +526,16 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
   </div>
 
   <div class="card dk">
-    <div class="big">解释就在第 2 节那 6 层。</div>
-    <p style="margin-top:14px">那 6 层被省下来了，<b>而省下来的深度不会消失 —— 它被拿去做后面的事了。</b>两个证据：</p>
-    <div class="take" style="margin-top:10px"><span class="n">①</span><p>把每一层的中间状态直接接到输出头上看它离「能预测了」有多近 —— 装了表的模型<b>所有层都更近，而且最前面几层差距最大</b>。它更早就把特征拼完了。</p></div>
-    <div class="take"><span class="n">②</span><p>逐层比两个模型的表示相似度：<b>装了表的第 5 层，最像没装的第 12 层。</b>这就是「有效深度变深」的字面意思。</p></div>
-    <p style="margin-top:14px">所以这张表的收益是<b>两份</b>：一份是它自己存的东西（第 8 节），一份是它<b>把深度还给了模型</b>。后面那一份才是推理题涨得更多的原因。</p>
+    <div class="big">解释可以从第 2 节的逐层变化里找。</div>
+    <p style="margin-top:14px">Engram 提前提供局部模式后，<b>骨干可以更早处理后面的任务。</b>论文给了两个证据：</p>
+    <div class="take" style="margin-top:10px"><span class="n">①</span><p>把每一层的中间状态直接接到输出头上，看它离「能预测了」有多近：装了表的模型<b>所有层都更近，而且最前面几层差距最大</b>。它更早就把特征拼完了。</p></div>
+    <div class="take"><span class="n">②</span><p>逐层比两个模型的表示相似度：<b>装了表的第 5 层，最像没装的第 12 层。</b></p></div>
+    <p style="margin-top:14px">所以这张表的收益有<b>两部分</b>：一部分来自它存下的局部模式（第 8 节），另一部分来自骨干更早完成这些模式的识别。论文用后者解释推理题为什么涨得更多。</p>
   </div>
 
   <div class="card">
     <div class="lbl">同一个逻辑还有个连带的好处</div>
-    <p class="note" style="margin-top:8px">局部依赖交给查表之后，<b>attention 就不用再管「the Milky Way 是个整体」这种近距离的事，可以专心盯远处</b>。所以长上下文涨得非常猛：</p>
+    <p class="note" style="margin-top:8px">局部依赖交给查表之后，<b>attention 不用再管「the Milky Way 是个整体」这种近距离的事，可以专心盯远处</b>。长上下文因此涨得很多：</p>
     <table>
       <thead><tr><th>32k 长文检索</th><th style="text-align:right">不装</th><th style="text-align:right">装了</th></tr></thead>
       <tbody>
@@ -549,10 +549,10 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
 
 <section class="reveal">
   <div class="head"><span class="num">10</span><h2>记忆和计算是两个旋钮，谁也替不了谁</h2></div>
-  <p class="lede">既然这张表这么好，全都给它行不行？这是个很自然的问题，答案是<b>不行</b>，而且不行的方式很有意思 —— 两头都会变差，中间有个甜区。</p>
+  <p class="lede">既然这张表这么好，全都给它行不行？<b>不行</b>，而且两头都会变差，中间有个甜区。</p>
 
   <div class="card">
-    <p class="note" style="margin-top:0">实验设计得很干净：<b>总参数量和每 token 激活的参数量全部锁死</b>，只调一件事 —— 那些「不激活的参数」里，多少给 MoE 专家（＝算的能力），多少给这张表（＝背的能力）。横轴就是给 MoE 的比例。</p>
+    <p class="note" style="margin-top:0">实验设计：<b>总参数量和每 token 激活的参数量全部锁死</b>，只调一件事，那些「不激活的参数」里多少给 MoE 专家（算的能力），多少给这张表（背的能力）。横轴就是给 MoE 的比例。</p>
 
     <svg viewBox="0 0 880 320" id="uSvg" role="img" aria-label="验证集 loss 随给 MoE 的比例变化，呈 U 形，最低点在 80% 附近" style="width:100%; height:auto; margin-top:18px">
       <line x1="80" y1="262" x2="840" y2="262" stroke="#DCD4C6" stroke-width="2"/>
@@ -577,7 +577,7 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
   <div class="two">
     <div class="card">
       <div class="lbl" style="color:var(--comp)">右端 · 全给计算</div>
-      <p class="note">没有专门的地方放静态模式，只能像第 2 节那样用深度重建。<b>注意这一端就是今天的常规做法</b> —— 它在这条曲线上是次优的。</p>
+      <p class="note">没有专门的地方放静态模式，只能像第 2 节那样用深度重建。<b>这一端就是今天的常规做法</b>，它在这条曲线上是次优的。</p>
     </div>
     <div class="card">
       <div class="lbl" style="color:var(--comp)">左端 · 全给记忆</div>
@@ -587,19 +587,19 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
 
   <div class="card dk">
     <div class="lbl">但如果不锁死总量</div>
-    <p style="margin-top:10px">上面那条 U 形是<b>抢同一份预算</b>的结果。如果不抢 —— 骨干不动，只把表越加越大 —— loss 在 log 尺度上是<b>一条直线</b>，也就是幂律。意思是这变成了一个<b>可预测的旋钮</b>：表继续变大就继续降 loss，<b>而且不需要多一点计算</b>。这也是「查」和「算」的根本区别 —— 算力要为每个参数付钱，查表不用。</p>
+    <p style="margin-top:10px">上面那条 U 形是<b>抢同一份预算</b>的结果。如果不抢，骨干不动，只把表越加越大，loss 在 log 尺度上是<b>一条直线</b>，也就是幂律。这是一个<b>可预测的旋钮</b>：表继续变大就继续降 loss，而每个 token 的查找次数不变。</p>
   </div>
 </section>
 
 <section class="reveal">
   <div class="head"><span class="num">11</span><h2>地址是算得出来的，所以这张表可以不住在显存里</h2></div>
-  <p class="lede">回到第 4 节埋的那句话：<b>地址只跟 token ID 有关。</b>这听起来像个实现细节，其实是这个方案最实际的一个好处 —— 它让「参数必须住在显存里」这条铁律出现了一个口子。</p>
+  <p class="lede">第 4 节说过：<b>地址只跟 token ID 有关。</b>这是这个方案最实际的一个好处，它让「参数必须住在显存里」这条铁律出现了一个口子。</p>
 
   <div class="vs">
     <div class="vsbox c">
       <h4>MoE 取哪个专家</h4>
       <div class="t">跑到了才知道</div>
-      <p>得先算出这一层的 hidden state，路由器现场决定。<b>没法提前准备</b> —— 所以参数基本得住在显存里等着。</p>
+      <p>得先算出这一层的 hidden state，路由器现场决定。<b>没法提前准备</b>，所以参数基本得住在显存里等着。</p>
     </div>
     <div class="mid">≠</div>
     <div class="vsbox l">
@@ -617,8 +617,8 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
         <tr class="hl"><td>8B 骨干</td><td class="r">6,315 → 6,140 tok/s</td><td class="r dn">−2.8%</td></tr>
       </tbody>
     </table>
-    <p class="note">这个数字能站住，靠的是一句话：<b>每一步真正要搬的数据量，只跟「取了几行」有关，跟表总共有多大无关。</b>表从 5B 涨到 100B，每个 token 还是只取 16 行。</p>
-    <p class="small">而且这是个保守下限 —— 这个实验强制所有取数都走 PCIe。真实做法会利用短语的 <b>Zipf 分布</b>（少数短语占掉绝大多数访问）做多级缓存：热的放显存，长尾扔 SSD。</p>
+    <p class="note">这个数字能站住，靠的是一点：<b>每一步真正要搬的数据量，只跟「取了几行」有关，跟表总共有多大无关。</b>表从 5B 涨到 100B，每个 token 还是只取 16 行。</p>
+    <p class="small">这还是个保守下限：这个实验强制所有取数都走 PCIe。真实做法会利用短语的 <b>Zipf 分布</b>（少数短语占掉绝大多数访问）做多级缓存，热的放显存，长尾扔 SSD。</p>
   </div>
 </section>
 
@@ -627,8 +627,8 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
   <div class="card">
     <div class="take"><span class="n">01</span><p><b>不是 RAG。</b>没有文档、没有向量检索、没有外部知识库。表里存的是<b>训练出来的参数</b>，跟权重一起学、一起存，钥匙是 token n-gram 不是语义相似度。</p></div>
     <div class="take"><span class="n">02</span><p><b>不是 MoE 的替代品。</b>第 10 节那条 U 形就是答案：最优配比是<b>大部分预算仍然给专家</b>，只拿 20%~25% 给这张表。</p></div>
-    <div class="take"><span class="n">03</span><p><b>不等于「更快」。</b>第 9 节那张表是<b>同 FLOPs 下更准</b>，不是同准确率下更快。省下来的算力被换成了有效深度，不是换成了速度。</p></div>
-    <div class="take"><span class="n">04</span><p><b>不是新想法。</b>N-gram 查表能追到 Shannon，把 n-gram embedding 接进网络也有一串前作。新的是两点：一是在<b>严格同参数、同 FLOPs</b> 的口径下证明它真的有用；二是不把表塞在第 0 层，而是<b>插进中间层</b> —— 这才换来第 11 节那件好事。</p></div>
+    <div class="take"><span class="n">03</span><p><b>不等于「更快」。</b>第 9 节那张表是<b>同 FLOPs 下更准</b>，不是同准确率下更快。省下来的算力换成了有效深度，不是速度。</p></div>
+    <div class="take"><span class="n">04</span><p><b>不是新想法。</b>N-gram 查表能追到 Shannon，把 n-gram embedding 接进网络也有一串前作。新的是两点：一是在<b>严格同参数、同 FLOPs</b> 的条件下证明它真的有用；二是不把表塞在第 0 层，而是<b>插进中间层</b>，这才有第 11 节那件好事。</p></div>
     <div class="take"><span class="n">05</span><p><b>名字是借的。</b>engram 在神经科学里指承载一段记忆的那组神经元及其连接变化。这里借来指「模型里专门存静态模式的那块地方」，是取个名，不是在主张两者机制相同。</p></div>
   </div>
 </section>
@@ -636,14 +636,14 @@ code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px
 <section class="reveal">
   <div class="head"><span class="num">13</span><h2>一页装下</h2></div>
   <div class="card dk">
-    <div class="take"><span class="n">01</span><p>模型里唯一的「查表」动作是 <b>input embedding</b>，而它的钥匙只有一个 token。该背下来的东西大多是<b>好几个 token 连在一起</b>的 —— 那一行模型拿不到。</p></div>
-    <div class="take"><span class="n">02</span><p>拿不到就只能<b>用计算把它拼出来</b>：认一个 <code>Diana, Princess of Wales</code> 烧掉前 6 层，全是拼装，没有推理。</p></div>
-    <div class="take"><span class="n">03</span><p>Engram 一句话：<b>把 input embedding 的钥匙从一个 token 扩成一个短语，位置从第 0 层挪到中间层。</b></p></div>
-    <div class="take"><span class="n">04</span><p>短语的组合数比格子数多 8 个数量级 → 只能<b>哈希</b>，只能<b>接受碰撞</b>。多开几个头让一次碰撞只脏 1/16，再用一道<b>上下文闸门</b>把脏的按下去。</p></div>
-    <div class="take"><span class="n">05</span><p>装法是<b>残差加一项，只装少数层</b>。插太深省不下深度，插第 1 层闸门判不准，甜点在第 2 层附近。</p></div>
-    <div class="take"><span class="n">06</span><p>它存的是<b>短语的先验，不是事实条目</b>。但这些先验恰好是事实知识的入口 —— 掐掉它，事实题只剩 29%~44%，阅读理解还有 81%~93%。</p></div>
-    <div class="take"><span class="n">07</span><p>收益有<b>两份</b>：存的那份，加上<b>把深度还给模型</b>那份。后者更大 —— 所以推理题（BBH +5.0）比知识题（MMLU +3.0）涨得更多，长上下文也跟着涨。</p></div>
-    <div class="take"><span class="n">08</span><p>抢同一份预算时，<b>记忆和计算的最优配比是 20%~25% 给记忆</b>，两头都会掉。<b>纯计算是次优的。</b>但不抢预算的时候，表越大越好，且不多花算力。</p></div>
+    <div class="take"><span class="n">01</span><p>模型里的「查表」动作基本只有 <b>input embedding</b> 这一处，而它的钥匙只有一个 token。该背下来的东西大多是<b>好几个 token 连在一起</b>的，那一行模型拿不到。</p></div>
+    <div class="take"><span class="n">02</span><p>拿不到就只能<b>用计算逐步拼出来</b>：在 <code>Diana, Princess of Wales</code> 这个例子里，表示到第 6 层才明确指向这个名字。</p></div>
+    <div class="take"><span class="n">03</span><p>Engram 做的事：<b>把 input embedding 的钥匙从一个 token 扩成一个短语，位置从第 0 层挪到中间层。</b></p></div>
+    <div class="take"><span class="n">04</span><p>短语的组合数比格子数多 8 个数量级 → 只能<b>哈希</b>，也必须<b>接受碰撞</b>。多头把碰撞的影响分散到部分向量，再由<b>上下文闸门</b>决定组合后的记忆该保留多少。</p></div>
+    <div class="take"><span class="n">05</span><p>装法是<b>残差加一项，只装少数层</b>。插太深省不下深度，插第 1 层闸门判不准，甜区在第 2 层附近。</p></div>
+    <div class="take"><span class="n">06</span><p>它存的是<b>短语的先验，不是事实条目</b>。但这些先验恰好是事实知识的入口：掐掉它，事实题只剩 29%~44%，阅读理解还有 81%~93%。</p></div>
+    <div class="take"><span class="n">07</span><p>收益有<b>两份</b>：存的那份，加上<b>把深度还给模型</b>那份。后者更大，所以推理题（BBH +5.0）比知识题（MMLU +3.0）涨得更多，长上下文也跟着涨。</p></div>
+    <div class="take"><span class="n">08</span><p>抢同一份预算时，<b>记忆和计算的最优配比是 20%~25% 给记忆</b>，两头都会掉。<b>纯计算是次优的。</b>不抢预算的时候，表越大越好，且不多花算力。</p></div>
     <div class="take"><span class="n">09</span><p>地址<b>确定</b> → 能提前预取 → <b>100B 的表可以整个住在主机内存里，吞吐只掉 2%~3%</b>。搬多少只看取了几行，不看表多大。</p></div>
   </div>
 </section>
@@ -741,8 +741,8 @@ function drawPollute(){
   document.getElementById('kRead').textContent = K;
   document.getElementById('polluteRead').textContent = '1/' + total;
   document.getElementById('polluteText').innerHTML = K === 1
-    ? `只开 1 个头（2-gram + 3-gram 共 ${total} 段），一次碰撞就毁掉<b>一半</b>向量。`
-    : `${K} 个头 × 2 种 n-gram = ${total} 段拼在一起。某一段撞了，另外 <b>${total-1}</b> 段还是对的 —— 脏掉的只有 <b>1/${total}</b>。27B 用的就是 8 个头。`;
+    ? `只开 1 个头（2-gram + 3-gram 共 ${total} 段）。如果其中一段发生碰撞，会影响<b>一半</b>向量。`
+    : `${K} 个头 × 2 种 n-gram = ${total} 段拼在一起。如果只有一段发生碰撞，另外 <b>${total-1}</b> 段不受这次碰撞影响，占整条向量的 <b>${total-1}/${total}</b>。实际也可能有多个头同时碰撞。27B 用的是 8 个头。`;
   const bars = document.getElementById('polluteBars');
   bars.innerHTML = '';
   for(let i=0;i<total;i++){
@@ -769,20 +769,20 @@ function drawGate(){
   });
   const cap = document.getElementById('gCap');
   if(a > 0.85)      cap.innerHTML = '<b>对得上。</b>这条记忆几乎原样加进残差流。';
-  else if(a > 0.5)  cap.innerHTML = '半信半疑 —— 按比例缩一下再加进去。';
+  else if(a > 0.5)  cap.innerHTML = '半信半疑，按比例缩一下再加进去。';
   else if(a > 0.15) cap.innerHTML = '不太对，压制大半。';
-  else              cap.innerHTML = '<b>顶牛。</b>闸门接近关死，这次查表等于没发生 —— 撞出来的脏东西和一词多义就是在这儿被挡掉的。';
+  else              cap.innerHTML = '<b>顶牛。</b>闸门接近关死，这次查表等于没发生。撞出来的脏东西和一词多义就是在这儿被挡掉的。';
 }
 gS.oninput = drawGate; drawGate();
 
 /* ================= 06b · 闸门热力图（定性复现） ================= */
 const HEAT = [
   {toks:["Only","Alexander","the","Great","could","tame","the","horse","Buce","phal","us","."],
-   hot:{2:.55, 3:.95, 8:.5, 9:.6, 10:.7}, cap:'专有名词 "Alexander the Great" —— 亮在短语<b>结尾</b>那个 token 上'},
+   hot:{2:.55, 3:.95, 8:.5, 9:.6, 10:.7}, cap:'专有名词 "Alexander the Great"，亮在短语<b>结尾</b>那个 token 上'},
   {toks:["By","the","way",",","I","am","a","fan","of","the","Milky","Way","."],
    hot:{1:.6, 2:.9, 10:.55, 11:.95}, cap:'套话 "By the way" ＋ 专有名词 "the Milky Way"'},
   {toks:["This","study","analyzes","the","media","impact","of","Diana",",","Princess","of","Wales","."],
-   hot:{9:.6, 10:.5, 11:.95}, cap:'就是第 2 节那个例子 —— 现在它是一次查表，不是 6 层计算'},
+   hot:{9:.6, 10:.5, 11:.95}, cap:'第 2 节那个例子。现在可以直接查到对应的短语向量，减少前层逐步重建它的压力'},
   {toks:["中国","四大","发明","包括",":","造纸","术",",","指南","针",",","火药","和","印刷","术","。"],
    hot:{1:.6, 2:.95, 6:.5, 9:.5, 14:.55}, cap:'中文样本上认出「四大发明」这类固定表述'},
 ];
@@ -833,11 +833,11 @@ function drawU(){
   uDot.setAttribute('cx', ux(r)); uDot.setAttribute('cy', uy(r));
   document.getElementById('uRead').textContent = r + '%';
   const v = document.getElementById('uVerdict');
-  if(r >= 96)      v.innerHTML = '<span style="color:var(--comp)">几乎没有记忆。</span>静态模式只能靠深度重建 —— <b>这一端就是今天的常规做法，而它是次优的。</b>';
-  else if(r >= 84) v.innerHTML = '还偏计算 —— 再往记忆挪一点还能降 loss。';
+  if(r >= 96)      v.innerHTML = '<span style="color:var(--comp)">几乎没有记忆。</span>静态模式只能靠深度重建。<b>这一端就是今天的常规做法，而它是次优的。</b>';
+  else if(r >= 84) v.innerHTML = '还偏计算，再往记忆挪一点还能降 loss。';
   else if(r >= 72) v.innerHTML = '<span style="color:var(--look)">甜区。</span>两个算力档位上最优点都落在这儿：<b>只拿 20%~25% 的预算给记忆。</b>';
-  else if(r >= 56) v.innerHTML = '记忆给多了，但还没掉太多 —— 专家砍掉一大半时仍能打平常规做法。';
-  else             v.innerHTML = '<span style="color:var(--comp)">算的能力被抽干了。</span>需要现场推理的任务开始明显掉分 —— <b>记忆替代不了计算。</b>';
+  else if(r >= 56) v.innerHTML = '记忆给多了，但还没掉太多：专家砍掉一大半时仍能打平常规做法。';
+  else             v.innerHTML = '<span style="color:var(--comp)">算的能力被抽干了。</span>需要现场推理的任务开始明显掉分。<b>记忆替代不了计算。</b>';
 }
 uS.oninput = drawU; drawU();
 
