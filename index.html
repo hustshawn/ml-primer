@@ -156,6 +156,13 @@ h3 em{font-style:normal; color:var(--acc)}
       <p class="d">encoder-only / encoder-decoder / decoder-only 的全部差别，<b>只是一张 attention mask</b> —— 允不允许往后看。往后看一眼就能作弊，所以必须涂掉答案，所以一遍前向只出得了 15% 的题，所以缓存也存不住。<b>下三角形一刀切掉「未来」，这一串问题全部消失。</b>附一节诚实的反例：换成多任务微调，赢的就不是它了。</p>
       <div class="meta"></div>
     </a>
+
+    <a class="card" href="engram.html" data-sections="14">
+      <div class="chips"><span class="chip">条件记忆 / Engram</span><span class="chip live">可交互 · 哈希 / 闸门 / 配比滑块</span></div>
+      <h3>有些事该<em>查</em>，<br>不该<em>算</em></h3>
+      <p class="d">Engram 给模型增加了一种短语查表机制：用 2～3 个 token 组成钥匙，在中间层取出对应的记忆向量。页面会解释它为什么需要哈希、多头和上下文闸门，以及实验中它怎样影响知识、推理和显存占用。</p>
+      <div class="meta"></div>
+    </a>
   </div>
 </section>
 

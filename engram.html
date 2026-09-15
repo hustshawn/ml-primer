@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>条件记忆 / Engram · 有些事该查，不该算</title>
+<style>
+:root{
+  --bg:#F7F4ED; --ink:#141210; --muted:#6B6156; --line:#DCD4C6;
+  --card:#FFFFFF; --dark:#181511;
+  --look:#0E7C6B;   /* 查表 */
+  --comp:#D0452B;   /* 现算 */
+  --brass:#DF9F0C;
+  --vio:#6A4FA3;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.62; -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.wrap{max-width:1000px; margin:0 auto; padding:0 24px}
+
+/* ---------- hero ---------- */
+header{
+  background:var(--dark); color:#F7F4ED; padding:78px 0 68px;
+  background-image:
+    repeating-linear-gradient(90deg, #ffffff08 0 1px, transparent 1px 46px),
+    repeating-linear-gradient(0deg, #ffffff08 0 1px, transparent 1px 46px);
+}
+.kick{display:inline-flex; gap:10px; align-items:center; font-size:12.5px; letter-spacing:.16em;
+  font-weight:800; border:2px solid #ffffff33; border-radius:100px; padding:6px 14px; color:#E7DFCF}
+.kick b{color:var(--brass)}
+h1{font-size:clamp(38px,7vw,78px); line-height:1.03; font-weight:900; letter-spacing:-.035em; margin:26px 0 0}
+h1 em{font-style:normal}
+h1 .c{color:var(--comp)} h1 .l{color:var(--look)}
+.sub{font-size:clamp(16.5px,2.3vw,21px); color:#C9C0B0; margin-top:24px; max-width:730px; font-weight:500}
+.sub b{color:#fff}
+
+/* ---------- act divider ---------- */
+.act{margin-top:96px; display:flex; gap:16px; align-items:center}
+.act .no{flex:0 0 auto; font-family:ui-monospace,Menlo,monospace; font-weight:900; font-size:13px;
+  letter-spacing:.2em; color:var(--brass); background:var(--ink); padding:7px 14px; border-radius:100px}
+.act .tt{font-size:clamp(18px,2.5vw,23px); font-weight:900; letter-spacing:-.02em}
+.act .rule{flex:1 1 auto; height:2px; background:var(--line)}
+
+/* ---------- section ---------- */
+section{padding:62px 0 0}
+.head{display:flex; gap:16px; align-items:flex-start}
+.num{flex:0 0 auto; width:42px; height:42px; border-radius:11px; background:var(--ink); color:var(--brass);
+  display:grid; place-items:center; font-weight:900; font-size:17px; font-family:ui-monospace,Menlo,monospace}
+h2{font-size:clamp(25px,3.9vw,38px); font-weight:900; letter-spacing:-.025em; line-height:1.14}
+.lede{color:#3A342D; font-size:17.5px; margin-top:18px; max-width:830px}
+.lede b{background:linear-gradient(transparent 62%, #F2D98A 62%)}
+p.small{font-size:14px; color:var(--muted); margin-top:12px}
+p.note{font-size:15.5px; color:#3A342D; margin-top:14px}
+
+.card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px;
+  margin-top:26px; box-shadow:0 1px 0 #00000008, 0 10px 30px -22px #00000030}
+.card.dk{background:var(--dark); color:#EDE6D9; border-color:#2A251E}
+.card.dk .lbl{color:#8E8474}
+.card.dk b{color:#fff}
+.card.dk .small{color:#8E8474}
+.lbl{font-size:11.5px; letter-spacing:.16em; font-weight:800; color:var(--muted); text-transform:uppercase}
+.big{font-size:clamp(19px,2.7vw,27px); font-weight:900; letter-spacing:-.02em; line-height:1.3}
+
+.two{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:26px}
+@media(max-width:760px){.two{grid-template-columns:1fr}}
+
+/* pill compare */
+.vs{display:grid; grid-template-columns:1fr auto 1fr; gap:14px; align-items:stretch; margin-top:26px}
+@media(max-width:700px){.vs{grid-template-columns:1fr}.vs .mid{display:none}}
+.vsbox{border:2px solid var(--ink); border-radius:16px; padding:20px}
+.vsbox.c{border-color:var(--comp); background:#FDF1EE}
+.vsbox.l{border-color:var(--look); background:#EDF7F4}
+.vsbox h4{font-size:13px; letter-spacing:.14em; font-weight:800; text-transform:uppercase}
+.vsbox.c h4{color:var(--comp)} .vsbox.l h4{color:var(--look)}
+.vsbox .t{font-size:20px; font-weight:900; margin-top:8px; letter-spacing:-.02em}
+.vsbox p{font-size:15px; margin-top:10px; color:#3A342D}
+.mid{display:grid; place-items:center; font-weight:900; color:var(--muted); font-size:15px}
+
+/* table */
+table{width:100%; border-collapse:collapse; margin-top:20px; font-size:15px}
+th,td{text-align:left; padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+th{font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:800}
+td.r{text-align:right; font-family:ui-monospace,Menlo,monospace}
+tr.hl td{background:#FBF4E2}
+.up{color:var(--look); font-weight:800; font-family:ui-monospace,Menlo,monospace}
+.dn{color:var(--comp); font-weight:800; font-family:ui-monospace,Menlo,monospace}
+
+/* controls */
+.ctl{display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-top:18px}
+input[type=range]{-webkit-appearance:none; appearance:none; height:6px; border-radius:100px;
+  background:var(--line); outline:none; flex:1 1 200px; min-width:160px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:22px; height:22px; border-radius:50%;
+  background:var(--brass); border:3px solid var(--ink); cursor:pointer}
+.read{font-family:ui-monospace,Menlo,monospace; font-weight:800; font-size:15px}
+
+/* token strip */
+.toks{display:flex; flex-wrap:wrap; gap:6px; margin-top:18px}
+.tk{font-family:ui-monospace,Menlo,monospace; font-size:14px; padding:6px 9px; border-radius:8px;
+  border:1.5px solid var(--line); background:#fff; cursor:pointer; user-select:none; transition:.14s}
+.tk:hover{border-color:var(--ink)}
+.tk.sel{background:var(--ink); color:var(--brass); border-color:var(--ink)}
+.tk.g3{background:#E4EFF9; border-color:#9FC4E4}
+.tk.g2{background:#CFE4F6; border-color:#5E9BD1}
+.tk.sel.g2,.tk.sel.g3{background:var(--ink); color:var(--brass)}
+
+/* slots */
+.slots{display:grid; grid-template-columns:repeat(8,1fr); gap:8px; margin-top:16px}
+@media(max-width:700px){.slots{grid-template-columns:repeat(4,1fr)}}
+.slot{border:1.5px solid var(--line); border-radius:10px; padding:8px 4px; text-align:center; background:#fff}
+.slot .h{font-size:10px; letter-spacing:.08em; color:var(--muted); font-weight:800}
+.slot .v{font-family:ui-monospace,Menlo,monospace; font-size:13px; font-weight:800; margin-top:2px}
+.slot.n2{background:#EDF7F4; border-color:#9CCFC3}
+.slot.n3{background:#F4F0FA; border-color:#BDA9DD}
+
+/* layer stepper */
+.layers{display:flex; gap:6px; margin-top:18px; flex-wrap:wrap}
+.lyr{border:2px solid var(--line); border-radius:10px; padding:8px 13px; cursor:pointer; font:inherit;
+  font-family:ui-monospace,Menlo,monospace; font-weight:800; font-size:14px; background:#fff; color:var(--ink)}
+.lyr.on{background:var(--comp); color:#fff; border-color:var(--comp)}
+.pane{margin-top:16px; border-left:4px solid var(--comp); padding:6px 0 6px 18px; min-height:96px}
+.pane .q{font-size:13px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:800}
+.pane .a{font-size:17px; margin-top:8px; font-family:ui-monospace,Menlo,monospace; color:#3A342D}
+.pane .e{font-size:20px; font-weight:900; margin-top:12px; letter-spacing:-.02em}
+
+/* gate */
+.gatewrap{display:grid; grid-template-columns:1fr 240px; gap:24px; align-items:center; margin-top:20px}
+@media(max-width:760px){.gatewrap{grid-template-columns:1fr}}
+.bars{display:flex; gap:4px; align-items:flex-end; height:120px}
+.bars i{flex:1; background:var(--vio); border-radius:3px 3px 0 0; display:block; transition:height .18s}
+.alpha{font-size:clamp(38px,6vw,62px); font-weight:900; letter-spacing:-.04em; line-height:1;
+  font-family:ui-monospace,Menlo,monospace}
+
+/* heat sentences */
+.sent{margin-top:16px; padding:14px; border:1px solid var(--line); border-radius:12px; background:#fff}
+.sent .w{display:inline-block; font-family:ui-monospace,Menlo,monospace; font-size:14.5px;
+  padding:3px 5px; border-radius:5px; margin:2px 1px}
+.sent .cap{font-size:12.5px; color:var(--muted); margin-top:10px}
+
+/* takeaways */
+.take{display:flex; gap:16px; padding:18px 0; border-bottom:1px dashed var(--line)}
+.take:last-child{border-bottom:none}
+.card.dk .take{border-bottom-color:#2A251E}
+.take .n{flex:0 0 auto; width:34px; height:34px; border-radius:9px; background:var(--brass);
+  color:var(--ink); display:grid; place-items:center; font-weight:900; font-size:14px;
+  font-family:ui-monospace,Menlo,monospace}
+.take p{font-size:16px}
+
+footer{margin-top:100px; background:var(--dark); color:#9A9080; padding:44px 0 60px; font-size:14px}
+footer b{color:#EDE6D9}
+.reveal{opacity:0; transform:translateY(20px); transition:opacity .5s ease, transform .5s ease}
+.reveal.in{opacity:1; transform:none}
+code{font-family:ui-monospace,Menlo,monospace; background:#00000010; padding:1px 5px; border-radius:5px; font-size:.92em}
+.card.dk code{background:#ffffff18}
+.eq{font-family:ui-monospace,Menlo,monospace; font-size:15px; background:#00000008;
+  border-radius:10px; padding:14px 16px; margin-top:14px; overflow-x:auto}
+.card.dk .eq{background:#ffffff10}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="kick">条件记忆 · <b>CONDITIONAL MEMORY</b></span>
+    <h1>有些事该<em class="l">查</em>，<br>不该<em class="c">算</em></h1>
+    <p class="sub">神经网络里几乎每个动作都是「算」：乘一遍矩阵、加权平均一遍。<b>「按地址取一行」这个动作，现在的主流模型基本只在最开头用一次。</b>这一页讲的就是把它补回来：什么内容值得存起来查，什么内容必须现场算。</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ===================== 开场 ===================== -->
+<section class="reveal">
+  <div class="vs">
+    <div class="vsbox c">
+      <h4>现算</h4>
+      <div class="t">给我时间，我能推出来</div>
+      <p>把「3 × 7」用竖式一步步算出来。慢，但<b>任何数都行</b>，不用事先准备。</p>
+    </div>
+    <div class="mid">vs</div>
+    <div class="vsbox l">
+      <h4>查表</h4>
+      <div class="t">这个我背过</div>
+      <p>「三七二十一」：<b>不算，直接说</b>。快，但只对「事先背过的那些」有效。</p>
+    </div>
+  </div>
+  <p class="note">人两样都用，而且用得很自然：该背的背下来，该算的现场算。<b>Transformer 的中间层基本只有「现算」，没有按地址直接取出短语记忆的模块。</b>所以哪怕是「Alexander the Great 是个人名」这种纯粹该背的东西，它也只能用矩阵乘一层一层现场推出来。</p>
+  <p class="note">Engram 补的就是这个缺口：加一张巨大的表，把该背的那部分从算力里挪到内存里。这一页只有一条主线：这个「查」的动作怎么加进去，加进去之后模型哪里变了。</p>
+</section>
+
+<!-- ==================================================================
+     一 · 这个想法
+     ================================================================== -->
+<div class="act reveal"><span class="no">一</span><span class="tt">这个想法</span><span class="rule"></span></div>
+
+<section class="reveal">
+  <div class="head"><span class="num">01</span><h2>模型其实早就会查表，只不过只查一个字</h2></div>
+  <p class="lede"><b>input embedding 本来就是一次查表。</b>token ID 是下标，embedding 矩阵是表，<code>E[id]</code> 取出一行。没有矩阵乘；从算法上看，这是 O(1) 查找，表变大不会增加查找次数。</p>
+  <p class="note">问题在于这张表的<b>钥匙只有一个 token</b>。而语言里最该背下来的那些东西，人名、机构名、固定搭配、套话，几乎都是<b>好几个 token 连在一起</b>才成立的。<code>Alexander the Great</code> 是三个 token，模型手上没有「这三个连着」那一行。</p>
+
+  <div class="card">
+    <div class="lbl">同一个动作 · 三处不同</div>
+    <svg viewBox="0 0 900 300" role="img" aria-label="input embedding 的钥匙是单个 token、装在第 0 层；Engram 的钥匙是 2 到 3 个 token 的组合、哈希定址、装在中间层" style="width:100%; height:auto; margin-top:12px">
+      <!-- left: input embedding -->
+      <text x="30" y="26" font-size="13" font-weight="900" fill="#6B6156">INPUT EMBEDDING</text>
+      <rect x="30" y="40" width="120" height="30" rx="7" fill="#fff" stroke="#141210" stroke-width="2"/>
+      <text x="90" y="60" font-size="14" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">"Great"</text>
+      <path d="M90 74 L90 96" stroke="#141210" stroke-width="2.5" marker-end="url(#a2)"/>
+      <text x="100" y="90" font-size="11.5" font-weight="700" fill="#6B6156">id = 116855</text>
+      <g>
+        <rect x="30" y="104" width="120" height="150" rx="9" fill="#F3F0EA" stroke="#141210" stroke-width="2.5"/>
+        <line x1="30" y1="130" x2="150" y2="130" stroke="#DCD4C6"/>
+        <line x1="30" y1="156" x2="150" y2="156" stroke="#DCD4C6"/>
+        <rect x="32" y="158" width="116" height="24" fill="#DF9F0C" opacity=".55"/>
+        <line x1="30" y1="182" x2="150" y2="182" stroke="#DCD4C6"/>
+        <line x1="30" y1="208" x2="150" y2="208" stroke="#DCD4C6"/>
+        <text x="90" y="175" font-size="11.5" font-weight="800" text-anchor="middle">取这一行</text>
+        <text x="90" y="240" font-size="11" fill="#6B6156" text-anchor="middle">128k 行 · 一行一个 token</text>
+      </g>
+      <text x="30" y="278" font-size="12.5" font-weight="800" fill="#6B6156">装在第 0 层 · 全模型只有这一次</text>
+
+      <!-- arrow -->
+      <text x="240" y="160" font-size="30" font-weight="900" fill="#DCD4C6" text-anchor="middle">→</text>
+      <text x="240" y="188" font-size="12" font-weight="800" fill="#6B6156" text-anchor="middle">放大</text>
+
+      <!-- right: engram -->
+      <text x="340" y="26" font-size="13" font-weight="900" fill="#0E7C6B">ENGRAM</text>
+      <rect x="340" y="40" width="290" height="30" rx="7" fill="#fff" stroke="#0E7C6B" stroke-width="2"/>
+      <text x="485" y="60" font-size="14" font-family="ui-monospace,Menlo,monospace" text-anchor="middle" fill="#0E7C6B">("alexander","the","great")</text>
+      <path d="M485 74 L485 96" stroke="#0E7C6B" stroke-width="2.5" marker-end="url(#a2)"/>
+      <text x="497" y="90" font-size="11.5" font-weight="700" fill="#0E7C6B">哈希 → 下标</text>
+      <g>
+        <rect x="340" y="104" width="290" height="150" rx="9" fill="#EDF7F4" stroke="#0E7C6B" stroke-width="2.5"/>
+        <line x1="340" y1="130" x2="630" y2="130" stroke="#9CCFC3"/>
+        <line x1="340" y1="156" x2="630" y2="156" stroke="#9CCFC3"/>
+        <rect x="342" y="132" width="286" height="24" fill="#DF9F0C" opacity=".55"/>
+        <line x1="340" y1="182" x2="630" y2="182" stroke="#9CCFC3"/>
+        <rect x="342" y="184" width="286" height="24" fill="#DF9F0C" opacity=".35"/>
+        <line x1="340" y1="208" x2="630" y2="208" stroke="#9CCFC3"/>
+        <text x="485" y="240" font-size="11" fill="#0E7C6B" text-anchor="middle">上千万个槽位 · 一行一个短语</text>
+      </g>
+      <text x="340" y="278" font-size="12.5" font-weight="800" fill="#0E7C6B">装在中间层 · 而且只装少数几层</text>
+
+      <!-- three diffs -->
+      <line x1="690" y1="40" x2="690" y2="270" stroke="#DCD4C6" stroke-width="2"/>
+      <text x="712" y="70" font-size="12.5" font-weight="900" fill="#141210">① 钥匙的粒度</text>
+      <text x="712" y="90" font-size="12" fill="#6B6156">1 个 token → 2~3 个</text>
+      <text x="712" y="140" font-size="12.5" font-weight="900" fill="#141210">② 怎么定址</text>
+      <text x="712" y="160" font-size="12" fill="#6B6156">ID 直接当下标 → 哈希</text>
+      <text x="712" y="210" font-size="12.5" font-weight="900" fill="#141210">③ 装在第几层</text>
+      <text x="712" y="230" font-size="12" fill="#6B6156">第 0 层 → 中间层</text>
+      <defs><marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#141210"/></marker></defs>
+    </svg>
+    <p class="note" style="margin-top:6px"><b>Engram 就是把 input embedding 那个动作放大：钥匙从一个 token 扩成一个短语，位置从第 0 层挪到中间层。</b></p>
+    <p class="small">它是<b>新加</b>的模块，不是把 input embedding 改大，原来的输入 embedding 和输出 unembedding 一个字没动。第 ③ 点在第 11 节会用到：早期同类工作都把表塞在第 0 层，挪到中间层才能提前预取。</p>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">02</span><h2>查不到「一个短语」，就只能一层一层拼出来</h2></div>
+  <p class="lede">「拿不到那一行」的实际后果长这样：给模型喂 <code>Diana, Princess of Wales</code>，把每一层的中间状态翻译成人话读出来，可以看到<b>表示到第 6 层才明确指向这个名字</b>。</p>
+
+  <div class="card">
+    <div class="lbl">点一下层号 · 看它在这一层「以为」自己在说什么</div>
+    <div class="layers" id="dLayers"></div>
+    <div class="pane">
+      <div class="q">这一层的中间状态被翻译成 →</div>
+      <div class="a" id="dTrans">—</div>
+      <div class="e" id="dExp">—</div>
+    </div>
+  </div>
+
+  <div class="card dk">
+    <div class="big">这个例子里，前 6 层的可读变化主要是在逐步拼出名字。</div>
+    <p style="margin-top:14px">Wales → 一个地名 → 一个头衔 → 具体是谁。探针显示，模型把不少前层深度用在了识别这个固定名称上。<b>这类局部、静态的模式，本来可以通过查表直接提供。</b></p>
+    <p style="margin-top:12px">这也不是个别案例。语言里有很多局部、静态、高度定型的内容：人名、地名、机构名、术语、成语、套话。这类内容更适合直接记住。</p>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">03</span><h2>那就给短语建表，可是钥匙会爆炸</h2></div>
+  <p class="lede">想法很直接：「一个 token 一行」不够，那就「一个短语一行」。但只要真去数一下要几行，这条路立刻走不通。</p>
+
+  <div class="card">
+    <div class="two" style="margin-top:0">
+      <div>
+        <div class="lbl">如果一个短语真的占一格</div>
+        <div class="eq" style="line-height:2">
+          有效词表 ≈ <b>98,600</b> 个词<br>
+          3 个词的组合数 ≈ 98,600³<br>
+          &nbsp;&nbsp;≈ <b>10¹⁵</b> 格
+        </div>
+        <p class="small">词表数取的是压缩后的量级（见下一节）；组合数是我自己乘出来的量级估算，不是论文给的数。</p>
+      </div>
+      <div>
+        <div class="lbl">实际能给多少格</div>
+        <div class="eq" style="line-height:2">
+          论文扫到的槽位上限<br>
+          &nbsp;&nbsp;= <b>1.0 × 10⁷</b> 格<br>
+          <span style="opacity:.6">（约 130 亿参数）</span>
+        </div>
+        <p class="small">这已经是论文里「内存不限量」实验的最大档了。</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:22px"><b>差 8 个数量级。</b>「一个短语一格」从一开始就不是选项，只能是「很多短语挤在同一格」。于是这个想法要落地，得先回答两个问题：</p>
+    <div class="vs" style="margin-top:18px">
+      <div class="vsbox l" style="border-color:var(--ink); background:#F3F0EA">
+        <h4 style="color:var(--ink)">问题 A</h4>
+        <div class="t">怎么从短语算出格子号</div>
+        <p>而且要<b>快</b>，还要<b>每次都一样</b>。→ 第 4 节</p>
+      </div>
+      <div class="mid">＆</div>
+      <div class="vsbox l" style="border-color:var(--ink); background:#F3F0EA">
+        <h4 style="color:var(--ink)">问题 B</h4>
+        <div class="t">挤在一格的怎么办</div>
+        <p>不相干的短语共用一行，取出来的东西必然有脏的。→ 第 5、6 节</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================
+     二 · 怎么做到
+     ================================================================== -->
+<div class="act reveal"><span class="no">二</span><span class="tt">怎么做到</span><span class="rule"></span></div>
+
+<section class="reveal">
+  <div class="head"><span class="num">04</span><h2>从短语到格子号：压一下，再哈希</h2></div>
+  <p class="lede">钥匙取的是<b>后缀</b> n-gram：从当前位置往前数两三个 token，最后一个一定是当前这个。然后不查任何索引，<b>直接用哈希把它算成下标</b>。</p>
+
+  <div class="card">
+    <div class="lbl">点句子里任意一个 token，看它这一步的钥匙和格子号</div>
+    <div class="toks" id="tokStrip"></div>
+
+    <div class="two" style="margin-top:22px">
+      <div>
+        <div class="lbl">先压一下：同一个词别占好几个格</div>
+        <p class="note" style="margin-top:8px">分词器为了能<b>无损还原</b>原文，会把语义上同一个词切成好几个不同的 ID：<code>Apple</code> / <code>␣apple</code> / <code>APPLE</code> 各占一个。对查表来说这是纯浪费：同一个词的记忆被拆到几个格子里，每个都学不透。</p>
+        <p class="note">所以先过一道归一化（NFKC、小写等），把它们塌到同一个规范 ID 上。</p>
+        <div class="eq" id="canonBox">—</div>
+        <p class="small">在 128k 的分词器上，这一步让有效词表<b>缩小 23%</b>。它不是可选的小优化，拿掉它是掉点最狠的三个改动之一。</p>
+      </div>
+      <div>
+        <div class="lbl">再哈希：算出下标，不查索引</div>
+        <p class="note" style="margin-top:8px">哈希的好处是<b>不需要知道这个短语存不存在</b>。给什么短语都能算出一个格子号，算完直接去取。这也意味着<b>地址只跟 token ID 有关</b>。第 11 节会利用这一点，把 Engram 表放到主机内存，并提前取回当前需要的行。</p>
+        <div class="eq">下标 = 哈希(压缩后的 n-gram) mod 格子总数</div>
+        <p class="note">而且不止哈希一次。27B 的配置：<b>2-gram 和 3-gram 各来一遍，每种开 8 个不同的哈希头</b>，一共 <b>16 次查表</b>，取出的 16 段向量拼成 1280 维。</p>
+        <p class="small">哈希函数是一个轻量的乘法-XOR 哈希，每张表的格子数取质数。论文没给具体常数，下面演示用的是同一族里的 FNV-1a，只作示意。</p>
+      </div>
+    </div>
+
+    <div class="lbl" style="margin-top:24px">这 16 个格子号 · 上排 2-gram，下排 3-gram</div>
+    <div class="slots" id="slotsN2"></div>
+    <div class="slots" id="slotsN3"></div>
+    <p class="note" id="keyRead" style="font-family:ui-monospace,Menlo,monospace; font-size:14px"></p>
+    <p class="note"><b>全程没有一次矩阵乘</b>，只有 16 次数组下标访问。从算法上看，表从 5B 涨到 100B，查找次数仍是 16 次；实际延迟还会受缓存和数据传输影响。</p>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">05</span><h2>撞是必然的，所以别指望躲开它</h2></div>
+  <p class="lede">回到问题 B。10¹⁵ 个短语挤 10⁷ 个格子，两个毫不相干的短语落到同一格是<b>必然事件</b>。所以做法不是消灭碰撞，而是<b>把单次碰撞的影响限制在部分向量上</b>，这就是为什么要开 8 个头。</p>
+
+  <div class="card">
+    <div class="ctl">
+      <span class="lbl">哈希头数</span>
+      <input type="range" id="kSlider" min="1" max="8" step="1" value="8">
+      <span class="read" id="kRead">8</span>
+    </div>
+    <div class="two" style="margin-top:8px">
+      <div>
+        <div class="lbl">一次单头碰撞影响的比例（示意）</div>
+        <div class="alpha" id="polluteRead" style="color:var(--comp)">—</div>
+        <p class="note" id="polluteText"></p>
+      </div>
+      <div>
+        <div class="lbl">拼出来的向量 · 红色 = 发生碰撞的片段</div>
+        <div class="bars" id="polluteBars" style="height:80px"></div>
+      </div>
+    </div>
+    <p class="note">每个头有<b>自己的表和自己的哈希函数</b>。一个头发生碰撞时，其他头通常仍能提供未碰撞的片段。因此，多头能降低一次碰撞影响整条向量的风险。</p>
+    <p class="small">有后续工作专门研究了这里的碰撞，结论是碰撞噪声更像<b>一种正则化</b>而不是纯损失。这条不是原论文的结论，我也只看了摘要级别的信息。</p>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">06</span><h2>取出来的东西不一定对，所以前面加一道闸门</h2></div>
+  <p class="lede">碰撞不是唯一的麻烦。表里的向量是<b>静态的、跟上下文无关的</b>，就算没撞，一词多义也会给你错的那个意思。所以查完不能直接用，得先问一句：<b>这条记忆跟我现在在说的事对得上吗？</b></p>
+
+  <div class="card">
+    <p class="note" style="margin-top:0">问法就是 attention 那一套：<b>当前的 hidden state 当 Query</b>（它已经过了前面的 attention，带着全局上下文），<b>查出来的记忆当 Key 和 Value</b>。点积算出一个 0~1 之间的标量闸门 α，乘上去。</p>
+    <div class="eq">α = σ( ⟨ 当前上下文, 查到的记忆 ⟩ / √d )　　输出 = α × 记忆</div>
+
+    <div class="gatewrap">
+      <div>
+        <div class="lbl">拖动：这条记忆跟当前上下文有多合</div>
+        <input type="range" id="gSlider" min="-40" max="40" step="1" value="18" style="width:100%; margin-top:14px">
+        <div class="bars" id="gBars" style="margin-top:18px"></div>
+        <p class="small" id="gCap" style="margin-top:10px"></p>
+      </div>
+      <div style="text-align:center">
+        <div class="lbl">闸门 α</div>
+        <div class="alpha" id="gRead" style="color:var(--vio)">—</div>
+      </div>
+    </div>
+    <p class="note" style="margin-top:18px">这道闸门也能减轻碰撞带来的问题。<b>多头把碰撞的影响分散到部分向量；上下文闸门再根据当前 hidden state，决定组合后的记忆该保留多少。</b></p>
+    <p class="small">闸门之后还有一道很短的因果卷积（kernel = 4）补一点非线性。消融里去掉它只掉一点点，是整个模块里最不关键的部件；而闸门本身拿掉就掉得很惨。</p>
+  </div>
+
+  <div class="card">
+    <div class="lbl">闸门在什么地方会亮</div>
+    <div id="heatBox"></div>
+    <p class="note">亮的地方有两类：<b>多 token 的专有名词，和固定套话。</b>因为钥匙是<b>后缀</b> n-gram，闸门亮在某个 token 上，意思是「<b>到这个 token 为止的那个短语</b>被认出来了」，所以亮的位置总在短语结尾。</p>
+    <p class="small">标出来的短语是论文明确点到的；每个 token 的具体强度是示意，不是复刻热力图数值。</p>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">07</span><h2>装在哪：残差里多一项，而且只装少数层</h2></div>
+  <p class="lede">接法很保守：<code>H ← H + Engram(输入)</code>，然后照常走 Attention 和 MLP/MoE。有讲究的是<b>装在第几层</b>，这里有个两难。</p>
+
+  <div class="card">
+    <svg viewBox="0 0 900 240" role="img" aria-label="Engram 以残差相加的方式插在部分层的入口，后面照常是 Attention 和 MoE" style="width:100%; height:auto">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+          <path d="M0 0 L9 4.5 L0 9 z" fill="#141210"/></marker>
+      </defs>
+      <line x1="70" y1="196" x2="850" y2="196" stroke="#141210" stroke-width="3" marker-end="url(#ar)"/>
+      <text x="70" y="226" font-size="13" font-weight="800" fill="#6B6156">残差流</text>
+
+      <rect x="150" y="46" width="180" height="58" rx="12" fill="#EDF7F4" stroke="#0E7C6B" stroke-width="3"/>
+      <text x="240" y="72" font-size="15" font-weight="900" fill="#0E7C6B" text-anchor="middle">Engram</text>
+      <text x="240" y="92" font-size="11.5" font-weight="700" fill="#0E7C6B" text-anchor="middle">16 次查表 + 闸门</text>
+      <path d="M175 196 L175 130 Q175 104 200 104" fill="none" stroke="#0E7C6B" stroke-width="2.5" stroke-dasharray="5 4"/>
+      <path d="M290 104 Q315 104 315 130 L315 178" fill="none" stroke="#0E7C6B" stroke-width="2.5" marker-end="url(#ar)"/>
+      <circle cx="315" cy="196" r="11" fill="#fff" stroke="#141210" stroke-width="3"/>
+      <text x="315" y="201" font-size="14" font-weight="900" text-anchor="middle">＋</text>
+
+      <rect x="400" y="46" width="150" height="58" rx="12" fill="#FDF1EE" stroke="#D0452B" stroke-width="3"/>
+      <text x="475" y="80" font-size="15" font-weight="900" fill="#D0452B" text-anchor="middle">Attention</text>
+      <path d="M440 196 L440 130 Q440 104 460 104" fill="none" stroke="#D0452B" stroke-width="2.5" stroke-dasharray="5 4"/>
+      <path d="M510 104 Q535 104 535 130 L535 178" fill="none" stroke="#D0452B" stroke-width="2.5" marker-end="url(#ar)"/>
+      <circle cx="535" cy="196" r="11" fill="#fff" stroke="#141210" stroke-width="3"/>
+      <text x="535" y="201" font-size="14" font-weight="900" text-anchor="middle">＋</text>
+
+      <rect x="620" y="46" width="150" height="58" rx="12" fill="#F4F0FA" stroke="#6A4FA3" stroke-width="3"/>
+      <text x="695" y="80" font-size="15" font-weight="900" fill="#6A4FA3" text-anchor="middle">MoE</text>
+      <path d="M660 196 L660 130 Q660 104 680 104" fill="none" stroke="#6A4FA3" stroke-width="2.5" stroke-dasharray="5 4"/>
+      <path d="M730 104 Q755 104 755 130 L755 178" fill="none" stroke="#6A4FA3" stroke-width="2.5" marker-end="url(#ar)"/>
+      <circle cx="755" cy="196" r="11" fill="#fff" stroke="#141210" stroke-width="3"/>
+      <text x="755" y="201" font-size="14" font-weight="900" text-anchor="middle">＋</text>
+
+      <text x="240" y="26" font-size="12" font-weight="800" fill="#6B6156" text-anchor="middle">只在少数层出现</text>
+      <text x="585" y="26" font-size="12" font-weight="800" fill="#6B6156" text-anchor="middle">每层都有</text>
+    </svg>
+
+    <div class="two" style="margin-top:22px">
+      <div>
+        <div class="lbl">两难</div>
+        <p class="note" style="margin-top:8px"><b>要插得早</b>，才能在骨干花掉太多深度之前提供局部模式，减少第 2 节那类逐层重建。</p>
+        <p class="note"><b>又要插得晚</b>，闸门那个 Query 用的是当前 hidden state，插在第 1 层它还没积累起全局上下文，判不准该不该采信。</p>
+        <p class="note">实测的甜区是<b>第 2 层</b>：刚过一轮 attention，两头都刚好够用。<b>拆成两个各放一半，比挤在一层更好</b>。</p>
+      </div>
+      <div>
+        <div class="lbl">12 层小模型上扫一遍（验证 loss，低=好）</div>
+        <table style="margin-top:14px">
+          <tr><td>不装（基线）</td><td class="r">1.808</td></tr>
+          <tr class="hl"><td>装 1 个 · 第 2 层</td><td class="r">1.770</td></tr>
+          <tr><td>装 1 个 · 越往深越差</td><td class="r">→ 1.783</td></tr>
+          <tr class="hl"><td>拆 2 个 · 第 2 和第 6 层</td><td class="r"><b>1.768</b></td></tr>
+        </table>
+        <p class="small">27B 的正式配置就是这么来的：装在第 <b>2</b> 和第 <b>15</b> 层。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================================
+     三 · 换来了什么
+     ================================================================== -->
+<div class="act reveal"><span class="no">三</span><span class="tt">这么一改，什么变了</span><span class="rule"></span></div>
+
+<section class="reveal">
+  <div class="head"><span class="num">08</span><h2>它到底存了什么</h2></div>
+  <p class="lede">最直接的探针：训练照旧，<b>推理时把这张表的输出整个掐掉</b>，骨干一个字不改，看还剩多少分。</p>
+
+  <div class="card">
+    <div class="lbl">掐掉之后保留的成绩（占原成绩的百分比）</div>
+    <div id="ablBox" style="margin-top:18px"></div>
+    <p class="note" style="margin-top:18px"><b>事实型知识塌了</b>（TriviaQA 只剩 29%），<b>阅读理解几乎没事</b>（C3 还有 93%）。读懂一段给定的文本靠骨干的 attention；「这个人是谁」这类不看上下文就得知道的东西，主要落在这张表里。</p>
+    <p class="small">论文自己说明了：这种事后抑制会造成训练-推理不一致，混合能力的任务上噪声大，所以只当压力测试看，重点是两个极端。</p>
+  </div>
+
+  <div class="card dk">
+    <div class="big">但「它存着知识」这句话，有三处会带偏。</div>
+    <div class="take" style="margin-top:8px"><span class="n">01</span><p><b>存的单位是「一个短语 → 一段向量」，不是一条事实。</b>钥匙是<b>表面形式</b>，不是语义。它不知道 Diana 是谁，只是看到 <code>princess of wales</code> 这几个词连着，先给出一段向量。这段向量能不能变成答案，还得靠后面的骨干。</p></div>
+    <div class="take"><span class="n">02</span><p><b>一个格子不对应一条知识。</b>会撞，而且一次要取 16 段拼起来，单个格子是个叠加态，没法从里面「读出」一条事实。所以它跟数据库、知识库是两码事：不能查、不能列、不能一条条核。</p></div>
+    <div class="take"><span class="n">03</span><p><b>它不是唯一的知识存放处。</b>掐掉之后 TriviaQA 还剩 29%，说明骨干里还有一份。FFN 作为 key-value 记忆的那套机制并没被替换掉。</p></div>
+    <p class="small" style="margin-top:16px">更准的说法：<b>它存的是「短语的先验」，而这些先验恰好是大量事实知识的入口</b>。事实往往挂在专有名词和固定搭配上，正好是 n-gram 能锁定的东西。</p>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">09</span><h2>意外的那一份：模型等于变深了</h2></div>
+  <p class="lede">如果这张表的作用只是「存知识」，涨分应该集中在知识题上。实际不是：<b>推理题涨得更多</b>。</p>
+
+  <div class="card">
+    <div class="lbl">同参数、同 FLOPs、同数据，只是把 17 个专家换成了这张表</div>
+    <table>
+      <thead><tr><th></th><th style="text-align:right">不装</th><th style="text-align:right">装了</th><th style="text-align:right">差</th></tr></thead>
+      <tbody>
+        <tr><td>MMLU（知识）</td><td class="r">57.4</td><td class="r">60.4</td><td class="r up">+3.0</td></tr>
+        <tr><td>CMMLU（知识）</td><td class="r">57.9</td><td class="r">61.9</td><td class="r up">+4.0</td></tr>
+        <tr class="hl"><td><b>BBH（通用推理）</b></td><td class="r">50.9</td><td class="r">55.9</td><td class="r up"><b>+5.0</b></td></tr>
+        <tr class="hl"><td><b>ARC-Challenge（推理）</b></td><td class="r">70.1</td><td class="r">73.8</td><td class="r up"><b>+3.7</b></td></tr>
+        <tr><td>DROP（阅读理解）</td><td class="r">55.7</td><td class="r">59.0</td><td class="r up">+3.3</td></tr>
+        <tr><td>HumanEval（代码）</td><td class="r">37.8</td><td class="r">40.8</td><td class="r up">+3.0</td></tr>
+        <tr><td>MATH</td><td class="r">28.3</td><td class="r">30.7</td><td class="r up">+2.4</td></tr>
+      </tbody>
+    </table>
+    <p class="small">两个 26.7B 模型，激活参数都是 3.8B，训一样的 262B token。「装了」那个是把路由专家从 72 个砍到 55 个，省下的参数变成 5.7B 的表。</p>
+  </div>
+
+  <div class="card dk">
+    <div class="big">解释可以从第 2 节的逐层变化里找。</div>
+    <p style="margin-top:14px">Engram 提前提供局部模式后，<b>骨干可以更早处理后面的任务。</b>论文给了两个证据：</p>
+    <div class="take" style="margin-top:10px"><span class="n">①</span><p>把每一层的中间状态直接接到输出头上，看它离「能预测了」有多近：装了表的模型<b>所有层都更近，而且最前面几层差距最大</b>。它更早就把特征拼完了。</p></div>
+    <div class="take"><span class="n">②</span><p>逐层比两个模型的表示相似度：<b>装了表的第 5 层，最像没装的第 12 层。</b></p></div>
+    <p style="margin-top:14px">所以这张表的收益有<b>两部分</b>：一部分来自它存下的局部模式（第 8 节），另一部分来自骨干更早完成这些模式的识别。论文用后者解释推理题为什么涨得更多。</p>
+  </div>
+
+  <div class="card">
+    <div class="lbl">同一个逻辑还有个连带的好处</div>
+    <p class="note" style="margin-top:8px">局部依赖交给查表之后，<b>attention 不用再管「the Milky Way 是个整体」这种近距离的事，可以专心盯远处</b>。长上下文因此涨得很多：</p>
+    <table>
+      <thead><tr><th>32k 长文检索</th><th style="text-align:right">不装</th><th style="text-align:right">装了</th></tr></thead>
+      <tbody>
+        <tr class="hl"><td>Multi-Query 大海捞针</td><td class="r">84.2</td><td class="r"><b>97.0</b></td></tr>
+        <tr><td>多跳变量追踪</td><td class="r">77.0</td><td class="r"><b>89.0</b></td></tr>
+      </tbody>
+    </table>
+    <p class="small">论文特意做了「同预训练 loss」的对照，把「底模本身更强」这个混淆因素排掉之后，这个差距仍然在。</p>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">10</span><h2>记忆和计算是两个旋钮，谁也替不了谁</h2></div>
+  <p class="lede">既然这张表这么好，全都给它行不行？<b>不行</b>，而且两头都会变差，中间有个甜区。</p>
+
+  <div class="card">
+    <p class="note" style="margin-top:0">实验设计：<b>总参数量和每 token 激活的参数量全部锁死</b>，只调一件事，那些「不激活的参数」里多少给 MoE 专家（算的能力），多少给这张表（背的能力）。横轴就是给 MoE 的比例。</p>
+
+    <svg viewBox="0 0 880 320" id="uSvg" role="img" aria-label="验证集 loss 随给 MoE 的比例变化，呈 U 形，最低点在 80% 附近" style="width:100%; height:auto; margin-top:18px">
+      <line x1="80" y1="262" x2="840" y2="262" stroke="#DCD4C6" stroke-width="2"/>
+      <line x1="80" y1="30" x2="80" y2="262" stroke="#DCD4C6" stroke-width="2"/>
+      <text x="460" y="300" font-size="13" font-weight="800" fill="#6B6156" text-anchor="middle">← 更会背　　　给 MoE 的比例　　　更会算 →</text>
+      <text x="26" y="150" font-size="13" font-weight="800" fill="#6B6156" text-anchor="middle" transform="rotate(-90 26 150)">验证集 loss（低=好）</text>
+      <path id="uPath" fill="none" stroke="#141210" stroke-width="3.5"/>
+      <g id="uTicks"></g>
+      <circle id="uDot" r="10" fill="#DF9F0C" stroke="#141210" stroke-width="3"/>
+      <g id="uAnno"></g>
+    </svg>
+
+    <div class="ctl">
+      <span class="lbl">给 MoE 的比例</span>
+      <input type="range" id="uSlider" min="40" max="100" step="1" value="80">
+      <span class="read" id="uRead">80%</span>
+    </div>
+    <div id="uVerdict" class="big" style="margin-top:14px">—</div>
+    <p class="small">曲线形状是<b>示意</b>；图上标的三个点是论文正文里的实数（9.9B 那个档位）。最优点位置在两个不同算力档位上都稳定落在 <b>75%~80%</b>。</p>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <div class="lbl" style="color:var(--comp)">右端 · 全给计算</div>
+      <p class="note">没有专门的地方放静态模式，只能像第 2 节那样用深度重建。<b>这一端就是今天的常规做法</b>，它在这条曲线上是次优的。</p>
+    </div>
+    <div class="card">
+      <div class="lbl" style="color:var(--comp)">左端 · 全给记忆</div>
+      <p class="note">背得再多也没用，需要现场推理的任务照样掉。论文原话：<b>在这个区间里，记忆替代不了计算。</b></p>
+    </div>
+  </div>
+
+  <div class="card dk">
+    <div class="lbl">但如果不锁死总量</div>
+    <p style="margin-top:10px">上面那条 U 形是<b>抢同一份预算</b>的结果。如果不抢，骨干不动，只把表越加越大，loss 在 log 尺度上是<b>一条直线</b>，也就是幂律。这是一个<b>可预测的旋钮</b>：表继续变大就继续降 loss，而每个 token 的查找次数不变。</p>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">11</span><h2>地址是算得出来的，所以这张表可以不住在显存里</h2></div>
+  <p class="lede">第 4 节说过：<b>地址只跟 token ID 有关。</b>这是这个方案最实际的一个好处，它让「参数必须住在显存里」这条铁律出现了一个口子。</p>
+
+  <div class="vs">
+    <div class="vsbox c">
+      <h4>MoE 取哪个专家</h4>
+      <div class="t">跑到了才知道</div>
+      <p>得先算出这一层的 hidden state，路由器现场决定。<b>没法提前准备</b>，所以参数基本得住在显存里等着。</p>
+    </div>
+    <div class="mid">≠</div>
+    <div class="vsbox l">
+      <h4>Engram 取哪几行</h4>
+      <div class="t">开跑前就知道</div>
+      <p>token 序列一给定，16 个格子号就已经算得出来。<b>可以在前面几层还在算的时候，提前把那几行搬过来</b>，传输和计算重叠。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="lbl">把 100B 参数的表整个丢到主机内存 · 吞吐掉多少</div>
+    <table>
+      <tbody>
+        <tr><td>4B 骨干</td><td class="r">9,031 → 8,858 tok/s</td><td class="r dn">−1.9%</td></tr>
+        <tr class="hl"><td>8B 骨干</td><td class="r">6,315 → 6,140 tok/s</td><td class="r dn">−2.8%</td></tr>
+      </tbody>
+    </table>
+    <p class="note">这个数字能站住，靠的是一点：<b>每一步真正要搬的数据量，只跟「取了几行」有关，跟表总共有多大无关。</b>表从 5B 涨到 100B，每个 token 还是只取 16 行。</p>
+    <p class="small">这还是个保守下限：这个实验强制所有取数都走 PCIe。真实做法会利用短语的 <b>Zipf 分布</b>（少数短语占掉绝大多数访问）做多级缓存，热的放显存，长尾扔 SSD。</p>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">12</span><h2>它不是什么</h2></div>
+  <div class="card">
+    <div class="take"><span class="n">01</span><p><b>不是 RAG。</b>没有文档、没有向量检索、没有外部知识库。表里存的是<b>训练出来的参数</b>，跟权重一起学、一起存，钥匙是 token n-gram 不是语义相似度。</p></div>
+    <div class="take"><span class="n">02</span><p><b>不是 MoE 的替代品。</b>第 10 节那条 U 形就是答案：最优配比是<b>大部分预算仍然给专家</b>，只拿 20%~25% 给这张表。</p></div>
+    <div class="take"><span class="n">03</span><p><b>不等于「更快」。</b>第 9 节那张表是<b>同 FLOPs 下更准</b>，不是同准确率下更快。省下来的算力换成了有效深度，不是速度。</p></div>
+    <div class="take"><span class="n">04</span><p><b>不是新想法。</b>N-gram 查表能追到 Shannon，把 n-gram embedding 接进网络也有一串前作。新的是两点：一是在<b>严格同参数、同 FLOPs</b> 的条件下证明它真的有用；二是不把表塞在第 0 层，而是<b>插进中间层</b>，这才有第 11 节那件好事。</p></div>
+    <div class="take"><span class="n">05</span><p><b>名字是借的。</b>engram 在神经科学里指承载一段记忆的那组神经元及其连接变化。这里借来指「模型里专门存静态模式的那块地方」，是取个名，不是在主张两者机制相同。</p></div>
+  </div>
+</section>
+
+<section class="reveal">
+  <div class="head"><span class="num">13</span><h2>一页装下</h2></div>
+  <div class="card dk">
+    <div class="take"><span class="n">01</span><p>模型里的「查表」动作基本只有 <b>input embedding</b> 这一处，而它的钥匙只有一个 token。该背下来的东西大多是<b>好几个 token 连在一起</b>的，那一行模型拿不到。</p></div>
+    <div class="take"><span class="n">02</span><p>拿不到就只能<b>用计算逐步拼出来</b>：在 <code>Diana, Princess of Wales</code> 这个例子里，表示到第 6 层才明确指向这个名字。</p></div>
+    <div class="take"><span class="n">03</span><p>Engram 做的事：<b>把 input embedding 的钥匙从一个 token 扩成一个短语，位置从第 0 层挪到中间层。</b></p></div>
+    <div class="take"><span class="n">04</span><p>短语的组合数比格子数多 8 个数量级 → 只能<b>哈希</b>，也必须<b>接受碰撞</b>。多头把碰撞的影响分散到部分向量，再由<b>上下文闸门</b>决定组合后的记忆该保留多少。</p></div>
+    <div class="take"><span class="n">05</span><p>装法是<b>残差加一项，只装少数层</b>。插太深省不下深度，插第 1 层闸门判不准，甜区在第 2 层附近。</p></div>
+    <div class="take"><span class="n">06</span><p>它存的是<b>短语的先验，不是事实条目</b>。但这些先验恰好是事实知识的入口：掐掉它，事实题只剩 29%~44%，阅读理解还有 81%~93%。</p></div>
+    <div class="take"><span class="n">07</span><p>收益有<b>两份</b>：存的那份，加上<b>把深度还给模型</b>那份。后者更大，所以推理题（BBH +5.0）比知识题（MMLU +3.0）涨得更多，长上下文也跟着涨。</p></div>
+    <div class="take"><span class="n">08</span><p>抢同一份预算时，<b>记忆和计算的最优配比是 20%~25% 给记忆</b>，两头都会掉。<b>纯计算是次优的。</b>不抢预算的时候，表越大越好，且不多花算力。</p></div>
+    <div class="take"><span class="n">09</span><p>地址<b>确定</b> → 能提前预取 → <b>100B 的表可以整个住在主机内存里，吞吐只掉 2%~3%</b>。搬多少只看取了几行，不看表多大。</p></div>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>页面里的数字来自 <b>Conditional Memory via Scalable Lookup: A New Axis of Sparsity for Large Language Models</b>（arXiv:2601.07372 v2，DeepSeek-AI × 北京大学），代码 github.com/deepseek-ai/Engram。第 2 节的逐层解读转引自该文，原始出处 Ghandeharioun et al. 2024（PatchScope）。</p>
+    <p style="margin-top:12px">标了「示意」的地方（U 形曲线形状、闸门热力图强度、哈希常数、10¹⁵ 那个组合数）是形状或量级复现；表格里的数字都是原文数字。第 5 节末尾关于碰撞噪声的那条来自后续工作，不是原文结论。</p>
+  </div>
+</footer>
+
+<script>
+/* ================= 02 · Diana 逐层 ================= */
+const DIANA = [
+  {l:"1–2", t:": Country in the United Kingdom", e:"还只知道 Wales 是个地方"},
+  {l:"3",   t:": Country in Europe", e:"还在说地名"},
+  {l:"4",   t:": Title held by female sovereigns in their own right or by queens consort", e:"变成一个头衔了，但不具体"},
+  {l:"5",   t:": Title given to the wife of the Prince of Wales (and later King)", e:"Princess of Wales，还是不具体"},
+  {l:"6",   t:": Diana, Princess of Wales (1961-1997), the first wife of Prince Charles, Prince of Wales, who was famous for her beauty and humanitarian work", e:"到第 6 层才是那个人 ✓"},
+];
+const dL = document.getElementById('dLayers');
+DIANA.forEach((d,i)=>{
+  const b = document.createElement('button');
+  b.className='lyr'; b.textContent='第 '+d.l+' 层'; b.onclick=()=>showD(i);
+  dL.appendChild(b);
+});
+function showD(i){
+  [...dL.children].forEach((b,j)=>b.classList.toggle('on', j===i));
+  document.getElementById('dTrans').textContent = DIANA[i].t;
+  document.getElementById('dExp').textContent = DIANA[i].e;
+}
+showD(0);
+
+/* ================= 04 · 短语 → 格子号 ================= */
+const RAW = ["Only","Alexander","the","Great","could","tame","the","horse","Buce","phal","us","."];
+const K_HEADS = 8, M_PRIME = 1048573;
+const canon = s => s.trim().toLowerCase();
+
+/* 示意用的 FNV-1a（乘法 + XOR 一族） */
+function hash(ids, seed){
+  let h = (0x811c9dc5 ^ (seed * 0x9e3779b1)) >>> 0;
+  for(const id of ids){
+    h = (h ^ (id & 0xff)) >>> 0;         h = Math.imul(h, 0x01000193) >>> 0;
+    h = (h ^ ((id >>> 8) & 0xff)) >>> 0; h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+function tokenId(w){ return hash([...w].map(c=>c.charCodeAt(0)), 7) % 128000; }
+
+const strip = document.getElementById('tokStrip');
+RAW.forEach((w,i)=>{
+  const s = document.createElement('span');
+  s.className='tk'; s.textContent=w; s.onclick=()=>pick(i);
+  strip.appendChild(s);
+});
+function pick(t){
+  [...strip.children].forEach((el,i)=>{
+    el.className='tk';
+    if(i===t) el.classList.add('sel');
+    else if(i===t-1) el.classList.add('g2');
+    else if(i===t-2) el.classList.add('g3');
+  });
+  const g2 = RAW.slice(Math.max(0,t-1), t+1).map(canon);
+  const g3 = RAW.slice(Math.max(0,t-2), t+1).map(canon);
+  document.getElementById('canonBox').innerHTML =
+      `"${RAW[t]}"　→　归一化　→　"${canon(RAW[t])}"　→　id ${tokenId(canon(RAW[t]))}`
+    + `<br><span style="opacity:.55">"Apple" / "␣apple" / "APPLE"　→　同一个 id</span>`;
+  document.getElementById('keyRead').innerHTML =
+      `<b>2-gram 钥匙</b> = (${g2.map(w=>'"'+w+'"').join(', ')})`
+    + `　　<b>3-gram 钥匙</b> = (${g3.map(w=>'"'+w+'"').join(', ')})`
+    + `<br><span style="opacity:.6">16 段向量拼接 → 1280 维（论文给了总维度，没说每段多宽）</span>`;
+  drawSlots('slotsN2', g2, 2);
+  drawSlots('slotsN3', g3, 3);
+}
+function drawSlots(id, gram, n){
+  const box = document.getElementById(id);
+  box.innerHTML = '';
+  const ids = gram.map(tokenId);
+  for(let k=0;k<K_HEADS;k++){
+    const slot = hash(ids, n*100+k) % M_PRIME;
+    const d = document.createElement('div');
+    d.className = 'slot n'+n;
+    d.innerHTML = `<div class="h">${n}-GRAM · 头${k+1}</div><div class="v">${slot.toLocaleString('en-US')}</div>`;
+    box.appendChild(d);
+  }
+}
+pick(3); // "Great" —— Alexander the Great
+
+/* ================= 05 · 碰撞污染 ================= */
+const kS = document.getElementById('kSlider');
+function drawPollute(){
+  const K = +kS.value, total = K*2;
+  document.getElementById('kRead').textContent = K;
+  document.getElementById('polluteRead').textContent = '1/' + total;
+  document.getElementById('polluteText').innerHTML = K === 1
+    ? `只开 1 个头（2-gram + 3-gram 共 ${total} 段）。如果其中一段发生碰撞，会影响<b>一半</b>向量。`
+    : `${K} 个头 × 2 种 n-gram = ${total} 段拼在一起。如果只有一段发生碰撞，另外 <b>${total-1}</b> 段不受这次碰撞影响，占整条向量的 <b>${total-1}/${total}</b>。实际也可能有多个头同时碰撞。27B 用的是 8 个头。`;
+  const bars = document.getElementById('polluteBars');
+  bars.innerHTML = '';
+  for(let i=0;i<total;i++){
+    const b = document.createElement('i');
+    b.style.height = '100%';
+    const dirty = (i === 2 % total);
+    b.style.background = dirty ? 'var(--comp)' : 'var(--look)';
+    b.style.opacity = dirty ? '1' : '.35';
+    bars.appendChild(b);
+  }
+}
+kS.oninput = drawPollute; drawPollute();
+
+/* ================= 06 · 闸门 α ================= */
+const gS = document.getElementById('gSlider'), gBars = document.getElementById('gBars');
+for(let i=0;i<24;i++) gBars.appendChild(document.createElement('i'));
+function drawGate(){
+  const a = 1/(1+Math.exp(-(+gS.value)/10));
+  document.getElementById('gRead').textContent = a.toFixed(3);
+  [...gBars.children].forEach((b,i)=>{
+    const base = 30 + 62*Math.abs(Math.sin(i*1.13));
+    b.style.height = Math.max(2, base*a) + '%';
+    b.style.opacity = 0.35 + 0.65*a;
+  });
+  const cap = document.getElementById('gCap');
+  if(a > 0.85)      cap.innerHTML = '<b>对得上。</b>这条记忆几乎原样加进残差流。';
+  else if(a > 0.5)  cap.innerHTML = '半信半疑，按比例缩一下再加进去。';
+  else if(a > 0.15) cap.innerHTML = '不太对，压制大半。';
+  else              cap.innerHTML = '<b>顶牛。</b>闸门接近关死，这次查表等于没发生。撞出来的脏东西和一词多义就是在这儿被挡掉的。';
+}
+gS.oninput = drawGate; drawGate();
+
+/* ================= 06b · 闸门热力图（定性复现） ================= */
+const HEAT = [
+  {toks:["Only","Alexander","the","Great","could","tame","the","horse","Buce","phal","us","."],
+   hot:{2:.55, 3:.95, 8:.5, 9:.6, 10:.7}, cap:'专有名词 "Alexander the Great"，亮在短语<b>结尾</b>那个 token 上'},
+  {toks:["By","the","way",",","I","am","a","fan","of","the","Milky","Way","."],
+   hot:{1:.6, 2:.9, 10:.55, 11:.95}, cap:'套话 "By the way" ＋ 专有名词 "the Milky Way"'},
+  {toks:["This","study","analyzes","the","media","impact","of","Diana",",","Princess","of","Wales","."],
+   hot:{9:.6, 10:.5, 11:.95}, cap:'第 2 节那个例子。现在可以直接查到对应的短语向量，减少前层逐步重建它的压力'},
+  {toks:["中国","四大","发明","包括",":","造纸","术",",","指南","针",",","火药","和","印刷","术","。"],
+   hot:{1:.6, 2:.95, 6:.5, 9:.5, 14:.55}, cap:'中文样本上认出「四大发明」这类固定表述'},
+];
+const heatBox = document.getElementById('heatBox');
+HEAT.forEach(s=>{
+  const d = document.createElement('div'); d.className='sent';
+  const line = document.createElement('div');
+  s.toks.forEach((w,i)=>{
+    const v = s.hot[i] || 0;
+    const el = document.createElement('span');
+    el.className='w'; el.textContent = w;
+    el.style.background = v ? `rgba(208,69,43,${0.10 + 0.62*v})` : '#F3F0EA';
+    el.style.color = v > .7 ? '#fff' : '#141210';
+    line.appendChild(el);
+  });
+  d.appendChild(line);
+  const c = document.createElement('div'); c.className='cap'; c.innerHTML = s.cap;
+  d.appendChild(c);
+  heatBox.appendChild(d);
+});
+
+/* ================= 10 · U 形曲线 ================= */
+const X0=80, X1=840, Y0=48, Y1=248, R_MIN=40, R_MAX=100, R_OPT=78;
+const KL=1, KR = KL*Math.pow((R_OPT-R_MIN)/(R_MAX-R_OPT), 2);
+const yMax = KL*Math.pow(R_OPT-R_MIN, 2);
+const ux = r => X0 + (r-R_MIN)/(R_MAX-R_MIN)*(X1-X0);
+const uy = r => Y1 - ((r<R_OPT ? KL*Math.pow(R_OPT-r,2) : KR*Math.pow(r-R_OPT,2))/yMax)*(Y1-Y0);
+let path = '';
+for(let r=R_MIN; r<=R_MAX; r+=0.5) path += (path?'L':'M') + ux(r).toFixed(1) + ' ' + uy(r).toFixed(1) + ' ';
+document.getElementById('uPath').setAttribute('d', path);
+
+const ticks = document.getElementById('uTicks');
+[40,50,60,70,80,90,100].forEach(r=>{
+  ticks.innerHTML += `<line x1="${ux(r)}" y1="262" x2="${ux(r)}" y2="268" stroke="#DCD4C6" stroke-width="2"/>`
+    + `<text x="${ux(r)}" y="284" font-size="12" font-weight="700" fill="#6B6156" text-anchor="middle">${r}%</text>`;
+});
+document.getElementById('uAnno').innerHTML = `
+  <circle cx="${ux(100)}" cy="${uy(100)}" r="5.5" fill="#D0452B"/>
+  <text x="${ux(100)-8}" y="${uy(100)-14}" font-size="12.5" font-weight="800" fill="#D0452B" text-anchor="end">全给计算（今天的常规做法）· 1.7248</text>
+  <circle cx="${ux(80)}" cy="${uy(80)}" r="5.5" fill="#0E7C6B"/>
+  <text x="${ux(80)}" y="${uy(80)-18}" font-size="12.5" font-weight="800" fill="#0E7C6B" text-anchor="middle">甜区 80% · 1.7109</text>
+  <circle cx="${ux(40)}" cy="${uy(40)}" r="5.5" fill="#6A4FA3"/>
+  <text x="${ux(40)+10}" y="${uy(40)-14}" font-size="12.5" font-weight="800" fill="#6A4FA3">专家砍掉一大半，仍能打平</text>
+`;
+const uS = document.getElementById('uSlider'), uDot = document.getElementById('uDot');
+function drawU(){
+  const r = +uS.value;
+  uDot.setAttribute('cx', ux(r)); uDot.setAttribute('cy', uy(r));
+  document.getElementById('uRead').textContent = r + '%';
+  const v = document.getElementById('uVerdict');
+  if(r >= 96)      v.innerHTML = '<span style="color:var(--comp)">几乎没有记忆。</span>静态模式只能靠深度重建。<b>这一端就是今天的常规做法，而它是次优的。</b>';
+  else if(r >= 84) v.innerHTML = '还偏计算，再往记忆挪一点还能降 loss。';
+  else if(r >= 72) v.innerHTML = '<span style="color:var(--look)">甜区。</span>两个算力档位上最优点都落在这儿：<b>只拿 20%~25% 的预算给记忆。</b>';
+  else if(r >= 56) v.innerHTML = '记忆给多了，但还没掉太多：专家砍掉一大半时仍能打平常规做法。';
+  else             v.innerHTML = '<span style="color:var(--comp)">算的能力被抽干了。</span>需要现场推理的任务开始明显掉分。<b>记忆替代不了计算。</b>';
+}
+uS.oninput = drawU; drawU();
+
+/* ================= 08 · 掐掉后的保留率 ================= */
+const ABL = [
+  {n:"C3",            v:93, g:"阅读理解"},
+  {n:"RACE-Middle",   v:89, g:"阅读理解"},
+  {n:"RACE-High",     v:84, g:"阅读理解"},
+  {n:"DROP",          v:81, g:"阅读理解"},
+  {n:"HellaSwag",     v:85, g:"常识推理"},
+  {n:"ARC-Challenge", v:81, g:"常识推理"},
+  {n:"PIQA",          v:81, g:"常识推理"},
+  {n:"CMMLU",         v:78, g:"知识密集推理"},
+  {n:"MMLU",          v:75, g:"知识密集推理"},
+  {n:"MMLU-Pro",      v:72, g:"知识密集推理"},
+  {n:"CruxEval",      v:76, g:"代码"},
+  {n:"MBPP",          v:68, g:"代码"},
+  {n:"HumanEval",     v:58, g:"代码"},
+  {n:"BBH",           v:67, g:"算法推理"},
+  {n:"GSM8K",         v:62, g:"算法推理"},
+  {n:"MGSM",          v:44, g:"算法推理"},
+  {n:"MATH",          v:36, g:"算法推理"},
+  {n:"TriviaQA-ZH",   v:44, g:"事实知识"},
+  {n:"PopQA",         v:44, g:"事实知识"},
+  {n:"TriviaQA",      v:29, g:"事实知识"},
+];
+const GC = {"阅读理解":"#2E6FB7","常识推理":"#DF9F0C","知识密集推理":"#0E7C6B","代码":"#6A4FA3","算法推理":"#C97C1A","事实知识":"#D0452B"};
+const ablBox = document.getElementById('ablBox');
+let lastG = null;
+ABL.forEach(d=>{
+  if(d.g !== lastG){
+    const h = document.createElement('div');
+    h.className='lbl'; h.style.cssText='margin:16px 0 6px; color:'+GC[d.g]; h.textContent=d.g;
+    ablBox.appendChild(h); lastG = d.g;
+  }
+  const row = document.createElement('div');
+  row.style.cssText = 'display:grid; grid-template-columns:130px 1fr 46px; gap:10px; align-items:center; margin:4px 0';
+  row.innerHTML =
+      `<span style="font-size:13.5px; font-family:ui-monospace,Menlo,monospace">${d.n}</span>`
+    + `<span style="display:block; height:16px; background:#F0ECE3; border-radius:4px; overflow:hidden">`
+    + `<i class="ablbar" data-v="${d.v}" style="display:block; height:100%; width:0; background:${GC[d.g]}; border-radius:4px; transition:width .7s ease"></i></span>`
+    + `<span style="font-family:ui-monospace,Menlo,monospace; font-weight:800; font-size:13.5px; text-align:right">${d.v}%</span>`;
+  ablBox.appendChild(row);
+});
+
+/* ================= reveal ================= */
+const io = new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(!e.isIntersecting) return;
+    e.target.classList.add('in');
+    e.target.querySelectorAll('.ablbar').forEach(b=>{ b.style.width = b.dataset.v + '%'; });
+    io.unobserve(e.target);
+  });
+},{threshold:0.06});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
