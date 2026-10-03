@@ -184,15 +184,15 @@
 <section class="hero">
   <div class="step">MLP · Multi-Layer Perceptron（在 Transformer 里也叫 FFN）</div>
   <h1><span>Transformer 的</span><span>另一半</span></h1>
-  <p class="sub">Transformer block 通常包含 <b>attention</b> 和 <b>MLP</b>。<br>在常见的 dense block 中，MLP 往往占约 2/3 的参数；一些研究也把它视为事实关联的重要干预位置。</p>
+  <p class="sub">Transformer block 通常包含 <b>attention</b> 和 <b>MLP</b>。<br>在常见的 dense block 中，MLP 往往占约 2/3 的参数。一些研究也把它视为事实关联的重要干预位置。</p>
   <div class="formula">扩展 <em>→</em> 非线性变换 <em>→</em> 压回</div>
   <div class="scrollhint"><span>↓ 往下滑</span></div>
 </section>
 
 <!-- ============ 1. 它在哪 ============ -->
 <section class="reveal">
-  <div class="step">01 · 它在哪</div>
-  <h2>每个 block 里<br>都有它一份</h2>
+  <div class="step">01 · 位置</div>
+  <h2>每个 block<br>都包含 MLP</h2>
   <p>Transformer 通常会重复堆叠同一种 block。一个标准 block 里有两个主要子层：</p>
 
   <svg viewBox="0 0 620 360" width="620" role="img" aria-label="Transformer block 由 attention 和 MLP 交替堆叠而成">
@@ -222,9 +222,9 @@
       <path d="M302 338 L310 328 L318 338" fill="none" stroke="#1C1A21" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
   </svg>
-  <p class="cap">一层 attention，跟一层 MLP。再一层 attention，再一层 MLP……</p>
+  <p class="cap">一层 attention，和一层 MLP。再一层 attention，再一层 MLP……</p>
 
-  <p style="margin-top:26px">这一半有很多名字：<b>MLP</b>、<b>FFN</b>（feed-forward network）、前馈层 —— 都是同一个东西。</p>
+  <p style="margin-top:26px">这一半有很多名字：<b>MLP</b>、<b>FFN</b>（feed-forward network）、前馈层。这些名称指同一个结构。</p>
 </section>
 
 <!-- ============ 2. 分工 ============ -->
@@ -272,17 +272,17 @@
           <text x="225" y="123" text-anchor="middle">球</text>
         </g>
       </svg>
-      <p style="font-size:clamp(16px,2vw,19px); margin:10px 0 0">每个 token 独立通过同一组 MLP 权重；MLP 本身不在 token 之间传递信息。</p>
+      <p style="font-size:clamp(16px,2vw,19px); margin:10px 0 0">每个 token 独立通过同一组 MLP 权重。MLP 本身不在 token 之间传递信息。</p>
     </div>
   </div>
 
-  <p style="margin-top:30px" class="lead">attention 混合不同位置的信息，MLP 对每个位置做非线性变换。</p>
-  <p class="mute">两者都会参与计算，但作用范围不同：attention 决定从哪些位置取信息，MLP 决定怎样变换当前 token 的表示。</p>
+  <p style="margin-top:30px" class="lead">attention 混合不同位置的信息。MLP 对每个位置做非线性变换。</p>
+  <p class="mute">两者都参与计算，但作用范围不同。attention 决定从哪些位置取信息。MLP 决定怎样变换当前 token 的表示。</p>
 </section>
 
 <!-- ============ 3. 长什么样 ============ -->
 <section class="reveal">
-  <div class="step">03 · 长什么样</div>
+  <div class="step">03 · 结构</div>
   <h2>扩展、激活、压回</h2>
   <p>一个词进来是一个 <b>d</b> 维向量。MLP 对它只做三步：</p>
 
@@ -310,13 +310,13 @@
   </svg>
   <p class="cap">输入和输出都是 d 维，中间表示扩展到 4d。</p>
 
-  <p style="margin-top:30px">① 一个矩阵把向量从 d 维扩展到 4d；② 激活函数引入非线性；③ 另一个矩阵把结果压回 d 维，交给下一层。</p>
+  <p style="margin-top:30px">① 一个矩阵把向量从 d 维扩展到 4d。② 激活函数引入非线性。③ 另一个矩阵把结果压回 d 维，交给下一层。</p>
   <p class="mute">这里没有循环状态，信号从输入直接流向输出，因此叫「前馈」（feed-forward）。</p>
 </section>
 
 <!-- ============ 4. 为什么需要非线性 ============ -->
 <section class="reveal">
-  <div class="step">04 · 为什么需要非线性</div>
+  <div class="step">04 · 非线性的作用</div>
   <h2>没有激活函数，<br>多层仍等价于一层</h2>
   <p>假设去掉中间的激活函数，只剩两个矩阵：</p>
 
@@ -333,7 +333,7 @@
 
 <!-- ============ 5. 交互 ============ -->
 <section class="reveal">
-  <div class="step">05 · 亲手试试</div>
+  <div class="step">05 · 交互演示</div>
   <h2>隐藏单元越多，<br>可形成的折点越多</h2>
   <p>这是一个最小的 MLP：输入和输出都是 1 个数，中间有 <b>N</b> 个隐藏单元，结构仍然对应 d → 4d → d。下面用它拟合一条曲线：</p>
 
@@ -363,8 +363,8 @@
       <path id="targetPath" fill="none" stroke="#1C1A21" stroke-width="3" stroke-dasharray="7 8" opacity=".55"/>
       <path id="fitPath" fill="none" stroke="#6C46B8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
       <g font-family="-apple-system, PingFang SC, system-ui, sans-serif" font-weight="800" font-size="16">
-        <text x="46" y="34" fill="#867E8E">虚线 = 想学的曲线</text>
-        <text x="46" y="58" fill="#6C46B8">实线 = MLP 画出来的</text>
+        <text x="46" y="34" fill="#867E8E">虚线 = 目标曲线</text>
+        <text x="46" y="58" fill="#6C46B8">实线 = MLP 的输出</text>
       </g>
     </svg>
 
@@ -373,8 +373,8 @@
   </div>
 
   <p style="margin-top:26px">在这个一维 ReLU 示例里，每个隐藏单元可以增加一个折点。隐藏单元越多，分段线性函数就能更贴近目标曲线。</p>
-  <p class="mute">更一般地，在合适的激活函数和足够宽度下，神经网络可以逼近很广泛的连续函数；万能近似定理讨论的就是这类结果。</p>
-  <p class="mute">把激活函数关掉再拖拖看：不管多少个神经元，永远是一条直线。</p>
+  <p class="mute">更一般地，在合适的激活函数和足够宽度下，神经网络可以逼近很广泛的连续函数。万能近似定理讨论的就是这类结果。</p>
+  <p class="mute">关闭激活函数，然后拖动滑块：神经元数量不影响结果，输出始终是一条直线。</p>
 </section>
 
 <!-- ============ 6. 各自过，不商量 ============ -->
@@ -383,7 +383,7 @@
   <h2>每个 token 独立处理，<br>共享同一组权重</h2>
   <p>MLP 是<b>逐位置</b>的：一段序列里有 1000 个 token，同一套权重就会在 1000 个位置上分别执行。不同位置不会在 MLP 内直接交换信息。</p>
 
-  <svg viewBox="0 0 640 240" width="640" role="img" aria-label="多个 token 像流水线一样依次通过同一台 MLP 机器">
+  <svg viewBox="0 0 640 240" width="640" role="img" aria-label="多个 token 依次通过同一个 MLP，权重相同">
     <g font-family="-apple-system, PingFang SC, system-ui, sans-serif" font-weight="800">
       <!-- conveyor line -->
       <line x1="30" y1="170" x2="610" y2="170" stroke="#1C1A21" stroke-width="4" stroke-linecap="round"/>
@@ -402,17 +402,17 @@
       <!-- arrows -->
       <text x="212" y="152" font-size="22" fill="#867E8E">→</text>
       <text x="416" y="152" font-size="22" fill="#867E8E">→</text>
-      <text x="320" y="216" text-anchor="middle" font-size="16" fill="#867E8E">排队独立通过，互不商量</text>
+      <text x="320" y="216" text-anchor="middle" font-size="16" fill="#867E8E">依次独立处理，不交换信息</text>
     </g>
   </svg>
 
-  <p style="margin-top:26px">attention 让 token 使用其他位置的信息，MLP 再对每个位置的表示做非线性变换。一个 Transformer block 通常交替使用这两种操作。</p>
+  <p style="margin-top:26px">attention 让 token 使用其他位置的信息。MLP 再对每个位置的表示做非线性变换。一个 Transformer block 通常交替使用这两种操作。</p>
   <p class="mute">堆叠多层后，位置之间的信息混合和逐位置变换会反复进行。</p>
 </section>
 
 <!-- ============ 7. 知识住在这里 ============ -->
 <section class="reveal">
-  <div class="step">07 · 和事实关联的关系</div>
+  <div class="step">07 · 事实关联</div>
   <h2>MLP 是事实记忆的<br>一条重要通路</h2>
   <p>一种研究解释把 MLP 看作键值记忆：第一个矩阵识别输入模式，第二个矩阵写回相关内容。下面的抽屉图只是这个解释的示意：</p>
 
@@ -449,9 +449,9 @@
 
 <!-- ============ 8. 参数大头 ============ -->
 <section class="reveal">
-  <div class="step">08 · 掂掂分量</div>
+  <div class="step">08 · 参数占比</div>
   <h2>常见 dense block 中，<br>MLP 参数通常约占 2/3</h2>
-  <p>算一层 block 的参数账（隐藏维度 d）：attention 四个矩阵共约 <b class="grn">4d²</b>，MLP 两个大矩阵共约 <b>8d²</b>。</p>
+  <p>计算一层 block 的参数量（隐藏维度 d）：attention 四个矩阵共约 <b class="grn">4d²</b>，MLP 两个大矩阵共约 <b>8d²</b>。</p>
 
   <div class="pbar" role="img" aria-label="一层 block 的参数中 attention 约占三分之一，MLP 约占三分之二">
     <div class="att">Attention · 4d²</div>
@@ -459,12 +459,12 @@
   </div>
   <p class="cap">以常见结构为例：MLP 参数约占一层 block 的 2/3。</p>
 
-  <p style="margin-top:30px">因此在标准 dense Transformer 中，MLP 通常是参数和计算量的主要来源。MoE 等设计也经常从这一部分入手。</p>
+  <p style="margin-top:30px">因此在标准 dense Transformer 中，MLP 通常是参数和计算量的主要来源。MoE 等设计通常修改这一部分。</p>
 </section>
 
 <!-- ============ 9. 变体们 ============ -->
 <section class="reveal">
-  <div class="step">09 · 它的现在</div>
+  <div class="step">09 · 现代变体</div>
   <h2>激活函数会变，<br>MoE 会引入多个 MLP 专家</h2>
 
   <p>激活函数不断变化，但扩展、激活、压回的基本结构仍然常见：</p>
@@ -475,9 +475,9 @@
     <span class="arr">→</span>
     <span class="chip now">SwiGLU · LLaMA / Qwen / Mistral</span>
   </div>
-  <p class="mute" style="margin-top:14px">SwiGLU 用三个矩阵（多一路「门」），为了参数量持平，中间宽度从 4d 降到约 8d/3 —— 总账不变，还是 ≈ 8d²。</p>
+  <p class="mute" style="margin-top:14px">SwiGLU 用三个矩阵（多一路「门」）。为了参数量持平，中间宽度从 4d 降到约 8d/3，总参数量不变，仍约为 8d²。</p>
 
-  <p style="margin-top:44px"><b>MoE 里的「专家」，就是一堆 MLP。</b></p>
+  <p style="margin-top:44px"><b>MoE 里的「专家」是多个 MLP。</b></p>
 
   <svg viewBox="0 0 640 250" width="640" role="img" aria-label="MoE：路由器把每个 token 分给多个专家 MLP 中的少数几个">
     <g font-family="-apple-system, PingFang SC, system-ui, sans-serif" font-weight="800">
@@ -498,17 +498,17 @@
       <line x1="340" y1="180" x2="392" y2="96" stroke="#6C46B8" stroke-width="4" stroke-linecap="round"/>
       <line x1="278" y1="184" x2="98"  y2="96" stroke="#DFD8E2" stroke-width="3" stroke-dasharray="5 6"/>
       <line x1="362" y1="184" x2="538" y2="96" stroke="#DFD8E2" stroke-width="3" stroke-dasharray="5 6"/>
-      <text x="320" y="150" text-anchor="middle" font-size="15" fill="#867E8E">这个 token 只走 2 个专家</text>
+      <text x="320" y="150" text-anchor="middle" font-size="15" fill="#867E8E">这个 token 只用 2 个专家</text>
     </g>
   </svg>
-  <p class="cap">把一个大 MLP 换成很多个，每个 token 只挑几个走（如 Mixtral：每层 8 个专家，走 2 个）。</p>
+  <p class="cap">把一个大 MLP 换成很多个，每个 token 只用其中几个（如 Mixtral：每层 8 个专家，用 2 个）。</p>
 
   <p style="margin-top:26px">MoE 通常把 MLP 换成多个专家，因为 MLP 是 dense block 中参数和计算量的主要来源。每个 token 只激活少数专家，可以增加总参数量而不同比例增加计算量。</p>
 </section>
 
 <!-- ============ 10. 代码 + 收尾 ============ -->
 <section class="reveal">
-  <div class="step">10 · 全部内容</div>
+  <div class="step">10 · 完整代码</div>
   <h2>几行写完</h2>
 
 <pre><span class="k">class</span> MLP(nn.Module):
@@ -519,11 +519,11 @@
 
     <span class="k">def</span> forward(self, x):    <span class="c"># x: [batch, seq, d]</span>
         <span class="k">return</span> self.down(self.act(self.up(x)))
-        <span class="c"># 只作用在最后一维 —— 每个 token 独立过，天然并行</span>
+        <span class="c"># 只作用在最后一维，每个 token 独立处理，可以并行计算</span>
 </pre>
 
   <div style="margin-top:60px; padding-top:44px; border-top:4px solid var(--ink)">
-    <p class="kicker"><em>attention 混合不同位置的信息，<br>MLP 对每个位置做非线性变换。</em><br><span style="font-size:.62em" class="mute">在常见的 dense block 中，MLP 通常占约 2/3 的参数。</span></p>
+    <p class="kicker"><em>attention 混合不同位置的信息。<br>MLP 对每个位置做非线性变换。</em><br><span style="font-size:.62em" class="mute">在常见的 dense block 中，MLP 通常占约 2/3 的参数。</span></p>
   </div>
 </section>
 
@@ -639,7 +639,7 @@ function render(){
   errVal.textContent = (err/(S+1)).toFixed(3);
 
   verdict.innerHTML = !on
-    ? '没有 ⚡：两个矩阵并成一个矩阵 —— <b style="color:#D4553F">加多少神经元都是一条直线</b>'
+    ? '没有 ⚡：两个矩阵合并成一个矩阵。<b style="color:#D4553F">神经元数量不影响结果，仍是一条直线</b>'
     : N <= 2
     ? '已经出现折点，但数量还不足以贴近目标曲线 🤏'
     : N <= 7

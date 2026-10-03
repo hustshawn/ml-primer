@@ -135,7 +135,7 @@ tr.hi td{background:#FFF6DE}
 <div class="wrap">
 
 <div class="hero">
-  <span class="kicker">两个被名字耽误的概念</span>
+  <span class="kicker">名称容易引起误解的两个概念</span>
   <h1>Attention 是什么<br>Head 又是<em>什么</em></h1>
   <div class="twoline">
     <div class="tl">
@@ -178,10 +178,10 @@ tr.hi td{background:#FFF6DE}
         <p><b>S[i][j] = 第 i 个词对第 j 个词的兴趣。</b>方向越像，点积越大。这一步生成了整个 n×n 的关系表。</p></div></div>
       <div class="sl"><div class="sn"></div><div>
         <h5>降温 + 遮罩 <code>S = S/√64 + mask</code></h5>
-        <p>除以 8 把分数压回正常范围（第 3 节会看到不除会死）。因果模型再把上三角设成 −∞。</p></div></div>
+        <p>除以 8 把分数调整到正常范围（第 3 节说明不这样做的后果）。因果模型再把上三角设为 −∞。</p></div></div>
       <div class="sl"><div class="sn"></div><div>
         <h5>归一 <code>A = softmax(S, dim=-1)</code></h5>
-        <p>按<b>行</b>做 softmax。每一行加起来等于 1 —— 「我的注意力总共就 100%，怎么分」。</p></div></div>
+        <p>按<b>行</b>做 softmax。每一行的权重总和等于 1，相当于把 100% 的注意力分配给不同位置。</p></div></div>
       <div class="sl"><div class="sn"></div><div>
         <h5>取值 <code>O = A·V　→ (n, 64)</code></h5>
         <p>第 i 个词的输出 = 所有 V 按第 i 行权重做加权平均。<b>这一步完成词与词之间的信息混合。</b></p></div></div>
@@ -192,11 +192,11 @@ tr.hi td{background:#FFF6DE}
 <!-- 2 -->
 <section class="reveal">
   <div class="head"><span class="num">2</span><h2>更准的名字：可微分的查字典</h2></div>
-  <p class="lede">「注意力」这个词有点误导。它做的事其实是<b>软查字典</b> —— 这是最好用的心智模型。</p>
+  <p class="lede">「注意力」这个词有点误导。它实际做的是<b>软查字典</b>，这是理解它的有效方式。</p>
 
   <div class="grid2" style="margin-top:28px">
     <div class="card" style="margin-top:0;background:#F3F0EA">
-      <div class="pill" style="background:#fff">硬查字典 · 你写过一万次</div>
+      <div class="pill" style="background:#fff">硬查字典 · 最常见的写法</div>
       <p class="mono" style="font-size:16px;margin-top:16px;line-height:1.9">
         d = {"动物": v₁, "马路": v₂, "累": v₃}<br>
         d["动物"] → v₁
@@ -204,7 +204,7 @@ tr.hi td{background:#FFF6DE}
       <p class="note" style="font-size:15.5px">
         key 要<b>完全相等</b>才命中。<br>
         命中一个，返回一个。<br>
-        不可微 —— 没法训练。
+        不可微。无法用梯度下降训练。
       </p>
     </div>
     <div class="card" style="margin-top:0;background:#E6F6EE">
@@ -217,7 +217,7 @@ tr.hi td{background:#FFF6DE}
       <p class="note" style="font-size:15.5px">
         每个 key <b>部分</b>命中，程度用点积衡量。<br>
         返回的是<b>所有 value 的混合</b>。<br>
-        全程可微 —— 所以能用梯度下降学。
+        全程可微，因此可以用梯度下降训练。
       </p>
     </div>
   </div>
@@ -235,11 +235,11 @@ tr.hi td{background:#FFF6DE}
     <div class="pill">一个 head 的注意力矩阵（示意）</div>
     <div class="hmwrap" style="margin-top:16px"><div id="mainHM"></div></div>
     <p class="note" style="margin-top:16px;font-size:16px">
-      被框出来的是「<b>它</b>」那一行 —— 45% 的注意力压在「动物」上。<b>模型解决了指代。</b><br>
-      没有任何规则告诉它「它」是代词，是 W<sup>Q</sup> / W<sup>K</sup> 在训练中自己学会了「什么算相关」。
+      被框出来的是「<b>它</b>」那一行，45% 的注意力集中在「动物」上。<b>模型解决了指代问题。</b><br>
+      没有任何规则告诉模型「它」是代词。W<sup>Q</sup> / W<sup>K</sup> 在训练中自己学会了「什么算相关」。
     </p>
     <p class="note" style="font-size:14.5px;color:var(--muted)">
-      注：格子里的数是示意值，用来展示模式；第 4 节给一个逐步算到底的真实例子。
+      注：格子里的数值是示意值，用于展示模式。第 4 节给出一个逐步计算的真实例子。
     </p>
   </div>
 
@@ -255,8 +255,8 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 4 -->
 <section class="reveal">
-  <div class="head"><span class="num">4</span><h2>把「它」那一行真的算一遍</h2></div>
-  <p class="lede">简化到 3 个候选。这个例子顺手说明了 <span class="mono">÷√d_k</span> 为什么不是装饰。</p>
+  <div class="head"><span class="num">4</span><h2>逐步计算「它」这一行的注意力</h2></div>
+  <p class="lede">简化到 3 个候选。这个例子说明了 <span class="mono">÷√d_k</span> 不是装饰性的操作。</p>
 
   <div class="card grid2">
     <div>
@@ -266,7 +266,7 @@ tr.hi td{background:#FFF6DE}
         Q<sub>它</sub> · K<sub>累</sub>　 = <b>6.4</b><br>
         Q<sub>它</sub> · K<sub>马路</sub> = <b>3.2</b>
       </p>
-      <p class="note">64 个数相乘再相加，方差正好是 64，所以分数轻易就到 ±10 以上。</p>
+      <p class="note">64 个数相乘再相加，方差正好是 64，因此分数经常超过 ±10。</p>
       <div class="pill" style="background:#E8F1FA;margin-top:22px">Step 2 · ÷√64 = ÷8</div>
       <p class="mono" style="font-size:15px;margin-top:12px;line-height:2">
         12.8 → <b>1.6</b>　　6.4 → <b>0.8</b>　　3.2 → <b>0.4</b>
@@ -279,7 +279,7 @@ tr.hi td{background:#FFF6DE}
         <div class="sr"><span>累</span><div class="bar"><i style="width:0.2%;background:var(--red)"></i></div><span class="v">0.002</span></div>
         <div class="sr"><span>马路</span><div class="bar"><i style="width:0.1%;background:var(--red)"></i></div><span class="v">0.000</span></div>
       </div>
-      <p class="note">几乎是 one-hot。softmax 饱和 → <b>梯度接近 0 → 训不动</b>。而且只剩一个词的信息，别的全丢了。</p>
+      <p class="note">几乎是 one-hot 分布。softmax 饱和后，<b>梯度接近 0，模型无法训练</b>。并且只保留了一个词的信息，其他信息全部丢失。</p>
 
       <div class="pill" style="background:#E6F6EE;margin-top:24px">✅ 除以 8 之后</div>
       <div class="smx">
@@ -287,14 +287,14 @@ tr.hi td{background:#FFF6DE}
         <div class="sr"><span>累</span><div class="bar"><i style="width:25.7%;background:var(--upd)"></i></div><span class="v">0.257</span></div>
         <div class="sr"><span>马路</span><div class="bar"><i style="width:17.2%;background:var(--upd)"></i></div><span class="v">0.172</span></div>
       </div>
-      <p class="note">有层次、有梯度。除以 √d<sub>k</sub> 把方差拉回 1，避免 softmax 过早饱和。</p>
+      <p class="note">有层次、有梯度。除以 √d<sub>k</sub> 把方差恢复到 1，避免 softmax 过早饱和。</p>
     </div>
   </div>
 
   <div class="card" style="background:#FFF6DE">
     <h4 class="sh">Step 3 · 输出</h4>
     <p class="mono" style="font-size:17px;margin-top:8px">O<sub>它</sub> = 0.571 · V<sub>动物</sub> ＋ 0.257 · V<sub>累</sub> ＋ 0.172 · V<sub>马路</sub></p>
-    <p class="note" style="font-size:16px">「它」原本是个空洞的代词，走完这一层，它的向量里已经装了 57% 的「动物」。<br>
+    <p class="note" style="font-size:16px">「它」原本是一个没有具体含义的代词。经过这一层后，它的向量中已经包含 57% 的「动物」信息。<br>
     <b>Attention 用这些权重混合不同位置的内容。</b></p>
   </div>
 </section>
@@ -302,7 +302,7 @@ tr.hi td{background:#FFF6DE}
 <!-- 5 -->
 <section class="reveal">
   <div class="head"><span class="num">5</span><h2>A 由输入计算，不是模型参数</h2></div>
-  <p class="lede">普通线性层使用训练后固定的权重；attention 的混合权重 A 会随当前输入变化。</p>
+  <p class="lede">普通线性层使用训练后固定的权重。attention 的混合权重 A 会随当前输入变化。</p>
 
   <div class="grid2" style="margin-top:28px">
     <div class="card" style="margin-top:0">
@@ -328,8 +328,8 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 6 -->
 <section class="reveal">
-  <div class="head"><span class="num">6</span><h2>那么，一个 head 是什么</h2></div>
-  <p class="lede">前面第 1–5 节讲的整套流程，跑一遍 —— <b>那就是一个 head</b>。</p>
+  <div class="head"><span class="num">6</span><h2>一个 head 是一次完整的注意力计算流程</h2></div>
+  <p class="lede">前面第 1–5 节讲的整套流程，执行一次，就是一个 head。</p>
 
   <div class="card">
     <div class="pipe" style="justify-content:center">
@@ -340,7 +340,7 @@ tr.hi td{background:#FFF6DE}
       <div class="shp o"><b>一个 (n,64)</b><span>输出</span></div>
     </div>
     <p class="note" style="text-align:center;font-size:17px;margin-top:20px">
-      一个 head 只能产出 <b>一个</b> 概率分布 —— 也就是<b>一种</b>「什么算相关」的判断标准。<br>
+      一个 head 只能产生 <b>一个</b> 概率分布，也就是<b>一种</b>「什么算相关」的判断标准。<br>
       多个 head 可以并行学习多种判断标准。
     </p>
   </div>
@@ -348,8 +348,8 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 7 -->
 <section class="reveal">
-  <div class="head"><span class="num">7</span><h2>为什么不能只有一个：softmax 的预算只有 1</h2></div>
-  <p class="lede">softmax 强制内部竞争。给了这个，就没得给那个。</p>
+  <div class="head"><span class="num">7</span><h2>单个 head 的 softmax 预算只有 100%</h2></div>
+  <p class="lede">softmax 强制内部竞争。注意力分配给一个位置后，就无法再分配给另一个位置。</p>
 
   <div class="card">
     <p style="font-size:16.5px;font-weight:700">「它」这一个位置，同时需要好几种<b>互不相干</b>的信息：</p>
@@ -359,13 +359,13 @@ tr.hi td{background:#FFF6DE}
       <div class="bud" style="background:#E6F6EE"><b>③ 紧邻的词是什么</b><p class="note" style="margin-top:4px">→ 因为</p></div>
     </div>
 
-    <p style="font-size:16px;font-weight:800;margin-top:28px">1 个 head：只有一条 100% 的预算，三件事互相挤</p>
+    <p style="font-size:16px;font-weight:800;margin-top:28px">1 个 head：只有一条 100% 的预算，三件事互相竞争</p>
     <div class="budbar">
       <span style="width:45%;background:var(--fwd)">指代 45%</span>
       <span style="width:33%;background:var(--bwd)">谓语 33%</span>
       <span style="width:22%;background:var(--upd)">邻居 22%</span>
     </div>
-    <p class="note">每件事都只做了一半。而且这三种「相关」的判断标准不一样，硬塞进同一个点积里会互相干扰。</p>
+    <p class="note">每件事都只完成了一半。这三种「相关」的判断标准不同，合并到同一个点积中会互相干扰。</p>
 
     <p style="font-size:16px;font-weight:800;margin-top:28px">8 个 head：每个 head 自己一条完整的 100%</p>
     <div class="budbar" style="margin-top:8px"><span style="width:100%;background:var(--fwd)">head 1 · 专心做指代 100%</span></div>
@@ -380,22 +380,22 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 8 -->
 <section class="reveal">
-  <div class="head"><span class="num">8</span><h2>它们真的分工了（没人安排）</h2></div>
-  <p class="lede">论文 Figure 5 的观察：不同 head 的 n×n 表长得完全不一样，各有明显的行为模式。</p>
+  <div class="head"><span class="num">8</span><h2>不同 head 自发学会了不同的分工</h2></div>
+  <p class="lede">论文 Figure 5 观察到：不同 head 的 n×n 表呈现完全不同的模式，各有明显的行为特征。</p>
 
   <div class="card">
     <div class="grid4">
       <div><div class="pill" style="font-size:12px">head A</div><div id="hmA" style="margin-top:10px"></div>
-        <p class="note" style="font-size:13.5px"><b>看邻居</b><br>对角线亮 —— 只关心自己和身边的词</p></div>
+        <p class="note" style="font-size:13.5px"><b>看邻居</b><br>对角线亮，只关注自己和邻近的词</p></div>
       <div><div class="pill" style="font-size:12px;background:#E8F1FA">head B</div><div id="hmB" style="margin-top:10px"></div>
-        <p class="note" style="font-size:13.5px"><b>看上一个词</b><br>次对角线亮 —— 像个局部语言模型</p></div>
+        <p class="note" style="font-size:13.5px"><b>看上一个词</b><br>次对角线亮，类似局部语言模型</p></div>
       <div><div class="pill" style="font-size:12px;background:#E6F6EE">head C</div><div id="hmC" style="margin-top:10px"></div>
-        <p class="note" style="font-size:13.5px"><b>解决指代</b><br>整列亮 —— 所有人都回看同一个名词</p></div>
+        <p class="note" style="font-size:13.5px"><b>解决指代</b><br>整列亮，所有位置都指向同一个名词</p></div>
       <div><div class="pill" style="font-size:12px;background:#F1EBF8">head D</div><div id="hmD" style="margin-top:10px"></div>
-        <p class="note" style="font-size:13.5px"><b>盯句首</b><br>第一列亮 —— 常见的「垃圾桶 / 汇聚点」行为</p></div>
+        <p class="note" style="font-size:13.5px"><b>关注句首</b><br>第一列亮，常见的「垃圾桶 / 汇聚点」行为</p></div>
     </div>
     <p class="note" style="margin-top:20px;font-size:15.5px">
-      这些模式是训练<b>自发</b>长出来的。论文原文的说法是：不同的 head 明显在执行不同任务，许多表现出与句子的<b>句法和语义结构</b>相关的行为。
+      这些模式是训练过程中<b>自发</b>形成的。论文原文指出：不同的 head 明显在执行不同任务，许多表现出与句子的<b>句法和语义结构</b>相关的行为。
     </p>
   </div>
 </section>
@@ -409,7 +409,7 @@ tr.hi td{background:#FFF6DE}
     <div class="shp" style="width:100%;min-width:0"><b>d_model = 512</b><span>一个词的向量</span></div>
     <div class="hsplit" id="hsplit"></div>
     <p class="note" style="text-align:center;margin-top:12px;font-size:16px">
-      <span class="mono"><b>8 × 64 = 512</b></span>　—　总维度不变，所以总算力和「一个 512 维的 head」<b>几乎一样</b>。
+      <span class="mono"><b>8 × 64 = 512</b></span>。总维度不变，因此总计算量与「一个 512 维的 head」<b>几乎相同</b>。
     </p>
     <p class="note" style="text-align:center;font-size:14.5px">论文原话：由于每个头维度降低了，总计算成本与全维度的单头注意力相当。</p>
   </div>
@@ -422,10 +422,10 @@ tr.hi td{background:#FFF6DE}
       <div class="bl"><span>8 heads × 64</span><div class="bar"><i style="width:90%;background:var(--upd)"></i></div><span class="v">25.8 ✅</span></div>
       <div class="bl"><span>32 heads × 16</span><div class="bar"><i style="width:70%;background:#B0A99E"></i></div><span class="v">25.4</span></div>
     </div>
-    <p class="note" style="font-size:14px">BLEU（newstest2013 dev）· 横轴从 24.0 起画，为了让差异看得见</p>
+    <p class="note" style="font-size:14px">BLEU（newstest2013 dev）· 横轴从 24.0 起画，以便显示差异</p>
     <p class="note" style="font-size:16px;margin-top:14px">
-      <b>头太少</b>：视角不够，一个分布干三件事。<br>
-      <b>头太多</b>：每个头只有 16 维，装不下有意义的「标准」。
+      <b>头太少</b>：视角不足，一个分布需要处理三件不同的事。<br>
+      <b>头太多</b>：每个头只有 16 维，无法容纳有意义的「判断标准」。
     </p>
   </div>
 </section>
@@ -463,8 +463,8 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 11 -->
 <section class="reveal">
-  <div class="head"><span class="num">11</span><h2>MHA / GQA / MQA：改的就是那个轴</h2></div>
-  <p class="lede">推理时 KV cache 要按 head 存。于是有人问：Q 保持 8 个头，K/V 能不能少几个头共用？</p>
+  <div class="head"><span class="num">11</span><h2>MHA / GQA / MQA 都在调整同一个轴</h2></div>
+  <p class="lede">推理时 KV cache 要按 head 存储。GQA 的方案是：Q 保持 8 个头，K/V 由多个头共用。</p>
 
   <div class="card">
     <div class="grid3">
@@ -476,7 +476,7 @@ tr.hi td{background:#FFF6DE}
       <div>
         <div class="pill" style="background:#E6F6EE">GQA · 今天的主流</div>
         <div id="gqa2" style="margin-top:12px"></div>
-        <p class="note" style="font-size:14.5px">分组共享，这里 4 个 Q 头共用 1 份 K/V。<br><b>KV cache ÷ 4</b>，质量几乎不掉。</p>
+        <p class="note" style="font-size:14.5px">分组共享，这里 4 个 Q 头共用 1 份 K/V。<br><b>KV cache ÷ 4</b>，质量几乎不下降。</p>
       </div>
       <div>
         <div class="pill" style="background:#FDEDE7">MQA · 最极端</div>
@@ -485,16 +485,16 @@ tr.hi td{background:#FFF6DE}
       </div>
     </div>
     <p class="note" style="margin-top:22px;font-size:16px">
-      注意<b>Q 的头数一个都没少</b> —— 8 套「判断标准」全保留，只是大家查同一本索引。<br>
-      这是纯粹为推理显存做的取舍：训练时 KV cache 不存在，这个优化毫无意义。
+      注意<b>Q 的头数没有减少</b>。8 套「判断标准」全部保留，只是共用同一份 K/V 索引。<br>
+      这个取舍只针对推理显存：训练时不存在 KV cache，这个优化没有意义。
     </p>
   </div>
 </section>
 
 <!-- 12 -->
 <section class="reveal">
-  <div class="head"><span class="num">12</span><h2>接到你熟的东西上</h2></div>
-  <p class="lede">前面那些形状，在推理栈里就是这几个具体的东西。</p>
+  <div class="head"><span class="num">12</span><h2>映射到推理栈中的常见概念</h2></div>
+  <p class="lede">前面讨论的张量形状，对应推理栈中的以下几个具体概念。</p>
 
   <div class="tblwrap">
   <table class="tbl">
@@ -509,11 +509,11 @@ tr.hi td{background:#FFF6DE}
   </div>
 
   <div class="card" style="background:#F3F0EA">
-    <h4 class="sh">顺手去个歧义：两个不相干的 "head"</h4>
+    <h4 class="sh">两个不相干的 "head"</h4>
     <p class="note" style="font-size:16px">
-      <b>attention head</b> —— 这一页讲的，512 里切出来的 64 维一段。<br>
-      <b>LM head</b> —— 模型最后那个 <span class="mono">(512 × vocab)</span> 的投影层，把向量变成词表上的分数。<br><br>
-      两者<b>毫无关系</b>，只是都叫 head。看代码时别混。
+      <b>attention head</b>：这一页讨论的概念，是 512 维里切出来的 64 维片段。<br>
+      <b>LM head</b>：模型最后的 <span class="mono">(512 × vocab)</span> 投影层，把向量转换成词表上的分数。<br><br>
+      两者<b>没有关系</b>，只是名称都叫 head。阅读代码时不要混淆这两个概念。
     </p>
   </div>
 </section>
@@ -521,11 +521,11 @@ tr.hi td{background:#FFF6DE}
 <div class="punch reveal">
   <div class="big">小结</div>
   <p style="margin-top:28px">
-    <b style="color:#fff">Attention</b> = 每个词当场算出「我该听谁的」，然后按这个比例把大家的内容拌进自己。<br>
+    <b style="color:#fff">Attention</b> = 每个词实时计算应该参考哪些词，并按这个比例混合其他词的内容。<br>
     这些混合权重会随输入重新计算，不会作为参数保存。
   </p>
   <p>
-    <b style="color:#fff">Head</b> = 同一件事按 8 套不同标准并行做一遍，因为一个 softmax 的预算只有 100%。<br>
+    <b style="color:#fff">Head</b> = 同一件事按 8 套不同标准并行计算一次，因为一个 softmax 的预算只有 100%。<br>
     实现上它是张量的一个轴，GQA 通过减少 K/V 的 head 数来缩小 KV cache。
   </p>
 </div>
@@ -618,7 +618,7 @@ function kvsvg(el, groups){
     s += `<text x="${c}" y="124" text-anchor="middle" font-size="12" font-weight="900" fill="#fff">K/V</text>`;
     g.forEach(i=>{ s += `<path d="M${cx(i)} 50 L${c} 104" stroke="#16130F" stroke-width="2" fill="none"/>`; });
   });
-  s += `<text x="${totalW/2}" y="150" text-anchor="middle" font-size="11" font-weight="900" fill="#6E655B">K/V · ${groups.length} 份 → KV cache 就是这个数</text>`;
+  s += `<text x="${totalW/2}" y="150" text-anchor="middle" font-size="11" font-weight="900" fill="#6E655B">K/V · ${groups.length} 份 → KV cache 大小等于这个数值</text>`;
   s += `</svg>`;
   el.innerHTML = s;
 }

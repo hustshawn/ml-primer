@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>为什么现在的 LLM 都是 decoder-only —— 一切都在那张 mask 上</title>
+<title>为什么现在的 LLM 都是 decoder-only · 一切都在那张 mask 上</title>
 <style>
   :root{
     --paper:#FAF7F1;
@@ -251,10 +251,10 @@
   <div class="tldr">
     <div class="top">五个理由 · 先看结论</div>
     <ol>
-      <li><div><strong>大多数位置都能产生 loss。</strong><span class="why"> 因果语言建模可以在几乎每个位置预测下一个 token；MLM 只在被遮住的位置算 loss。前者监督更密，但不能直接换算成「强几倍」。</span></div></li>
+      <li><div><strong>大多数位置都能产生 loss。</strong><span class="why"> 因果语言建模可以在几乎每个位置预测下一个 token。MLM 只在被遮住的位置算 loss。前者监督更密，但不能直接换算成「强几倍」。</span></div></li>
       <li><div><strong>所有任务都能写成「接着写」。</strong><span class="why"> 翻译、分类、摘要、多轮对话可以统一成同一种格式，不用给每个任务单独划分输入和输出。</span></div></li>
       <li><div><strong>已经计算的表示可以复用。</strong><span class="why"> 因果 mask 保证前面的 token 不会因为后面来了新词而改变，这是 KV cache 成立的前提。</span></div></li>
-      <li><div><strong>一种零件，堆 N 层。</strong><span class="why"> 没有 cross-attention、没有 encoder/decoder 参数分配问题。越简单的东西越好往上堆、越好切到几千张卡上。</span></div></li>
+      <li><div><strong>一种零件，堆 N 层。</strong><span class="why"> 没有 cross-attention、没有 encoder/decoder 参数分配问题。结构越简单，越容易堆叠，也越容易切分到几千个 GPU 上。</span></div></li>
       <li><div><strong>网上的数据本来就是一条流。</strong><span class="why"> 网页、书和代码通常是连续文本，不需要先整理成 (输入, 输出) 对。</span></div></li>
     </ol>
   </div>
@@ -288,14 +288,14 @@
         <div class="who">Decoder-only · GPT 2018 →</div>
         <div class="kvl"><span>看得到</span><b>只能往前看</b></div>
         <div class="kvl"><span>怎么出题</span><b>猜下一个词</b></div>
-        <div class="kvl"><span>擅长</span><b>接着写 = 什么都能干</b></div>
-        <div class="kvl"><span>现状</span><b>你听过的那些都是它</b></div>
+        <div class="kvl"><span>擅长</span><b>接着写 = 能覆盖大多数任务</b></div>
+        <div class="kvl"><span>现状</span><b>主流生成式模型大多是这一类</b></div>
       </div>
     </div>
 
     <div class="note">
       <span class="tag">名字很误导，先纠正一下</span>
-      「decoder-only」<b>不是「只有解码器」</b>。原论文的 decoder 块有三个子层：因果自注意力 + <b>cross-attention</b>（看 encoder 的输出）+ FFN。而 decoder-only 模型<b>把 cross-attention 删了</b> —— 剩下的两个子层（自注意力 + FFN）跟 encoder 块<b>结构完全一样</b>。<br><br>
+      「decoder-only」<b>不是「只有解码器」</b>。原论文的 decoder 块有三个子层：因果自注意力 + <b>cross-attention</b>（看 encoder 的输出）+ FFN。decoder-only 模型<b>删掉了 cross-attention</b>。剩下的两个子层（自注意力 + FFN）跟 encoder 块<b>结构相同</b>。<br><br>
       encoder-only 和 decoder-only 的主要结构差别，是自注意力能否看到后续 token。这个差别由 attention mask 决定。
     </div>
   </div>
@@ -343,8 +343,8 @@
     </div>
 
     <div class="note">
-      <span class="tag">为什么双向就只能涂掉一部分</span>
-      因为双向看得见答案。你问它「下一个词是什么」，它往右一瞄就抄到了 —— 这道题不产生任何学习。<b>想出题，必须先把答案涂掉</b>，而涂掉的地方就没法当上下文用了。这就是 BERT 只涂 15% 的原因：涂太多，剩下的上下文不够；涂太少，一次前向就没几道题。<b>这个两难，因果 mask 根本不存在。</b>
+      <span class="tag">双向只能涂掉一部分的原因</span>
+      因为双向可以看到答案。模型只需要看一眼右边的 token，就能直接得到下一个词的答案，这道题不产生任何学习。<b>想出题，必须先把答案涂掉</b>，而涂掉的地方就无法再当作上下文使用。这就是 BERT 只涂 15% 的原因：涂太多，剩下的上下文不够用；涂太少，一次前向能出的题就太少。<b>因果 mask 没有这个两难。</b>
     </div>
   </div>
 </section>
@@ -353,7 +353,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">03</span>理由一 · 每个 token 都是一道题</h2>
-    <p class="lead">下面 100 个格子 = 一段 100 token 的文本。无论采用哪种目标，输入位置都要参与计算；区别在于<b>其中有几个位置直接产生 loss</b>。位置数能比较监督密度，不能直接代表信息量或总训练效率。</p>
+    <p class="lead">下面 100 个格子 = 一段 100 token 的文本。无论采用哪种目标，输入位置都要参与计算。区别在于<b>其中有几个位置直接产生 loss</b>。位置数能比较监督密度，不能直接代表信息量或总训练效率。</p>
 
     <div class="stage">
       <div class="segs" id="obj-segs">
@@ -386,7 +386,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">04</span>理由二 · 所有任务都能写成<em>「接着写」</em></h2>
-    <p class="lead">encoder-decoder 需要明确区分输入和输出；decoder-only 把两部分拼成一条 token 流，统一按续写处理。选一个任务看看差别。</p>
+    <p class="lead">encoder-decoder 需要明确区分输入和输出。decoder-only 把两部分拼成一条 token 流，统一按续写处理。选一个任务看看差别。</p>
 
     <div class="stage">
       <div class="segs" id="task-segs">
@@ -414,8 +414,8 @@
 
     <div class="note">
       <span class="tag">这也支持 in-context learning</span>
-      既然任务只是「换一段前文」，那<b>换任务就不用动参数了</b> —— 直接在 prompt 里写清要求、塞几个例子。这就是 in-context learning / few-shot prompting，GPT-3（2020，175B 参数）把它变成了主流用法。<br><br>
-      多轮对话也很难长期固定输入和输出的边界：到第 3 轮时，前两轮的模型输出已经成为新一轮输入。decoder-only 直接把整段历史当作同一条 token 流。
+      任务只是「替换一段前文」，因此<b>切换任务不需要修改参数</b>：只需在 prompt 里写清要求，加入几个示例。这就是 in-context learning / few-shot prompting。GPT-3（2020，175B 参数）让这种用法成为主流。<br><br>
+      多轮对话也很难长期固定输入和输出的边界：到第 3 轮时，前两轮的模型输出已经成为新一轮的输入。decoder-only 直接把整段历史当作同一条 token 流。
     </div>
   </div>
 </section>
@@ -434,7 +434,7 @@
 
       <div class="kv">
         <div class="panel">
-          <div class="ph" style="color:var(--enc)">双向 · 存不住</div>
+          <div class="ph" style="color:var(--enc)">双向 · 无法缓存</div>
           <div class="kvgrid" id="kv-bi"></div>
           <div class="kvcount" style="color:var(--no)"><small>累计算 K/V 次数</small><span id="kv-nbi">0</span></div>
         </div>
@@ -471,7 +471,7 @@
 <section>
   <div class="wrap">
     <h2 class="h2"><span class="num">06</span>理由四 · 一种零件，堆 N 层</h2>
-    <p class="lead">在几千张卡、持续数月的训练规模下，结构是否规则会直接影响并行切分和 kernel 优化。</p>
+    <p class="lead">在几千个 GPU、持续数月的训练规模下，结构是否规则会直接影响并行切分和 kernel 优化。</p>
 
     <div class="stackwrap">
       <div class="stack">
@@ -562,20 +562,20 @@
         <div class="blk" style="--bc:var(--dec)">
           <h3>因果：能数出自己是第几个</h3>
           <div class="who">Decoder-only</div>
-          <p style="margin:8px 0 0;font-size:15.5px;color:var(--ink2);font-weight:500">第 1 个 token 只能看见 1 个东西，第 5 个能看见 5 个。<b>「我能看见几个」= 「我前面有几个」= 我的绝对位置。</b>位置信息从 mask 的形状里免费漏出来了。</p>
+          <p style="margin:8px 0 0;font-size:15.5px;color:var(--ink2);font-weight:500">第 1 个 token 只能看见 1 个 token，第 5 个能看见 5 个。<b>「我能看见几个」= 「我前面有几个」= 我的绝对位置。</b>位置信息因此直接从 mask 的形状中获得，不需要额外的机制。</p>
         </div>
         <div class="blk" style="--bc:var(--enc)">
           <h3>双向：每个位置看到的都一样多</h3>
           <div class="who">Encoder-only</div>
-          <p style="margin:8px 0 0;font-size:15.5px;color:var(--ink2);font-weight:500">全都看见全部 8 个。<b>没有任何可数的锚点</b> —— 位置信息必须从外面显式喂进去，否则这个模型眼里的句子就是一个词袋。</p>
+          <p style="margin:8px 0 0;font-size:15.5px;color:var(--ink2);font-weight:500">全都能看见全部 8 个。<b>没有任何可数的锚点。</b>位置信息必须从外部显式提供，否则模型会把句子当成一个无序的词袋。</p>
         </div>
       </div>
     </div>
 
     <div class="note">
       <span class="tag">有实验支撑</span>
-      Haviv 等（2022）《Transformer Language Models without Positional Encodings Still Learn Positional Information》发现：因果语言模型<b>完全不加位置编码</b>也能训得不错，探针能在网络内部读出「绝对位置」的表示。作者的解释正是——<b>因果注意力让每个 token 能推断出自己前面有多少个前驱，从而近似出自己的绝对位置。</b><br><br>
-      注意：这不代表实际模型不用位置编码（现在都用 RoPE 之类）。它只说明<b>因果 mask 本身就在做一部分位置编码的活</b>。
+      Haviv 等（2022）《Transformer Language Models without Positional Encodings Still Learn Positional Information》发现：因果语言模型<b>完全不加位置编码</b>也能达到不错的训练效果，探针能在网络内部读出「绝对位置」的表示。作者的解释是：<b>因果注意力让每个 token 能推断出自己前面有多少个前驱，从而近似出自己的绝对位置。</b><br><br>
+      注意：这不代表实际模型不使用位置编码（现在普遍使用 RoPE 之类的方法）。它只说明<b>因果 mask 本身已经承担了一部分位置编码的作用</b>。
     </div>
   </div>
 </section>
@@ -589,29 +589,29 @@
     <div class="qa">
       <span class="tag">同规模对照实验</span>
       <h3>多任务微调下，结果会改变</h3>
-      <p>Wang 等（ICML 2022）做过一次干净的对照：三种架构 × 两种预训练目标，模型<b>超过 50 亿参数、训了超过 1700 亿 token</b>。结论是分岔的 ——</p>
-      <p>纯无监督预训练之后比 zero-shot：<b>因果 decoder-only + 自回归目标最强</b>（跟现实一致）。<br>但加上<b>多任务微调</b>之后：<b>非因果可见性 + 掩码语言建模的组合反而最好。</b></p>
-      <p>这说明 decoder-only 更适合大规模无监督预训练后通过 prompt 使用；它并不在所有训练设置下都占优。过去几年，主流生成式模型主要采用的正是前一种路线。</p>
+      <p>Wang 等（ICML 2022）做过一次干净的对照：三种架构 × 两种预训练目标，模型<b>超过 50 亿参数、训了超过 1700 亿 token</b>。结论因训练阶段不同而不同。</p>
+      <p>纯无监督预训练之后比较 zero-shot 效果：<b>因果 decoder-only + 自回归目标最强</b>（跟现实一致）。<br>但加上<b>多任务微调</b>之后：<b>非因果可见性 + 掩码语言建模的组合反而最好。</b></p>
+      <p>这说明 decoder-only 更适合大规模无监督预训练后通过 prompt 使用。它并不在所有训练设置下都占优。过去几年，主流生成式模型主要采用的正是前一种路线。</p>
       <p class="src">arXiv:2204.05832</p>
     </div>
 
     <div class="qa">
       <span class="tag">Encoder-only 没死</span>
       <h3>它仍然广泛用于非生成任务</h3>
-      <p>向量检索的 embedding 模型、重排序器、各种文本分类和内容审核 —— BERT 系的双向编码器在这些地方仍是主力，因为这些任务<b>要的就是「读懂整句」，不需要往下写</b>，双向看两边的优势可以完整吃到。</p>
-      <p>「现在的 LLM 都是 decoder-only」这句话，主语其实是<b>生成式</b> LLM。</p>
+      <p>向量检索的 embedding 模型、重排序器，以及各种文本分类和内容审核任务，仍然以 BERT 系的双向编码器为主。原因是这些任务只需要<b>「读懂整句」，不需要往下写</b>，可以完全发挥双向注意力的优势。</p>
+      <p>「现在的 LLM 都是 decoder-only」这句话中的主语是<b>生成式</b> LLM。</p>
     </div>
 
     <div class="qa">
       <span class="tag">Encoder-decoder 也没死</span>
       <h3>输入和输出是「两种东西」的时候，它依然合理</h3>
-      <p>语音转文字（Whisper 就是 encoder-decoder：encoder 吃音频，decoder 写文字）、专用机器翻译、以及不少多模态模型用 cross-attention 把图像/音频注入语言模型 —— 这些场景里输入根本不是同一条 token 流，那道「墙」不是负担，是结构上本来就该有的东西。</p>
+      <p>语音转文字（Whisper 就是 encoder-decoder 架构：encoder 处理音频，decoder 生成文字）、专用机器翻译，以及部分用 cross-attention 把图像或音频注入语言模型的多模态模型，输入本来就不是同一条 token 流。这些场景里的那道「墙」不是负担，是结构上应该有的部分。</p>
     </div>
 
     <div class="qa">
       <span class="tag">混合体存在过</span>
       <h3>prefix-LM 的工程复杂度更高</h3>
-      <p>UL2、GLM 这类做法把前缀设为双向可见、后半段保持因果，想把两边的好处都拿到，效果也确实不差。但它多了一个「前缀边界在哪」的问题、多了一种 mask 形状、KV cache 和各种推理优化都要额外照顾。</p>
+      <p>UL2、GLM 这类做法把前缀设为双向可见、后半段保持因果，希望同时获得两边的优势，效果也确实不差。但它多了一个「前缀边界在哪」的问题，多了一种 mask 形状，KV cache 和各种推理优化都需要额外处理。</p>
       <p>纯因果 decoder 只有一种块和一种 mask，现有 kernel 也普遍优先支持它。长期积累的工程支持进一步扩大了两者的部署成本差距。</p>
     </div>
   </div>
@@ -620,7 +620,7 @@
     <div class="final">
       <div class="k">核心结论</div>
       <p>decoder-only 更适合大规模生成模型，<br>因为它<em>训练信号密、结构规则、缓存简单</em>。</p>
-      <p class="s">允许往后看时，需要遮住一部分答案才能构造训练目标，一次前向产生 loss 的位置也会减少；同时，新 token 会改变前面位置的表示，缓存更难复用。<br><br>因果 mask 禁止访问未来 token，避开了这些问题。代价是每个训练位置只能使用左侧上下文，而大规模训练通常愿意接受这个取舍。</p>
+      <p class="s">允许往后看时，需要遮住一部分答案才能构造训练目标，一次前向产生 loss 的位置也会减少。同时，新 token 会改变前面位置的表示，使缓存更难复用。<br><br>因果 mask 禁止访问未来 token，避开了这些问题。代价是每个训练位置只能使用左侧上下文，而大规模训练通常愿意接受这个取舍。</p>
     </div>
   </div>
 </section>
@@ -658,7 +658,7 @@
       color:'var(--enc)',
       can:function(i,j){ return true; },
       future:'<span class="nope">能 ✗</span>',
-      task:'先把一部分词涂掉，再让它填回来<small>不涂就没题可出 —— 答案就在右边</small>',
+      task:'先把一部分词涂掉，再让它填回来<small>不涂就无法出题，因为答案就在右边</small>',
       n:'1 道',
       nwhy:'BERT 涂 15%，8 个 token 里大约就 1 个',
       kv:'<span class="nope">不能 ✗</span><small>来一个新词，前面每个 token 的表示都变了，只能全部重算</small>'
@@ -778,9 +778,9 @@
     lm:  { color:'var(--dec)', hit:function(i){ return i<99; }, n:99,
            say:'每个位置都直接问「下一个是什么」。<b>99 个位置全部产生 loss</b>（最后一个的答案在下一段里）。一遍前向 = 99 道题。' },
     mlm: { color:'var(--enc)', hit:function(i){ return MLM.indexOf(i)>=0; }, n:15,
-           say:'涂掉 15 个词，只有<b>被涂的那 15 个位置</b>产生 loss。另外 85 个位置也算了，但没出题 —— 它们只是上下文。' },
+           say:'涂掉 15 个词，只有<b>被涂的那 15 个位置</b>产生 loss。另外 85 个位置也参与计算，但不产生 loss，只作为上下文。' },
     span:{ color:'var(--ed)',  hit:function(i){ return SPAN.indexOf(i)>=0; }, n:15,
-           say:'涂掉 5 个连续片段（平均 3 token），一共 15 个。<b>整体还是 15%</b> —— 换了涂法，密度没变。' }
+           say:'涂掉 5 个连续片段（平均 3 token），一共 15 个。<b>整体还是 15%</b>。换了涂法，密度不变。' }
   };
 
   function paintDense(k){
@@ -816,7 +816,7 @@
       inp:'这家店的菜等了四十分钟才上。',
       out:'负面',
       strip:'<span class="p">这家店的菜等了四十分钟才上。<br>这条评论的情绪是</span> <span class="c">负面</span>',
-      note:'能划，但很别扭：输出只有两个字，专门为它养一个 decoder 栈，参数全浪费了。'
+      note:'可以划分，但不合理：输出只有两个字，却要为它维护一个完整的 decoder 栈，参数被大量浪费。'
     },
     t2: {
       inp:'（一篇 3000 字的长文……）',
@@ -828,7 +828,7 @@
       inp:'用户：帮我想个标题<br>助手：「三种架构，一张 mask」<br>用户：再短一点',
       out:'「一张 mask」',
       strip:'<span class="p">用户：帮我想个标题<br>助手：「三种架构，一张 mask」<br>用户：再短一点<br>助手：</span> <span class="c">「一张 mask」</span>',
-      note:'这里划不出来了 —— 第 2 轮「助手」说的那句话，它算输入还是输出？上一轮它是模型生成的输出，这一轮它又变成了上下文。硬塞进 encoder 就等于每轮重跑一遍整段历史。'
+      note:'这里无法划分输入和输出的边界：第 2 轮「助手」说的那句话，应该算输入还是输出？上一轮它是模型生成的输出，这一轮它又变成了上下文。如果强行放入 encoder，就等于每轮都要重新计算整段历史。'
     }
   };
 

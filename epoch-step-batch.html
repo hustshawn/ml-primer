@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Epoch / Step / Batch —— 用「刷题」就懂了</title>
+<title>Epoch / Step / Batch · 用刷题类比说明</title>
 <style>
   :root{
     --paper:#FAF6EF;
@@ -151,7 +151,7 @@
   <div class="wrap">
     <div class="kicker">Epoch · Step · Batch</div>
     <h1>训练大模型，<br>就是<em>刷一本习题册</em></h1>
-    <p class="sub">这三个词，其实是「一道题 / 一叠题 / 刷完一遍」。</p>
+    <p class="sub">这三个词对应「一道题 / 一叠题 / 刷完一遍」。</p>
   </div>
 </header>
 
@@ -167,7 +167,7 @@
       <span class="emoji">📚</span>
       <div class="real">Batch</div>
       <div class="term">一批</div>
-      <div class="life">= 抓起来的<b>一叠题</b>，一起做</div>
+      <div class="life">= 一次取出的<b>一叠题</b>，一起做</div>
     </div>
     <div class="card c-step">
       <span class="emoji">✏️</span>
@@ -186,8 +186,8 @@
 
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">01</span>看它跑一遍</h2>
-    <p class="lead">100 道题（100 条数据）。改一下「一叠几道」，看 step 数怎么变。</p>
+    <h2 class="h2"><span class="num">01</span>交互演示</h2>
+    <p class="lead">100 道题（100 条数据）。调整「一叠几道」，观察 step 数如何变化。</p>
 
     <div class="stage">
       <div class="controls">
@@ -212,7 +212,7 @@
         <div class="stat"><div class="lbl">Loss（错得多少）</div><div class="val" id="v-loss">4.00</div></div>
       </div>
 
-      <div class="narrate" id="say">🪑 坐下，习题册翻开第一页。</div>
+      <div class="narrate" id="say">📖 翻开习题册的第一页。</div>
     </div>
   </div>
 </section>
@@ -240,7 +240,7 @@
       <div class="box">
         <h3>🏗️ 预训练（从零学语言）</h3>
         <div class="kv"><span>数据</span><b>1,000,000,000,000 token</b></div>
-        <div class="kv"><span>每步吃掉</span><b>4,000,000 token</b></div>
+        <div class="kv"><span>每步处理</span><b>4,000,000 token</b></div>
         <div class="kv"><span>Steps / epoch</span><b>250,000</b></div>
         <div class="kv"><span>Epoch</span><b>≈ 1</b></div>
         <div class="kv"><span>题太多</span><b>刷一遍都刷不完</b></div>
@@ -259,43 +259,43 @@
 
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">04</span>几个容易卡住的点</h2>
+    <h2 class="h2"><span class="num">04</span>常见问题</h2>
     <p class="lead"></p>
 
     <div class="qa">
-      <span class="tag">为什么不一道一道做</span>
-      <h3>一道题就改一次脑子，太慌了</h3>
-      <p>单题的对错很随机，可能是这题特别怪。一叠题一起看，取个平均，方向才靠得住 —— 而且 GPU 就爱一次算一大坨。</p>
+      <span class="tag">使用 batch 的原因</span>
+      <h3>一道题就改一次脑子，方向不稳定</h3>
+      <p>单道题的结果可能偏差很大，因为这道题恰好比较特殊。把一叠题放在一起，取平均值，方向才稳定。而且 GPU 更适合一次处理大量数据。</p>
     </div>
 
     <div class="qa">
       <span class="tag">日志里的横轴</span>
-      <h3>你盯着看的那个数字是 step，不是 epoch</h3>
-      <p>训练曲线的横轴几乎都是 step，因为 epoch 太粗了 —— 大模型可能一个 epoch 都跑不完，那条线就只剩一个点。注意那通常是 <b>global step</b>：跨 epoch 一直往上累加，不会在新一轮归零。第 2 轮的第 1 步，global step 已经是 11 了。</p>
+      <h3>训练日志里的横轴数字是 step，不是 epoch</h3>
+      <p>训练曲线的横轴几乎都是 step，因为 epoch 的粒度太粗。大模型可能一个 epoch 都无法跑完，这样整条曲线就只有一个点。这里的 step 通常是 <b>global step</b>：跨 epoch 持续累加，不会在新一轮归零。例如第 2 轮的第 1 步，global step 已经是 11。</p>
     </div>
 
     <div class="qa">
-      <span class="tag">显存不够怎么办</span>
-      <h3>梯度累积 = 攒几叠再改一次</h3>
-      <p>想要「一叠 64 道」但显存只塞得下 8 道？那就做 8 个 micro-batch、把梯度攒起来，最后<b>只更新一次</b>。训练日志里的 global step 通常在这次更新后才加 1；前面 8 次读取数据叫 micro-step。</p>
+      <span class="tag">显存不足时的方法</span>
+      <h3>梯度累积 = 累积几叠后再改一次</h3>
+      <p>如果需要「一叠 64 道」，但显存只能容纳 8 道，可以做 8 个 micro-batch，把梯度累积起来，最后<b>只更新一次</b>。训练日志里的 global step 通常在这次更新后才加 1。前面读取数据的 8 次称为 micro-step。</p>
     </div>
 
     <div class="qa">
-      <span class="tag">刷几遍好</span>
+      <span class="tag">合适的 epoch 数</span>
       <h3>同一本册子刷太多遍，会背答案</h3>
-      <p>预训练数据海量，通常只刷 1 遍左右。微调数据少，刷 2–3 遍；再多，模型就开始死记训练集（过拟合），换道新题就答不出了。</p>
+      <p>预训练数据量巨大，通常只刷 1 遍左右。微调数据较少，刷 2–3 遍。重复次数再多，模型就开始死记训练集（过拟合），遇到新题就无法正确回答。</p>
     </div>
 
     <div class="qa">
-      <span class="tag">还有个旋钮</span>
+      <span class="tag">另一个重要参数</span>
       <h3>Learning rate = 每次改脑子的力度</h3>
-      <p>Step 决定「改几次」，learning rate 决定「每次改多狠」。太狠会改飞，太轻会几乎学不动。</p>
+      <p>Step 决定「更新几次」，learning rate 决定「每次更新的幅度」。幅度太大会导致发散，太小会导致几乎无法学习。</p>
     </div>
   </div>
 </section>
 
 <footer>
-  <div class="wrap">一道题 → 一叠题 → 改一次 → 刷完一遍。就这样。</div>
+  <div class="wrap">一道题 → 一叠题 → 改一次 → 刷完一遍。</div>
 </footer>
 
 <script>
@@ -353,7 +353,7 @@
     // highlight the batch being worked on
     paint();
     groups[cursor].className = 'group doing';
-    say('📚 抓起第 <b>' + (cursor + 1) + '</b> 叠（' + bs + ' 道）→ 做完对答案 → ✏️ 改一次脑子 = 本轮第 <b>' + (step + 1) + '</b> step，累计第 <b>' + (totalSteps + 1) + '</b> step');
+    say('📚 取出第 <b>' + (cursor + 1) + '</b> 叠（' + bs + ' 道）→ 做完对答案 → ✏️ 改一次脑子 = 本轮第 <b>' + (step + 1) + '</b> step，累计第 <b>' + (totalSteps + 1) + '</b> step');
 
     setTimeout(function(){
       cursor++; step++; totalSteps++;
@@ -365,7 +365,7 @@
       if(cursor >= groupCount){
         epoch++;
         vEp.textContent = epoch;
-        say('🔁 整本刷完了 —— <b>第 ' + epoch + ' 个 epoch 完成</b>（本轮走了 ' + groupCount + ' 个 step）。本轮计数归零，<b>累计 step 不归零</b>，翻回第一页继续。');
+        say('🔁 整本刷完了。<b>第 ' + epoch + ' 个 epoch 完成</b>（本轮共 ' + groupCount + ' 个 step）。本轮计数归零，<b>累计 step 不归零</b>，翻回第一页继续。');
         cursor = 0; step = 0;
         vStepIn.textContent = step + ' / ' + groupCount;
         setTimeout(paint, 500);
@@ -392,7 +392,7 @@
     epoch = 0; totalSteps = 0;
     vEp.textContent = 0; vLoss.textContent = '4.00';
     build();
-    say('🪑 坐下，习题册翻开第一页。');
+    say('📖 翻开习题册的第一页。');
   });
 
   chips.forEach(function(chip){

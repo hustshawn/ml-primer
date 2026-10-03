@@ -207,34 +207,34 @@
 <section class="hero">
   <span class="tag">非线性 / NONLINEARITY</span>
   <h1>线性只会按比例<br><em>非线性会看情况</em></h1>
-  <p class="lead">「非线性让网络能学复杂的东西」—— 这句话你已经听过了。<br>这一页不讲它有什么用，只讲<span class="bend">为什么</span>。</p>
+  <p class="lead">常见的说法是「非线性让网络能学复杂的东西」。<br>本页不讲它的作用，只讲<span class="bend">原因</span>。</p>
 
   <div class="tldr">
     <h3>三十秒版</h3>
-    <p><b>线性计算</b>会给每个输入乘一个固定的数，然后把结果加起来。</p>
+    <p><b>线性计算</b>给每个输入乘一个固定的数，再把结果相加。</p>
     <p>这种结构有三个限制：</p>
     <ol>
       <li>叠一百层，还是等于一层</li>
-      <li>永远只能「一刀切」</li>
-      <li>不会<span class="bend">看情况</span> —— 它在任何地方都用同一个规则</li>
+      <li>划分方式永远是一条直线</li>
+      <li>不会<span class="bend">看情况</span>。它在任何地方都用同一个规则。</li>
     </ol>
-    <p>在中间加入一个最小的 <code>if</code>（比如 <code>max(0, x)</code>），这三个限制都可以被打破。<br>这就是非线性的作用。</p>
+    <p>在中间加入一个最小的 <code>if</code>（例如 <code>max(0, x)</code>），可以打破这三个限制。<br>这就是非线性的作用。</p>
   </div>
 </section>
 
 <!-- ============ 01 ============ -->
 <section class="reveal">
-  <div class="step">01 · 先把「线性」这个词讲清楚</div>
+  <div class="step">01 · 线性的定义</div>
   <h2>线性由两条<br>可以直接检验的规则定义</h2>
 
-  <p>线性函数画出来通常是直的，但图形只是结果。定义看下面两条：</p>
+  <p>线性函数的图形通常是直线。但图形只是结果，不是定义。定义是下面两条规则：</p>
 
   <div class="rule"><span class="n">1</span><span class="t"><b>输入翻倍，输出就翻倍。</b>翻三倍就翻三倍，减半就减半。</span></div>
   <div class="rule"><span class="n">2</span><span class="t"><b>分开算再加起来，等于合起来算。</b>两个人的行李分别称重再相加，和放一起称，一样重。</span></div>
 
-  <p class="mute">这两条同时满足 = 线性。少满足一条 = 非线性。真的就这么简单，没有别的门槛。</p>
+  <p class="mute">这两条同时满足，才是线性。少满足一条，就是非线性。没有其他判断标准。</p>
 
-  <p style="margin-top:30px">下面是一个每个月都会出现在你生活里的对比。左边那种收费满足这两条，右边那种不满足：</p>
+  <p style="margin-top:30px">下面比较两种常见的电费计费方案：左边满足这两条规则，右边不满足。</p>
 
   <div class="demo">
     <div class="hd">实验台 A · 翻倍检验</div>
@@ -250,11 +250,11 @@
 
     <div class="readout" id="billOut"></div>
     <div class="verdict" id="billVerdict"></div>
-    <p class="cap">阶梯价这里用的是示意数字（0.5 元/度，超过 200 度的部分 0.8 元）；真实档位各地不同。</p>
+    <p class="cap">阶梯价使用示意数字（0.5 元/度，超过 200 度的部分 0.8 元）。实际价格因地区不同。</p>
   </div>
 
-  <p style="margin-top:30px">注意右边那条线的形状：<b class="bend">两段直线，中间一个折点</b>。它已经是非线性了 —— 非线性不需要是什么优美的曲线，<b>一个折点就够</b>。</p>
-  <p>顺手记住这个形状，因为 <code>ReLU</code> 长得跟它一模一样。你在阶梯电费单上见过的东西，就是神经网络里最常用的那个非线性。</p>
+  <p style="margin-top:30px">右边这条线由两段直线组成，中间有一个折点。<b class="bend">这就是非线性</b>。非线性不需要是曲线，<b>一个折点就足够</b>。</p>
+  <p>记住这个形状。<code>ReLU</code> 的形状与它相同。阶梯电费单上的这个形状，就是神经网络里最常用的非线性函数。</p>
 </section>
 
 <!-- ============ 02 ============ -->
@@ -273,40 +273,40 @@
     <div class="tile">
       <div class="k">饱和 / 反转</div>
       <div class="h">1 杯咖啡 → 6 杯</div>
-      <p>第一杯让你清醒。第六杯不会让你清醒六倍，它让你手抖。效果不但不成比例，还会反向。</p>
+      <p>第一杯有提神效果。第六杯不会让提神效果变成六倍，反而会让人手抖。效果不但不成比例，还会反向。</p>
     </div>
     <div class="tile">
       <div class="k">相互作用</div>
       <div class="h">盐好吃，糖好吃</div>
-      <p>各自加一点都好吃。同时猛加两样，难吃。<b>1 + 1 在这里等于 0</b> —— 第 2 条规矩直接破了。</p>
+      <p>各自加一点都好吃。同时大量添加两种调料，味道会变差。<b>这里 1 + 1 等于 0</b>。这打破了第 2 条规则。</p>
     </div>
   </div>
 
-  <p>最后那个例子最要紧，先把它记住：<b class="bend">「A 单独出现好，B 单独出现好，A 和 B 一起出现反而糟」—— 这种事线性永远表达不了。</b></p>
-  <p class="mute">因为线性只会给 A 打一个固定的分、给 B 打一个固定的分，然后相加。既然两个分都是正的，加起来必然更高。它在结构上就没有地方安放「一起出现时反而糟」这句话。第 5 节你会亲手撞上这堵墙。</p>
+  <p>最后一个例子最重要：<b class="bend">「A 单独出现时效果好，B 单独出现时效果好，A 和 B 一起出现时效果却变差」。线性函数无法表达这种关系。</b></p>
+  <p class="mute">线性函数只能给 A 一个固定的分数、给 B 一个固定的分数，然后相加。两个分数都是正数，相加后必然更高。线性函数在结构上无法表示「一起出现时效果变差」这种关系。第 5 节会用一个具体例子说明这个限制。</p>
 </section>
 
 <!-- ============ 03 ============ -->
 <section class="reveal">
-  <div class="step">03 · 软肋到底在哪</div>
+  <div class="step">03 · 线性函数无法按情况调整</div>
   <h2>线性不会<br>「看情况」</h2>
 
   <p>更具体地说，线性函数在所有位置都使用同一套变化规则：</p>
 
   <div class="card">
-    <p style="margin:0"><b>线性函数的斜率处处相同。</b>在 <span class="m">x = 0</span> 附近多给一个单位，和在 <span class="m">x = 1000</span> 附近多给一个单位，效果一模一样。它不知道自己现在身处何地。</p>
+    <p style="margin:0"><b>线性函数的斜率处处相同。</b>在 <span class="m">x = 0</span> 附近多给一个单位，和在 <span class="m">x = 1000</span> 附近多给一个单位，效果相同。线性函数不会根据位置调整。</p>
   </div>
 
   <p>而「看情况」是一切有意思的判断的核心：</p>
   <ul class="plain">
-    <li><span class="mk y">情况</span><span>下第 1 勺盐 vs 下第 20 勺盐 —— 同一个动作，一次是改善，一次是毁掉</span></li>
-    <li><span class="mk y">情况</span><span>「便宜」对买菜是好话，对手术刀是坏话 —— 同一个词，符号相反</span></li>
-    <li><span class="mk y">情况</span><span>只有当「河」出现过，「bank」才是河岸 —— B 重不重要，取决于 A 在不在</span></li>
+    <li><span class="mk y">情况</span><span>加第 1 勺盐和加第 20 勺盐是同一个动作，效果不同：一次是改善，一次是破坏</span></li>
+    <li><span class="mk y">情况</span><span>「便宜」用在买菜上是好话，用在手术刀上是坏话，同一个词，含义相反</span></li>
+    <li><span class="mk y">情况</span><span>只有「河」这个词出现过，「bank」才是河岸的意思，B 是否重要取决于 A 是否出现</span></li>
   </ul>
 
-  <p>这些句子都有一个共同的骨架：<b>如果……那么……否则……</b>。而线性层里没有 <code>if</code>，一个都没有 —— 它只有乘法和加法。</p>
+  <p>这些句子有一个共同的结构：<b>如果……那么……否则……</b>。线性层里没有 <code>if</code>。它只有乘法和加法。</p>
 
-  <p style="margin-top:30px">ReLU 就是把 <code>if</code> 补进去的最小零件。它常被写成 <span class="m">max(0, x)</span>，但更该这样读：</p>
+  <p style="margin-top:30px">ReLU 是把 <code>if</code> 加入模型的最小方式。它常被写成 <span class="m">max(0, x)</span>，但更该这样读：</p>
 
 <pre><span class="c"># ReLU 的真身：一个 if，两个分支</span>
 <span class="k">def</span> relu(x):
@@ -316,18 +316,18 @@
         <span class="k">return</span> 0        <span class="c"># 情况二：关掉</span>
 </pre>
 
-  <p>就是这么个东西。<b class="bend">一个神经元 = 一个 if</b>。一层里有几千个神经元，就是几千个「如果……」同时在判断当前输入落在哪种情况里；层与层叠起来，就是「如果……的话，再看是不是……」。</p>
-  <p class="mute">你熟悉的程序之所以能干活，靠的就是 if 和分支。线性网络是一个没有 if 的程序 —— 它只能算一个加权总分。非线性做的事，是把 if 还给它。</p>
+  <p><b class="bend">一个神经元相当于一个 if。</b>一层中有几千个神经元，相当于几千个「如果……」同时判断当前输入属于哪种情况。层层叠加后，相当于「如果……，再判断是否……」。</p>
+  <p class="mute">程序依靠 if 和分支来处理不同情况。线性网络相当于一个没有 if 的程序，只能计算一个加权总分。非线性的作用是把 if 加回去。</p>
 </section>
 
 <!-- ============ 04 ============ -->
 <section class="reveal">
-  <div class="step">04 · 「一百层等于一层」的看图版</div>
+  <div class="step">04 ·「一百层等于一层」：几何角度</div>
   <h2>线性变换只会做<br>四件事</h2>
 
-  <p>你已经见过代数版的解释：<span class="m">W₂(W₁x) = (W₂W₁)x = Wx</span>，两个矩阵乘起来还是一个矩阵。它是对的，但它没告诉你这在<b>形状</b>上意味着什么。所以换个看法。</p>
+  <p>代数解释是：<span class="m">W₂(W₁x) = (W₂W₁)x = Wx</span>，两个矩阵相乘后仍是一个矩阵。这个解释是对的，但它没有说明这在<b>形状</b>上代表什么。下面换一种角度说明。</p>
 
-  <p>把输入空间想成一张方格纸。一个线性层能对这张纸做的，只有四件事：<b>拉、压、转、翻</b>。做完之后，纸有四个性质是雷打不动的：</p>
+  <p>把输入空间看作一张方格纸。一个线性层能对这张纸做的操作只有四种：<b>拉伸、压缩、旋转、翻转</b>。操作之后，纸有四个性质保持不变：</p>
 
   <div class="cols">
     <div class="tile"><div class="k">性质 1</div><div class="h">直线还是直线</div><p>纸上任何一条直线，变换后仍然是直线。永远不会弯。</p></div>
@@ -336,11 +336,11 @@
     <div class="tile"><div class="k">性质 4</div><div class="h">格子处处一样</div><p>整张纸被同一个规则均匀地拉伸，没有哪个角落是特殊的。</p></div>
   </div>
 
-  <p><b class="bend">第 4 条就是「不会看情况」的几何版。</b>变换之后的空间，每个角落长得都一样 —— 你没办法让左上角遵守一套规则、右下角遵守另一套。</p>
+  <p><b class="bend">第 4 条是「不会看情况」在几何上的表现。</b>变换后的空间里，每个角落都相同。无法让左上角使用一套规则、右下角使用另一套规则。</p>
 
-  <p class="mute">（真实的线性层还带一个 bias，<span class="m">Wx + b</span>，严格说该叫「仿射」。它只影响第 3 条 —— 原点会被挪走。第 1、2、4 条一字不变，所以该合并的照样合并：<span class="m">W₂(W₁x + b₁) + b₂ = W₂W₁x + 常数</span>。加不加 bias，都画不出弯的东西。）</p>
+  <p class="mute">（真实的线性层还包含一个 bias，<span class="m">Wx + b</span>，严格来说应称为「仿射变换」。bias 只影响第 3 条：原点会被移动。第 1、2、4 条保持不变，因此两层仍然可以合并：<span class="m">W₂(W₁x + b₁) + b₂ = W₂W₁x + 常数</span>。无论是否加 bias，结果都不会出现弯曲。）</p>
 
-  <p style="margin-top:26px">自己拨一下。前两个按钮是纯线性的，第三个在中间插了一次 ReLU：</p>
+  <p style="margin-top:26px">点击下面的按钮。前两个按钮是纯线性变换，第三个在中间插入一次 ReLU：</p>
 
   <div class="demo">
     <div class="hd">实验台 B · 方格纸</div>
@@ -352,31 +352,31 @@
     </div>
 
     <svg id="gridSvg" viewBox="0 0 640 420" role="img"
-         aria-label="方格纸在线性变换下始终保持笔直、平行、均匀；加入 ReLU 后出现折痕并有区域被压平"></svg>
+         aria-label="方格纸在线性变换下始终保持笔直、平行、均匀。加入 ReLU 后出现折痕，并有区域被压平"></svg>
 
     <div class="verdict" id="gridVerdict"></div>
   </div>
 
-  <p style="margin-top:30px">对比第二个和第三个按钮：<b>过两个线性层的结果，跟直接过一个矩阵完全一样</b> —— 格子还是笔直、平行、均匀。这就是「一百层等于一层」在图上的样子：你反复拉压转翻一张方格纸，得到的还是一张方格纸。</p>
+  <p style="margin-top:30px">对比第二个和第三个按钮：<b>经过两个线性层的结果，与直接经过一个矩阵完全相同</b>。格子仍然笔直、平行、均匀。这就是「一百层等于一层」在图上的表现：反复对一张方格纸做拉伸、压缩、旋转、翻转，结果仍然是一张方格纸。</p>
 
-  <p>而加了 ⚡ 之后，图上出现了两件线性变换<b class="bend">永远做不到</b>的事：</p>
-  <div class="rule"><span class="n">1</span><span class="t"><b class="bend">出现了折痕。</b>纸不再处处一样了 —— 折痕两侧是两套不同的规则。空间从此有了「地形」，而有地形才谈得上「看情况」。</span></div>
-  <div class="rule"><span class="n">2</span><span class="t"><b class="bend">有区域被压平了</b>，整整一块被压成了一个点。这意味着不同的输入可以走向同一个结果 —— 信息被主动丢掉了。线性变换（除了退化情况）是可逆的，它舍不得扔任何东西；而「忽略无关的部分」恰恰是一切识别、归类、抽象的前提。</span></div>
+  <p>加入 ⚡ 之后，图上出现了两件线性变换<b class="bend">永远做不到</b>的事：</p>
+  <div class="rule"><span class="n">1</span><span class="t"><b class="bend">出现了折痕。</b>纸不再处处相同。折痕两侧是两套不同的规则。空间从此有了「地形」，有地形才能「看情况」。</span></div>
+  <div class="rule"><span class="n">2</span><span class="t"><b class="bend">有区域被压平了</b>，一整块区域被压缩成一个点。这意味着不同的输入可以得到相同的结果，一部分信息被丢弃。线性变换（除了退化情况）是可逆的，不会丢弃任何信息。而「忽略无关的部分」正是识别、归类、抽象的前提。</span></div>
 </section>
 
 <!-- ============ 05 ============ -->
 <section class="reveal">
-  <div class="step">05 · 亲手撞一次墙</div>
-  <h2>盐和糖：<br>一刀切不开的题</h2>
+  <div class="step">05 · 一个线性分类器解不开的问题</div>
+  <h2>盐和糖：<br>一条直线分不开的问题</h2>
 
   <p>回到第 2 节那道菜。把它画成一张图：横轴是加不加盐，纵轴是加不加糖。</p>
   <ul class="plain">
-    <li><span class="mk n">蓝</span><span>都不加 → 能吃；两样都猛加 → 难吃到另一个极端。<span class="mute">（这两堆算同一类：「口味失衡」）</span></span></li>
-    <li><span class="mk y">红</span><span>只加盐 → 好吃；只加糖 → 好吃。<span class="mute">（这两堆是另一类：「好吃」）</span></span></li>
+    <li><span class="mk n">蓝</span><span>都不加 → 可以吃。两样都大量添加 → 难吃到另一个极端。<span class="mute">（这两类属于同一类：「口味失衡」）</span></span></li>
+    <li><span class="mk y">红</span><span>只加盐 → 好吃。只加糖 → 好吃。<span class="mute">（这两堆是另一类：「好吃」）</span></span></li>
   </ul>
-  <p>好吃的两堆在<b>对角线上</b>。现在请你用一条直线，把红的和蓝的分开。</p>
+  <p>好吃的两堆在<b>对角线上</b>。现在用一条直线，把红色和蓝色分开。</p>
 
-  <p class="mute">下面这台机器有两个可调的「刀」，⚡ 开关控制刀切完之后要不要先各自过一次 ReLU。先别开 ⚡，随便怎么拖，看能到多少分：</p>
+  <p class="mute">下面的演示工具有两个可调的「刀」。⚡ 开关控制：切割后是否先经过一次 ReLU。保持 ⚡ 关闭，拖动滑块，查看能达到的准确率：</p>
 
   <div class="demo">
     <div class="hd">实验台 C · 两把刀</div>
@@ -403,7 +403,7 @@
 
   <p style="margin-top:30px"><b>关 ⚡ 时，准确率最高是 75%。</b>无论怎样调整，两条线都会合并成一条，因此四堆点里必然有一堆落在错误的一侧。</p>
 
-  <p style="margin-top:26px">关键在于<b class="bend">为什么明明有两把刀，却只切出了一刀</b>：</p>
+  <p style="margin-top:26px">下面说明原因：<b class="bend">明明有两把刀，却只切出了一刀</b>：</p>
 
   <div class="card">
     <p class="big">(s − b₁) − 2(s − b₂) = −s + <span class="bend">常数</span></p>
@@ -412,18 +412,18 @@
 
   <p>这就是 <span class="m">W₂W₁ = W</span> 在图上的表现。<b>没有 ReLU 时，多层线性边界会自动合并。</b>继续增加线性层，最后仍然只得到一条直线。</p>
 
-  <p style="margin-top:26px">现在打开 ⚡。同样两把刀、同样的位置滑块，只多了一次 <span class="m">max(0, ·)</span>：<b class="ok">100%</b>。</p>
-  <p>为什么这次没合并？因为 ReLU 把每把刀「不该管的那半边」按平成了 0。第一把刀只在自己右边有话说，第二把刀只在自己右边有话说 —— 两个人管的地盘不再完全重合，相加就不会互相抵消了。于是两把刀真的成了两把，夹出一条<b class="bend">带</b>，把中间那类圈了出来。</p>
-  <p class="mute">「用一条带把中间圈出来」这件事，一条直线做不到；两条直线只要能各管一段，就做到了。ReLU 提供的就是「各管一段」。</p>
+  <p style="margin-top:26px">打开 ⚡。使用相同的两把刀、相同的位置滑块，只多了一次 <span class="m">max(0, ·)</span>：<b class="ok">100%</b>。</p>
+  <p>原因：ReLU 把每把刀「不该管的那一半」压平成 0。第一把刀只对自己右边的区域起作用，第二把刀也只对自己右边的区域起作用。两把刀的作用范围不再完全重叠，相加后不会互相抵消。两把刀的作用范围保持独立，夹出一条<b class="bend">带状区域</b>，把中间那一类圈了出来。</p>
+  <p class="mute">「用一条带状区域把中间圈出来」这件事，一条直线做不到。两条直线只要能各管一段，就能做到。ReLU 提供的就是「各管一段」。</p>
 </section>
 
 <!-- ============ 06 ============ -->
 <section class="reveal">
-  <div class="step">06 · 深度为什么划算</div>
-  <h2>ReLU 干的事，<br>其实是折纸</h2>
+  <div class="step">06 · 深度比宽度更有效</div>
+  <h2>ReLU 的作用<br>相当于折纸</h2>
 
-  <p>到这里「为什么需要非线性」已经答完了。但还有半个问题：<b>为什么要很多层非线性？</b></p>
-  <p>小时候玩过的那个手工就是答案：一张纸对折几次，剪<b>一刀</b>，展开来是一排口子。</p>
+  <p>到这里，「为什么需要非线性」已经有了答案。下面说明另一个问题：<b>为什么需要很多层非线性</b>。</p>
+  <p>答案来自一个常见的手工：把一张纸对折几次，剪<b>一刀</b>，展开后是一排口子。</p>
 
   <div class="demo">
     <div class="hd">实验台 D · 折纸</div>
@@ -443,12 +443,12 @@
     <div class="verdict" id="foldVerdict"></div>
   </div>
 
-  <p style="margin-top:30px">每加一层，纸就多对折一次，之前所有的折痕跟着<b class="bend">翻一倍</b>。这就是为什么深比宽划算：</p>
+  <p style="margin-top:30px">每加一层，纸就多对折一次，之前所有的折痕都跟着<b class="bend">翻一倍</b>。这就是深度比宽度更有效的原因：</p>
   <div class="cols">
-    <div class="tile"><div class="k">摊成一层</div><div class="h">加法</div><p>N 个神经元最多给你 N+1 段。想要更细的形状，只能一个一个往里塞。</p></div>
-    <div class="tile"><div class="k">摞成深层</div><div class="h">乘法</div><p>每层 2 个神经元、共 n 层，能折出 2<sup>n</sup> 段。层数进指数。</p></div>
+    <div class="tile"><div class="k">摊成一层</div><div class="h">加法</div><p>N 个神经元最多产生 N+1 段。想要更精细的形状，只能逐个增加神经元。</p></div>
+    <div class="tile"><div class="k">摞成深层</div><div class="h">乘法</div><p>每层 2 个神经元，共 n 层，能折出 2<sup>n</sup> 段。段数随层数呈指数增长。</p></div>
   </div>
-  <p class="mute">这不是比喻，是有严格构造的：Montúfar 等人 2014 年数过 ReLU 网络能切出的线性区域数量，Telgarsky 2016 年用的正是这个反复折叠的锯齿函数，证明浅网络要达到同样的表达力，宽度必须指数级增长。前提仍然是那个 ⚡ —— 没有它，折不起来，一百层还是一层。</p>
+  <p class="mute">这不只是类比，而是有严格数学构造的结论：Montúfar 等人 2014 年计算了 ReLU 网络能切出的线性区域数量，Telgarsky 2016 年使用的正是这个反复折叠的锯齿函数，证明浅层网络要达到同样的表达能力，宽度必须呈指数增长。前提仍然是 ⚡。没有它，无法折叠，一百层仍然等于一层。</p>
 </section>
 
 <!-- ============ 07 ============ -->
@@ -456,40 +456,40 @@
   <div class="step">07 · 回到语言</div>
   <h2>语言里几乎<br>全是「看情况」</h2>
 
-  <p>假设有个只会线性的模型来判断一句话是好评还是差评。它能做的事只有一件：给每个词一个固定的分，加起来，看总分过不过线。</p>
+  <p>假设有个只会线性的模型来判断一句话是好评还是差评。它能做的事只有一件：给每个词一个固定的分数，相加后判断总分是否超过阈值。</p>
 
   <div class="card">
     <p style="margin:0 0 12px"><b>「这电影不好看」</b></p>
     <p class="mute" style="margin:0">线性模型：<span class="m">「好看」+3</span>，<span class="m">「不」−1</span>，总分 <span class="m">+2</span> → 判成好评。</p>
-    <p style="margin:12px 0 0">「不」会<b class="bend">改变后面整句的方向</b>，而非简单减去一个固定分数。这个变化取决于后面跟着什么，需要表达输入之间的相互作用；线性模型只能让输入乘以<b>固定权重</b>。</p>
+    <p style="margin:12px 0 0">「不」会<b class="bend">改变后面整句的方向</b>，而不是简单减去一个固定分数。这个变化取决于后面跟着什么词，需要表达输入之间的相互作用。线性模型只能让输入乘以<b>固定权重</b>。</p>
   </div>
 
   <ul class="plain">
-    <li><span class="mk y">看情况</span><span>「他这演技真是绝了」—— 褒还是贬，取决于上文。同样的词，相反的分。</span></li>
-    <li><span class="mk y">看情况</span><span>「苹果」是水果还是公司，看旁边有没有「股价」。</span></li>
-    <li><span class="mk y">看情况</span><span>「你行你上」—— 逐词打分算出来的意思，和整句的意思毫无关系。</span></li>
+    <li><span class="mk y">看情况</span><span>「他这演技真是绝了」。是褒义还是贬义，取决于上文。同样的词，对应相反的分数。</span></li>
+    <li><span class="mk y">看情况</span><span>「苹果」指水果还是公司，取决于旁边是否出现「股价」。</span></li>
+    <li><span class="mk y">看情况</span><span>「你行你上」。逐词打分算出的意思，与整句的意思毫无关系。</span></li>
   </ul>
 
-  <p>一个只会「每个词打固定分再相加」的模型，天花板就是词袋模型：它知道句子里出现了哪些词，永远不知道这些词<b>凑在一起</b>是什么意思。而语言的意思几乎全在「凑在一起」里。</p>
+  <p>一个只会「给每个词打固定分再相加」的模型，上限是词袋模型：它知道句子中出现了哪些词，但不知道这些词<b>组合在一起</b>是什么意思。语言的意义大多来自词的组合方式。</p>
   <p class="mute">语言中的组合关系依赖上下文，因此语言模型需要非线性来表示这些变化。</p>
 </section>
 
 <!-- ============ 08 ============ -->
 <section class="reveal">
-  <div class="step">08 · 都藏在哪</div>
+  <div class="step">08 · 非线性在 Transformer 中的位置</div>
   <h2>Transformer 里的<br>非线性清单</h2>
 
-  <p>常见的误解是「非线性只在激活函数里」。其实一个 block 里有好几处，也有好几处是纯线性的 —— 分清楚它们，很多设计上的选择就顺了：</p>
+  <p>常见的误解是「非线性只存在于激活函数」。一个 block 里有好几处非线性，也有好几处是纯线性的。分清楚它们，许多设计选择会更容易理解：</p>
 
   <ul class="plain">
-    <li><span class="mk y">非线性</span><span><b>MLP 里的激活</b>（ReLU / GELU / SwiGLU）—— 最标准、最显眼的那一个。</span></li>
+    <li><span class="mk y">非线性</span><span><b>MLP 里的激活</b>（ReLU / GELU / SwiGLU）。这是最标准、最明显的一处。</span></li>
     <li><span class="mk y">非线性</span><span><b>attention 权重</b>。Q 和 K 都来自输入，二者相乘后再经过 softmax（带指数和除法）。这种计算让「谁重要」随当前内容变化。</span></li>
-    <li><span class="mk y">非线性</span><span><b>归一化</b>（LayerNorm / RMSNorm）。除以的是<b>输入自己</b>算出来的均方根 —— 输入翻倍，输出不变。第 1 条规矩当场就破了。</span></li>
-    <li><span class="mk n">线性</span><span><b>残差的那个加号</b>。它解决的是信号能不能传到深层，跟表达能力无关 —— 别把它算成非线性来源。</span></li>
-    <li><span class="mk n">线性</span><span><b>Q / K / V 投影、MLP 的两个大矩阵、最后的输出层</b>。这些都是矩阵乘法，本身一点非线性都不提供。</span></li>
+    <li><span class="mk y">非线性</span><span><b>归一化</b>（LayerNorm / RMSNorm）。除以的是<b>输入自己</b>算出来的均方根。输入翻倍，输出不变。第 1 条规则在这里被打破。</span></li>
+    <li><span class="mk n">线性</span><span><b>残差连接中的加号</b>。它的作用是让信号能够传到深层，与表达能力无关。它不是非线性的来源。</span></li>
+    <li><span class="mk n">线性</span><span><b>Q / K / V 投影、MLP 的两个大矩阵、最后的输出层</b>。这些都是矩阵乘法，本身不提供任何非线性。</span></li>
   </ul>
 
-  <p>顺着这份清单看第 4 节那句话就更清楚了：模型里绝大部分参数在做线性的事，<b>非线性只负责在中间插入「折痕」</b>。分量很小，但去掉它，剩下那几千亿参数会一起塌成一个矩阵。</p>
+  <p>结合这份清单，第 4 节的结论更清楚：模型中的大部分参数在执行线性运算，<b>非线性只负责插入「折痕」</b>。非线性的参数占比很小，但去掉它，剩下的几千亿参数会一起坍缩成一个矩阵。</p>
 </section>
 
 <!-- ============ 09 ============ -->
@@ -499,7 +499,7 @@
 
   <div class="card">
     <h3>误解一：非线性意味着复杂的公式</h3>
-    <p style="margin:0"><span class="m">max(0, x)</span> 比乘法还简单：两段直线拼一下，一个分支判断。它是整个深度学习里最廉价的零件之一，却是那个不可或缺的。</p>
+    <p style="margin:0"><span class="m">max(0, x)</span> 比乘法还简单：两段直线拼接，一个分支判断。它是深度学习中最简单的组件之一，但也是不可或缺的组件。</p>
   </div>
 
   <div class="card">
@@ -508,19 +508,19 @@
   </div>
 
   <div class="card">
-    <h3>误解三：那用 x² 或 sin 岂不是更「非线性」</h3>
-    <p style="margin:0 0 12px">非线性程度越高不代表越好，训练稳定性同样重要。<span class="m">x²</span> 的输出随输入平方增长，几十层叠加后数值容易爆掉；<span class="m">sin</span> 周期振荡，同一个输出对应多个输入，也会增加优化难度。</p>
-    <p style="margin:0">实用的激活函数通常会<b>把负值关掉或压小，让正值通过</b>，相当于一个门。GELU、SiLU、SwiGLU 都能写成 <span class="m">x × 一个 0~1 的门</span>。这里需要的是能根据输入调节信号的<b class="bend">开关</b>。</p>
+    <h3>误解三：非线性程度越高越好</h3>
+    <p style="margin:0 0 12px">非线性程度越高不代表越好，训练稳定性同样重要。<span class="m">x²</span> 的输出随输入平方增长，几十层叠加后数值容易溢出。<span class="m">sin</span> 周期振荡，同一个输出对应多个输入，也会增加优化难度。</p>
+    <p style="margin:0">实用的激活函数通常会<b>把负值关闭或减小，让正值通过</b>，相当于一个门。GELU、SiLU、SwiGLU 都能写成 <span class="m">x × 一个 0~1 的门</span>。这里需要的是能根据输入调节信号的<b class="bend">开关</b>。</p>
   </div>
 </section>
 
 <!-- ============ 10 ============ -->
 <section class="reveal end">
   <div class="step" style="text-align:left">10 · 小结</div>
-  <p class="final">线性只会按固定比例打分、相加；<br><span class="bend">非线性让它学会说「看情况」。</span></p>
+  <p class="final">线性只会按固定比例打分、相加，<br><span class="bend">非线性让它学会说「看情况」。</span></p>
   <p class="mute" style="max-width:30em; margin:34px auto 0; text-align:left">
-    再回头看 MLP 那三步 —— 摊开、掰弯、压回。摊开和压回是两个矩阵，它们负责提供参数和容量；中间那一下「掰弯」不提供任何容量，它只做一件事：<b>让前后两个矩阵没法合并</b>。<br><br>
-    没有它，那两个矩阵就是同一个矩阵，一百层就是一层，几千亿参数只够画一条直线。
+    再回头看 MLP 的三个步骤：摊开、掰弯、压回。摊开和压回是两个矩阵，负责提供参数和容量。中间的「掰弯」步骤不提供任何容量，只做一件事：<b>让前后两个矩阵无法合并</b>。<br><br>
+    没有它，那两个矩阵就是同一个矩阵，一百层等于一层，几千亿参数只能画出一条直线。
   </p>
 </section>
 
@@ -614,7 +614,7 @@ const C = {
       ['', '单一价（线性）', '阶梯价'],
       [`用 ${x} 度要交`, yuan(flat(x)), yuan(tier(x))],
       ['翻倍用 ' + (x*2) + ' 度要交', yuan(flat(x*2)), yuan(tier(x*2))],
-      ['账单也翻倍的话应该是', yuan(2*flat(x)), yuan(2*tier(x))]
+      ['账单翻倍后应为', yuan(2*flat(x)), yuan(2*tier(x))]
     ];
     let html = '';
     rows.forEach((r, i) => {
@@ -626,17 +626,17 @@ const C = {
     const linOk = Math.abs(flat(x*2) - 2*flat(x)) < 1e-9;
     const tieOk = Math.abs(tier(x*2) - 2*tier(x)) < 1e-9;
     html += `<span class="lbl">翻倍就翻倍？</span>`
-          + `<span class="v ${linOk?'yes':'no'}">${linOk?'✓ 一模一样':'✗ 不相等'}</span>`
-          + `<span class="v ${tieOk?'yes':'no'}">${tieOk?'✓ 一模一样':'✗ 多出 '+yuan(tier(x*2)-2*tier(x))}</span>`;
+          + `<span class="v ${linOk?'yes':'no'}">${linOk?'✓ 相同':'✗ 不相等'}</span>`
+          + `<span class="v ${tieOk?'yes':'no'}">${tieOk?'✓ 相同':'✗ 多出 '+yuan(tier(x*2)-2*tier(x))}</span>`;
     out.innerHTML = html;
 
     if(tieOk){
       verdict.className = 'verdict';
-      verdict.innerHTML = '用得少的时候，阶梯价还没跨过折点 —— <b>在折点以内，它跟线性没区别</b>。把滑块往右拖，跨过 100 度看看。';
+      verdict.innerHTML = '用得少的时候，阶梯价还没跨过折点。<b>在折点以内，它与线性没有区别。</b>把滑块向右拖动，跨过 100 度查看结果。';
     }else{
       verdict.className = 'verdict bad';
       verdict.innerHTML = `翻倍用电，账单多涨了 <b>${yuan(tier(x*2)-2*tier(x))}</b>。`
-        + `右边这条线破了第 1 条规矩 —— <b class="bend">它是非线性的</b>，全靠中间那一个折点。`;
+        + `右边这条线打破了第 1 条规则。<b class="bend">它是非线性的</b>，原因是中间的那个折点。`;
     }
   }
   slider.addEventListener('input', render);
@@ -764,8 +764,8 @@ const C = {
   const fmt = M => M.map(v => (v >= 0 ? ' ' : '') + v.toFixed(2)).join('  ');
   const TXT = {
     0: '还没动过。横轴（<b>蓝</b>）、竖轴（<b class="bend">红</b>）和所有格子都是笔直、平行、均匀的。A、B 是两个不同的输入。',
-    1: '被拉、压、转了一下。<b>线还是直的，平行还是平行，格子还是处处一样大</b> —— 只是整张纸换了个姿势。A 和 B 还是两个点。',
-    3: '⚡ 一进来，两件事同时发生：<b class="bend">出现了折痕</b>（折痕两侧是两套规则，格子不再处处一样），而且<b class="bend">一整块被压平了</b> —— A 和 B 这两个不同的输入，从此变成同一个点。线性变换永远做不出这两样。'
+    1: '经过拉伸、压缩、旋转。<b>线还是直的，平行还是平行，格子还是处处一样大。</b>只是整张纸的方向和位置发生了变化。A 和 B 仍是两个不同的点。',
+    3: '加入 ⚡ 后，两件事同时发生：<b class="bend">出现了折痕</b>（折痕两侧是两套规则，格子不再处处相同），并且<b class="bend">一整块区域被压平了</b>。A 和 B 这两个不同的输入，变成了同一个点。线性变换永远做不出这两件事。'
   };
 
   function render(mode){
@@ -773,7 +773,7 @@ const C = {
     if(mode === 2){
       verdict.className = 'verdict';
       verdict.innerHTML = '又过了一层，结果仍是一张笔直、平行、均匀的方格纸。'
-        + '<br><span class="m" style="font-size:.85em; color:' + C.mute + '">W₂W₁ = [' + fmt(M21) + ' ]　—— 两层线性变换可以合并成一层</span>';
+        + '<br><span class="m" style="font-size:.85em; color:' + C.mute + '">W₂W₁ = [' + fmt(M21) + ' ]。两层线性变换可以合并成一层</span>';
     }else{
       verdict.className = mode === 3 ? 'verdict good' : 'verdict';
       verdict.innerHTML = TXT[mode];
@@ -901,18 +901,18 @@ const C = {
     if(!r){
       verdict.className = 'verdict bad';
       verdict.innerHTML = `准确率 <span class="stat" style="font-size:1.5em">${acc}%</span>　`
-        + `<span style="font-weight:700">两把刀相加又变回一把 —— 边界永远只有一条直线。`
-        + `<b class="bend">怎么拖都到不了 75% 以上</b>，试试。</span>`;
+        + `<span style="font-weight:700">两把刀相加后又变回一把，边界永远只有一条直线。`
+        + `<b class="bend">无论怎么拖动，准确率都无法超过 75%</b>。可以尝试一下。</span>`;
     }else if(acc >= 98){
       verdict.className = 'verdict good';
       verdict.innerHTML = `准确率 <span class="stat" style="font-size:1.5em">${acc}%</span>　`
-        + `<span style="font-weight:700">两把刀夹出一条<b class="ok">带</b>，中间那类被圈了出来。`
-        + `参数一个没多，只多了一次 <span class="m">max(0, ·)</span>。</span>`;
+        + `<span style="font-weight:700">两把刀夹出一条<b class="ok">带</b>，中间那一类被圈了出来。`
+        + `参数数量没有增加，只多了一次 <span class="m">max(0, ·)</span> 计算。</span>`;
     }else{
       verdict.className = 'verdict';
       verdict.innerHTML = `准确率 <span class="stat" style="font-size:1.5em">${acc}%</span>　`
-        + `<span style="font-weight:700">⚡ 已经开了，边界能弯了 —— 现在去调两把刀的位置：`
-        + `让刀 1 落在左下那堆<b>之后</b>、刀 2 落在中间两堆<b>之后</b>。（或者直接按「一键摆正」）</span>`;
+        + `<span style="font-weight:700">⚡ 已经开了，边界可以弯曲。调整两把刀的位置：`
+        + `让刀 1 落在左下那堆<b>之后</b>、刀 2 落在中间两堆<b>之后</b>。（或者直接点击「摆回好位置」）</span>`;
     }
   }
   [s1, s2, act].forEach(n => n.addEventListener('input', render));
@@ -1021,7 +1021,7 @@ const C = {
     }else{
       verdict.className = 'verdict good';
       verdict.innerHTML = `每多折一次，口子数<b class="bend">翻一倍</b>：${n} 层 → <b>${deep}</b> 段。`
-        + `而同样多的神经元摊成一层只能给你 ${wide} 段 —— <b>深度进的是指数，宽度进的是加法</b>。`;
+        + `而同样多的神经元摊成一层只能产生 ${wide} 段。<b>深度产生的是指数增长，宽度产生的是加法式增长。</b>`;
     }
   }
   slider.addEventListener('input', render);

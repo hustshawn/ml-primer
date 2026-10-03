@@ -151,8 +151,8 @@ tr.hi td{background:#FFF6DE}
   <div class="grid2" style="margin-top:28px">
     <div class="ba old">
       <div class="lbl">2014 – 2016 的共识</div>
-      <div class="q">RNN 是主角，<br>attention 是挂在旁边的<br>一个小助手。</div>
-      <p class="note">「我们用 RNN 读句子，再加一点 attention 帮它别忘事。」</p>
+      <div class="q">RNN 是核心机制，<br>attention 是附加的<br>辅助机制。</div>
+      <p class="note">「用 RNN 读句子，再加一点 attention 帮助记忆。」</p>
     </div>
     <div class="ba new">
       <div class="lbl">这篇论文</div>
@@ -191,14 +191,14 @@ tr.hi td{background:#FFF6DE}
       </g>
       <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
         <path d="M0,0 L9,4.5 L0,9 z" fill="#16130F"/></marker></defs>
-      <text x="320" y="126" text-anchor="middle" font-size="13" font-weight="800" fill="#B0453B">信息一路传一路衰减 · 而且必须排队，第 6 步开始前 GPU 只能干等</text>
+      <text x="320" y="126" text-anchor="middle" font-size="13" font-weight="800" fill="#B0453B">信息一路传一路衰减 · 而且必须排队，第 6 步开始前 GPU 只能等待</text>
     </svg>
   </div>
 
   <div class="grid2">
     <div class="card" style="background:#FDEDE7">
       <h4 class="sh">限制一：难以并行</h4>
-      <p class="note" style="font-size:16px">第 n 步必须等第 n−1 步算完。<br>你有 8 张 GPU，也只能一步一步来。<br><b>钱买不到速度。</b></p>
+      <p class="note" style="font-size:16px">第 n 步必须等第 n−1 步算完。<br>即使有 8 个 GPU，也只能一步一步来。<br><b>钱买不到速度。</b></p>
     </div>
     <div class="card" style="background:#FDEDE7">
       <h4 class="sh">限制二：信息路径过长</h4>
@@ -209,7 +209,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 3 -->
 <section class="reveal">
-  <div class="head"><span class="num">3</span><h2>Table 1：为什么 self-attention 容易并行</h2></div>
+  <div class="head"><span class="num">3</span><h2>Table 1：self-attention 容易并行的原因</h2></div>
   <p class="lede">论文 Table 1 比较每层复杂度、顺序操作数和最大路径长度。self-attention 的后两项都是 <span class="mono">O(1)</span>，这解释了它为什么容易并行，也更容易连接远距离位置。</p>
 
   <div class="tblwrap">
@@ -223,9 +223,9 @@ tr.hi td{background:#FFF6DE}
 
   <div class="card grid2">
     <div>
-      <div class="pill" style="background:#E6F6EE">赚到的</div>
+      <div class="pill" style="background:#E6F6EE">收益</div>
       <p class="note" style="font-size:16.5px;margin-top:12px">
-        <b>排队步数 O(n) → O(1)</b>：整句话一次矩阵乘算完，GPU 吃得饱。<br><br>
+        <b>排队步数 O(n) → O(1)</b>：整句话一次矩阵乘算完，GPU 利用率更高。<br><br>
         <b>最远距离 O(n) → O(1)</b>：任意两个词直接握手，不用传话。
       </p>
     </div>
@@ -233,7 +233,7 @@ tr.hi td{background:#FFF6DE}
       <div class="pill" style="background:#FDEDE7">代价</div>
       <p class="note" style="font-size:16.5px;margin-top:12px">
         <b>每层变成 O(n²)</b>：每个词都要看所有词，长度翻倍、开销翻四倍。<br><br>
-        这笔账我们至今在还 —— 长上下文为什么那么贵，根子在这里。
+        这个代价延续至今。长上下文的成本高，根本原因就在这里。
       </p>
     </div>
   </div>
@@ -270,7 +270,7 @@ tr.hi td{background:#FFF6DE}
       </g>
       <text x="320" y="196" text-anchor="middle" font-size="13" font-weight="800" fill="#1E9E62">线越粗 = 关系越强。粗的那条就是模型「读懂」了指代关系</text>
     </svg>
-    <p class="note" style="margin-top:6px">论文里真的把这个画出来了（Figure 4）：某个注意力头在句子 “The Law will never be perfect, but <b>its</b> application should be just” 里，把 <b>its</b> 稳稳连回了 <b>Law</b>。没人教它语法，它自己长出来的。</p>
+    <p class="note" style="margin-top:6px">论文中展示了这个例子（Figure 4）：某个注意力头在句子 “The Law will never be perfect, but <b>its</b> application should be just” 中，把 <b>its</b> 连接到了 <b>Law</b>。没有人教它语法规则，这是模型从训练中自己学到的。</p>
   </div>
 </section>
 
@@ -284,7 +284,7 @@ tr.hi td{background:#FFF6DE}
       <div class="letter" style="color:var(--fwd)">Q</div>
       <h5>Query · 我要找什么</h5>
       <p>「它」举手说：<br><b>我在找一个名词，最好是能『累』的活物。</b></p>
-      <p class="note" style="margin-top:10px">= 你在检索框里敲的字</p>
+      <p class="note" style="margin-top:10px">= 检索框里输入的字</p>
     </div>
     <div class="qk" style="background:#E8F1FA">
       <div class="letter" style="color:var(--bwd)">K</div>
@@ -308,29 +308,29 @@ tr.hi td{background:#FFF6DE}
 <!-- 6 -->
 <section class="reveal">
   <div class="head"><span class="num">6</span><h2>计算过程分为四步</h2></div>
-  <p class="lede">论文里那个看着吓人的式子 <span class="mono">softmax(QKᵀ/√d<sub>k</sub>)V</span>，拆开就是这四步。</p>
+  <p class="lede">论文中的公式 <span class="mono">softmax(QKᵀ/√d<sub>k</sub>)V</span> 看起来复杂，拆开后就是下面四步。</p>
 
   <div class="card">
     <div class="steps">
       <div class="st a"><div class="n">STEP 1 · QKᵀ</div><h5>打分</h5>
         <p>拿我的 Q 和每个词的 K 做点积。<br>方向越像，分越高。</p></div>
-      <div class="st b"><div class="n">STEP 2 · ÷√d<sub>k</sub></div><h5>降温</h5>
-        <p>除以 √64 = 8。<br>把分数压回正常范围。</p></div>
+      <div class="st b"><div class="n">STEP 2 · ÷√d<sub>k</sub></div><h5>缩放</h5>
+        <p>除以 √64 = 8。<br>把分数缩小到正常范围。</p></div>
       <div class="st c"><div class="n">STEP 3 · softmax</div><h5>变成百分比</h5>
-        <p>一堆分数 → 加起来等于 1 的权重。<br>动物 0.71、马路 0.09 ⋯</p></div>
+        <p>一组分数 → 转换为加起来等于 1 的权重。<br>动物 0.71、马路 0.09 ⋯</p></div>
       <div class="st d"><div class="n">STEP 4 · ×V</div><h5>加权平均</h5>
-        <p>按权重把大家的 V 拌一起。<br>这就是「它」的新含义。</p></div>
+        <p>按权重把所有词的 V 加权相加。<br>这就是「它」的新含义。</p></div>
     </div>
   </div>
 
   <div class="card" style="background:#FFF6DE">
-    <h4 class="sh">为什么非要除那个 √d<sub>k</sub>？</h4>
+    <h4 class="sh">除以 √d<sub>k</sub> 的作用</h4>
     <p class="note" style="font-size:16px">
-      64 个数相乘再相加，结果的<b>方差正好是 64</b>，所以分数动不动就 ±20。<br>
-      喂给 softmax 这种大数，输出会变成「0.9999 / 0.0000 / 0.0000 ⋯」—— 几乎是 one-hot，
-      <b>梯度接近 0，训不动了</b>。<br><br>
-      除以 √64 把方差拉回 1。论文原话：不这么做，点积会「把 softmax 推进梯度极小的区域」。<br>
-      <span class="pill" style="background:#fff;margin-top:8px">一个 8 分之一的除法，决定了这东西能不能训起来</span>
+      64 个数相乘再相加，结果的<b>方差正好是 64</b>，所以分数经常达到 ±20。<br>
+      喂给 softmax 这种大数，输出会变成「0.9999 / 0.0000 / 0.0000 ⋯」。这几乎是 one-hot，
+      <b>梯度接近 0，模型无法继续训练</b>。<br><br>
+      除以 √64 把方差恢复到 1。论文原话：不这么做，点积会「把 softmax 推进梯度极小的区域」。<br>
+      <span class="pill" style="background:#fff;margin-top:8px">一个 8 分之一的除法，决定了模型能不能训练成功</span>
     </p>
   </div>
 </section>
@@ -359,7 +359,7 @@ tr.hi td{background:#FFF6DE}
         <rect x="10" y="162" width="280" height="30" rx="7" fill="#fff" stroke="#16130F" stroke-width="3"/>
         <text x="150" y="182" text-anchor="middle" font-size="13" font-weight="900">拼回 512 → 再过一个线性层</text>
       </svg>
-      <p class="note">总算力和「1 个 512 维的头」几乎一样 —— 免费拿到 8 个视角。</p>
+      <p class="note">总算力与「1 个 512 维的头」几乎相同，但额外获得了 8 个视角。</p>
     </div>
     <div>
       <div class="pill">8 个头分别在看什么</div>
@@ -385,7 +385,7 @@ tr.hi td{background:#FFF6DE}
 
   <div class="grid2" style="margin-top:28px">
     <div class="card" style="margin-top:0;background:#FDEDE7">
-      <h4 class="sh">对 attention 来说，这两句一模一样</h4>
+      <h4 class="sh">对 attention 来说，这两句相同</h4>
       <p style="font-size:19px;font-weight:900;margin-top:12px;line-height:1.9">
         狗 咬 了 人<br>人 咬 了 狗
       </p>
@@ -399,7 +399,7 @@ tr.hi td{background:#FFF6DE}
         <path d="M5 45 Q 42 12, 80 45 T 155 45 T 230 45 T 300 45" fill="none" stroke="#2E6FB7" stroke-width="3.5" opacity=".8"/>
         <path d="M5 45 Q 75 15, 145 45 T 285 45" fill="none" stroke="#7B4FBF" stroke-width="3.5" opacity=".7"/>
       </svg>
-      <p class="note">论文还做了对照实验（Table 3-E）：换成「学出来的」位置编码，BLEU <b>25.7</b> vs sin/cos 的 <b>25.8</b> —— 几乎没差。<br>选 sin/cos 的理由是它<b>可能外推到更长的句子</b>。</p>
+      <p class="note">论文还做了对照实验（Table 3-E）：换成「学出来的」位置编码，BLEU 为 <b>25.7</b>，sin/cos 的 BLEU 为 <b>25.8</b>，差异很小。<br>选 sin/cos 的理由是它<b>可能外推到更长的句子</b>。</p>
     </div>
   </div>
 </section>
@@ -433,9 +433,9 @@ tr.hi td{background:#FFF6DE}
       <div class="mc hd">5</div><div class="mc ok">✓</div><div class="mc ok">✓</div><div class="mc ok">✓</div><div class="mc ok">✓</div><div class="mc ok">✓</div>
     </div>
     <p class="note" style="margin-top:16px;font-size:16px">
-      <b>这个三角形非常关键。</b>因为有它，一整句话可以<b>一次并行算完</b>，同时训练「每个位置都在预测下一个词」——
-      而不用像 RNN 那样跑 n 遍。<br>
-      「猜下一个词」这个训练任务能便宜到可以吃下整个互联网，靠的就是这个三角形。
+      <b>这个三角形非常关键。</b>因为有它，一整句话可以<b>一次并行计算完成</b>，同时训练「每个位置都在预测下一个词」，
+      而不用像 RNN 那样运行 n 次。<br>
+      「预测下一个词」这个训练任务的成本足够低，可以使用整个互联网规模的数据训练，原因就是这个三角形。
     </p>
   </div>
 </section>
@@ -443,7 +443,7 @@ tr.hi td{background:#FFF6DE}
 <!-- 10 -->
 <section class="reveal">
   <div class="head"><span class="num">10</span><h2>一个 Transformer 层的四个组件</h2></div>
-  <p class="lede">堆 6 层，就是编码器。论文的 Figure 1 画得复杂，其实骨架只有这么多。</p>
+  <p class="lede">堆叠 6 层，就是编码器。论文的 Figure 1 画得比较复杂，但基本结构只有这些。</p>
 
   <div class="card grid2">
     <div class="lstack">
@@ -526,8 +526,8 @@ tr.hi td{background:#FFF6DE}
       <span class="chip">beam <b>4</b>，α = <b>0.6</b></span>
       <span class="chip">训练 <b>10 万</b>步 / 12 小时</span>
     </div>
-    <p class="note" style="margin-top:16px">大版本：d_model 1024、d_ff 4096、16 个头、213M 参数、30 万步、8 张 P100 跑 3.5 天。<br>
-    以今天的大模型训练规模看，这次实验不算大；但 LoRA 微调横跨不同模型、数据量和步数，不能拿「一次 LoRA」当固定单位比较。</p>
+    <p class="note" style="margin-top:16px">大版本：d_model 1024、d_ff 4096、16 个头、213M 参数、30 万步、8 个 P100 跑 3.5 天。<br>
+    以今天的大模型训练规模看，这次实验规模不算大。但 LoRA 微调涉及不同的模型、数据量和步数，不能把「一次 LoRA」当作固定单位比较。</p>
   </div>
 </section>
 
@@ -555,7 +555,7 @@ tr.hi td{background:#FFF6DE}
     </div>
     <p class="note" style="margin-top:22px;font-size:16.5px">
       读这张图的正确方式：<b>最小的那根柱子，分数最高之一。</b><br>
-      基础版用了对手 <b>1/55</b> 的算力，就打赢了所有此前发表的模型 —— 包括人家好几个模型凑起来的集成。<br>
+      基础版使用对手 <b>1/55</b> 的算力，结果超过了所有此前发表的模型，包括由多个模型组成的集成模型。<br>
       大版本 28.4 分，比之前的最强纪录高出 <b>2.0 BLEU 以上</b>，这在机器翻译里是巨大的跳跃。
     </p>
   </div>
@@ -563,7 +563,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 13 -->
 <section class="reveal">
-  <div class="head"><span class="num">13</span><h2>为什么 Transformer 后来成为主流架构</h2></div>
+  <div class="head"><span class="num">13</span><h2>Transformer 成为主流架构的原因</h2></div>
   <p class="lede">除了当年的翻译结果，Transformer 的并行性也直接影响了后来的采用和扩展。</p>
 
   <div class="card" style="background:var(--ink);color:var(--bg);box-shadow:8px 8px 0 var(--fwd)">
@@ -587,7 +587,7 @@ tr.hi td{background:#FFF6DE}
 
 <!-- 14 -->
 <section class="reveal">
-  <div class="head"><span class="num">14</span><h2>今天的模型保留了什么，又改了什么</h2></div>
+  <div class="head"><span class="num">14</span><h2>今天的模型与论文的差异</h2></div>
   <p class="lede">整体骨架仍在，但许多组件已经更新。这张表把论文中的做法和现在常见的实现对应起来。</p>
 
   <div class="tblwrap">
@@ -600,7 +600,7 @@ tr.hi td{background:#FFF6DE}
     <tr><td>LayerNorm</td><td class="m">RMSNorm</td><td class="m">更省算力，效果不掉</td></tr>
     <tr><td>8 个头，每个头都有自己的 K/V</td><td class="m">GQA / MQA：多个 Q 头共用一份 K/V</td><td class="m">降低推理时 KV cache 的显存占用</td></tr>
     <tr><td>直接计算 O(n²) 注意力矩阵</td><td class="m">FlashAttention、稀疏 / 滑窗注意力</td><td class="m">降低 O(n²) attention 的显存或计算开销</td></tr>
-    <tr class="hi"><td>KV cache</td><td class="m">推理必需品</td><td class="m">论文没有讨论；它主要关注训练，而不是逐 token 生成的成本</td></tr>
+    <tr class="hi"><td>KV cache</td><td class="m">推理必需品</td><td class="m">论文没有讨论。它主要关注训练，而不是逐 token 生成的成本</td></tr>
     <tr><td>65M 参数，做翻译</td><td class="m">千亿参数，覆盖更多任务</td><td class="m">这是后来模型规模和训练方式继续发展的结果</td></tr>
   </table>
   </div>

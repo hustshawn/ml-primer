@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>要几张卡？—— 训练资源估算的三个约束</title>
+<title>需要多少 GPU：训练资源估算的三个约束</title>
 <style>
   :root{
     --paper:#F6F4F0;
@@ -308,8 +308,8 @@
 <header>
   <div class="wrap">
     <div class="kicker">How many GPUs · 训练资源估算</div>
-    <h1>「要几张卡？」<br>这问题<em>没法直接回答</em></h1>
-    <p class="sub">卡数要同时满足<b>显存、算力和互联</b>三个约束。<br>先把训练配置问清楚，再分别计算。</p>
+    <h1>「需要多少 GPU？」<br>这个问题<em>无法直接回答</em></h1>
+    <p class="sub">GPU 数量要同时满足<b>显存、算力和互联</b>三个约束。<br>先把训练配置问清楚，再分别计算。</p>
   </div>
 </header>
 
@@ -319,19 +319,19 @@
       <div class="cn">Constraint A</div>
       <h3>显存</h3>
       <p class="q">能不能跑起来？</p>
-      <p class="d">硬约束。不满足就 <b>OOM</b>，一秒都跑不了。它给出卡数的<b>下限</b>。</p>
+      <p class="d">硬约束。不满足就 <b>OOM</b>，一秒都跑不了。它给出 GPU 数量的<b>下限</b>。</p>
     </div>
     <div class="con c-comp">
       <div class="cn">Constraint B</div>
       <h3>算力</h3>
       <p class="q">多久能跑完？</p>
-      <p class="d">软约束。用钱换时间。它给出卡数的<b>目标值</b>——由 deadline 倒推。</p>
+      <p class="d">软约束。用钱换时间。<b>GPU 数量的目标值</b>由 deadline 倒推得到。</p>
     </div>
     <div class="con c-net">
       <div class="cn">Constraint C</div>
       <h3>互联</h3>
-      <p class="q">卡之间怎么切？</p>
-      <p class="d">拓扑约束。决定能不能跨机、怎么跨，以及效率会掉掉多少。</p>
+      <p class="q">GPU 之间怎么切分？</p>
+      <p class="d">拓扑约束。决定能不能跨机、如何跨机，以及效率会下降多少。</p>
     </div>
   </div>
 
@@ -362,23 +362,23 @@
       </div>
       <div class="item p0"><span class="p">P0</span>
         <h4>数据量 × epoch</h4>
-        <p>总 token 数 D 决定总 FLOPs。<b>SFT 的 1 亿 token 和预训练的 1 万亿 token，差 4 个数量级</b>——分钟级 vs 半年级。</p>
+        <p>总 token 数 D 决定总 FLOPs。<b>SFT 的 1 亿 token 和预训练的 1 万亿 token，差 4 个数量级</b>：训练时间从分钟级到半年级。</p>
       </div>
       <div class="item p0"><span class="p">P0</span>
         <h4>时间预算</h4>
-        <p>一晚 / 一周 / 一个月。没有 deadline，只能算出能跑起来的显存下限，算不出应该准备多少卡。</p>
+        <p>一晚 / 一周 / 一个月。没有 deadline，只能算出能跑起来的显存下限，算不出应该准备多少 GPU。</p>
       </div>
       <div class="item p1"><span class="p">P1</span>
         <h4>精度与优化器</h4>
         <p>bf16 / fp8 / base 权重 4-bit 量化；Adam（12 B/参数的状态）vs 8-bit Adam vs Adafactor vs SGD。换优化器能省下一半状态显存。</p>
       </div>
       <div class="item p1"><span class="p">P1</span>
-        <h4>手上有什么硬件</h4>
-        <p>单机 8 卡还是多机？<b>NVLink 还是 PCIe</b>？跨机有没有 EFA / InfiniBand？这直接决定并行策略的可行域（见 06）。</p>
+        <h4>现有硬件</h4>
+        <p>单机 8 个 GPU 还是多机？<b>NVLink 还是 PCIe</b>？跨机有没有 EFA / InfiniBand？这直接决定并行策略的可行域（见 06）。</p>
       </div>
       <div class="item p1"><span class="p">P1</span>
-        <h4>能接受多少额外算力开销</h4>
-        <p>gradient checkpointing 用 <b>+33% 算力</b>换掉<b>九成以上</b>的激活显存（比例只跟层数有关，本页五个模型都在 90–93%）。愿不愿意换，会改变显存下限和时长两个答案。</p>
+        <h4>可接受的额外算力开销</h4>
+        <p>gradient checkpointing 用 <b>+33% 算力</b>换掉<b>九成以上</b>的激活显存（比例只跟层数有关，本页五个模型都在 90–93%）。是否使用梯度重算，会改变显存下限和时长两个答案。</p>
       </div>
     </div>
   </div>
@@ -386,8 +386,8 @@
 
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">02</span>约束 A：显存 —— 算出下限</h2>
-    <p class="lead">全参 + Adam + 混合精度的标准记账是 <b>16 字节 / 参数</b>（fp16 权重 2 + fp16 梯度 2 + 优化器状态 12）。再叠上激活。调下面的旋钮，看下限怎么变。</p>
+    <h2 class="h2"><span class="num">02</span>约束 A：显存决定下限</h2>
+    <p class="lead">全参 + Adam + 混合精度的标准计算方式是 <b>16 字节 / 参数</b>（fp16 权重 2 + fp16 梯度 2 + 优化器状态 12）。再加上激活显存。调整下面的选项，查看下限如何变化。</p>
 
     <div class="stage acc-mem">
       <div class="ctl">
@@ -400,7 +400,7 @@
           <div class="chips a-mem" id="ch-model"></div>
         </div>
         <div class="cg">
-          <label>卡型</label>
+          <label>GPU 型号</label>
           <div class="chips a-mem" id="ch-card"></div>
         </div>
         <div class="cg">
@@ -419,23 +419,23 @@
 
       <div class="gpubar">
         <div class="top">
-          <span class="lb">卡数 G（和 04 联动）</span>
-          <span class="now" id="g-now">8 <span class="nodes">= 1 台 × 8 卡</span></span>
+          <span class="lb">GPU 数量 G（和 04 联动）</span>
+          <span class="now" id="g-now">8 <span class="nodes">= 1 台 × 8 个 GPU</span></span>
         </div>
         <input type="range" id="g-slider" min="0" max="9" step="1" value="3">
         <div class="ticks"><span>1</span><span>2</span><span>4</span><span>8</span><span>16</span><span>32</span><span>64</span><span>128</span><span>256</span><span>512</span></div>
       </div>
 
       <div class="readout">
-        <div class="stat hero-mem"><div class="lbl">显存下限</div><div class="val" id="v-gmin">—</div><div class="hint" id="v-gmin-h">最少几张卡才跑得起来</div></div>
-        <div class="stat" id="st-per"><div class="lbl">当前每卡占用</div><div class="val" id="v-per">—<span class="u">GB</span></div><div class="hint" id="v-per-h">—</div></div>
-        <div class="stat"><div class="lbl">全局总需求</div><div class="val" id="v-tot">—<span class="u">GB</span></div><div class="hint">状态 + 每卡激活 × G</div></div>
-        <div class="stat"><div class="lbl">激活（不可分片）</div><div class="val" id="v-act">—<span class="u">GB</span></div><div class="hint" id="v-act-h">每卡都要单独存一份</div></div>
+        <div class="stat hero-mem"><div class="lbl">显存下限</div><div class="val" id="v-gmin">—</div><div class="hint" id="v-gmin-h">最少几个 GPU 才跑得起来</div></div>
+        <div class="stat" id="st-per"><div class="lbl">当前每个 GPU 占用</div><div class="val" id="v-per">—<span class="u">GB</span></div><div class="hint" id="v-per-h">—</div></div>
+        <div class="stat"><div class="lbl">全局总需求</div><div class="val" id="v-tot">—<span class="u">GB</span></div><div class="hint">状态 + 每个 GPU 激活 × G</div></div>
+        <div class="stat"><div class="lbl">激活（不可分片）</div><div class="val" id="v-act">—<span class="u">GB</span></div><div class="hint" id="v-act-h">每个 GPU 都要单独存一份</div></div>
       </div>
 
       <div class="barwrap">
         <div class="barhead">
-          <span>每卡显存分解（当前 <b id="bh-g">8</b> 卡 · <span id="bh-stage">ZeRO-3</span>）</span>
+          <span>每个 GPU 显存分解（当前 <b id="bh-g">8</b> 个 GPU · <span id="bh-stage">ZeRO-3</span>）</span>
           <span id="bh-cap">可用 77 GB</span>
         </div>
         <div class="bar" id="bar">
@@ -443,7 +443,7 @@
           <div class="seg g" id="sg-g"></div>
           <div class="seg o" id="sg-o"></div>
           <div class="seg a" id="sg-a"></div>
-          <div class="cap" id="capline"><span id="capname">卡容量</span></div>
+          <div class="cap" id="capline"><span id="capname">GPU 容量</span></div>
         </div>
         <div class="legend">
           <span><i style="background:var(--seg-w)"></i>权重<span class="v" id="lg-w">—</span></span>
@@ -454,7 +454,7 @@
       </div>
 
       <div class="ladder">
-        <div class="t">ZeRO 分片阶段 —— 点一行切换（数字是当前 <b id="ld-g">8</b> 卡下的每卡占用）</div>
+        <div class="t">ZeRO 分片阶段。点击一行可以切换（数字是当前 <b id="ld-g">8</b> 个 GPU 下的每个 GPU 占用）</div>
         <div id="ladder"></div>
       </div>
 
@@ -465,8 +465,8 @@
 
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">03</span>分片：ZeRO 到底切了什么</h2>
-    <p class="lead">上面选的 stage，在 4 张卡上长这样。<b>亮的格子 = 这张卡真的持有那份数据</b>；灰的 = 别人存着，用时再传过来。</p>
+    <h2 class="h2"><span class="num">03</span>分片：ZeRO 切分的内容</h2>
+    <p class="lead">上面选的 stage，在 4 个 GPU 上的分布如下。<b>亮的格子表示这个 GPU 持有这份数据</b>。灰色格子表示数据存放在别的 GPU 上，使用时再传输过来。</p>
 
     <div class="shard">
       <div class="gpus" id="shard-gpus"></div>
@@ -474,15 +474,15 @@
         <div class="k"><i style="background:var(--seg-w)"></i>权重 W</div><div id="sl-w">—</div>
         <div class="k"><i style="background:var(--seg-g)"></i>梯度 G</div><div id="sl-g">—</div>
         <div class="k"><i style="background:var(--seg-o)"></i>优化器 O</div><div id="sl-o">—</div>
-        <div class="k"><i style="background:var(--seg-a)"></i>激活 A</div><div>永远全亮 —— <b>stage 1/2/3 都不切激活</b></div>
+        <div class="k"><i style="background:var(--seg-a)"></i>激活 A</div><div>永远全亮，因为<b>stage 1/2/3 都不切激活</b></div>
       </div>
       <div class="punch">
-        <b>加卡能摊薄状态显存，摊不薄激活显存。</b>每个数据并行副本仍要保存自己的激活，ZeRO-DP 的 stage 1/2/3 不会切这部分。激活超出单卡容量时，需要开 gradient checkpointing、使用张量/序列并行，或者减小 batch 和序列长度。
+        <b>增加 GPU 能分摊状态显存，不能分摊激活显存。</b>每个数据并行副本仍要保存自己的激活，ZeRO-DP 的 stage 1/2/3 不会切分这部分。激活超出单个 GPU 容量时，需要开启 gradient checkpointing、使用张量/序列并行，或者减小 batch 和序列长度。
       </div>
       <details class="assume">
         <summary>严格说：ZeRO-R 也提供激活分片</summary>
         <div class="body">
-          <p>ZeRO-R 的 <code>P_a</code>（Partitioned Activation Checkpointing）可以切激活。论文中的示例把 100B 模型的 33 GB 激活降到每卡约 2 GB，但它<b>沿张量并行组切分，不沿数据并行组切分</b>。因此，增加 DP 卡数仍不会摊薄激活；需要依靠 TP。</p>
+          <p>ZeRO-R 的 <code>P_a</code>（Partitioned Activation Checkpointing）可以切分激活。论文中的示例把 100B 模型的 33 GB 激活降到每个 GPU 约 2 GB，但它<b>沿张量并行组切分，不沿数据并行组切分</b>。因此，增加 DP 的 GPU 数量仍不会分摊激活。分摊激活需要使用 TP。</p>
         </div>
       </details>
     </div>
@@ -491,8 +491,8 @@
 
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">04</span>约束 B：算力 —— 算出时长</h2>
-    <p class="lead">总计算量 <span class="m">C ≈ 6 · N · D</span>（前向 2ND + 反向 4ND），耗时 = <span class="m">C ÷ (卡数 × 单卡峰值 × MFU)</span>。<b>峰值要用 dense 列</b>；带 sparsity 的数字需要特定稀疏结构，常规训练不能直接使用。</p>
+    <h2 class="h2"><span class="num">04</span>约束 B：算力决定时长</h2>
+    <p class="lead">总计算量 <span class="m">C ≈ 6 · N · D</span>（前向 2ND + 反向 4ND），耗时 = <span class="m">C ÷ (GPU 数量 × 单个 GPU 峰值 × MFU)</span>。<b>峰值要用 dense 列</b>。带 sparsity 的数字需要特定稀疏结构，常规训练不能直接使用。</p>
 
     <div class="stage acc-comp">
       <div class="ctl">
@@ -508,8 +508,8 @@
 
       <div class="gpubar">
         <div class="top">
-          <span class="lb">卡数 G（和 02 联动）</span>
-          <span class="now" id="g-now2">8 <span class="nodes">= 1 台 × 8 卡</span></span>
+          <span class="lb">GPU 数量 G（和 02 联动）</span>
+          <span class="now" id="g-now2">8 <span class="nodes">= 1 台 × 8 个 GPU</span></span>
         </div>
         <input type="range" id="g-slider2" min="0" max="9" step="1" value="3">
         <div class="ticks"><span>1</span><span>2</span><span>4</span><span>8</span><span>16</span><span>32</span><span>64</span><span>128</span><span>256</span><span>512</span></div>
@@ -519,11 +519,11 @@
         <div class="stat hero-comp"><div class="lbl">预计耗时</div><div class="val" id="v-time">—</div><div class="hint" id="v-time-h">—</div></div>
         <div class="stat"><div class="lbl">总计算量</div><div class="val" id="v-flops">—</div><div class="hint" id="v-flops-h">—</div></div>
         <div class="stat"><div class="lbl">集群有效算力</div><div class="val" id="v-eff">—</div><div class="hint" id="v-eff-h">峰值 × MFU × G</div></div>
-        <div class="stat"><div class="lbl">GPU-hours</div><div class="val" id="v-gh">—</div><div class="hint">跟卡数无关，是任务的固有成本</div></div>
+        <div class="stat"><div class="lbl">GPU-hours</div><div class="val" id="v-gh">—</div><div class="hint">跟 GPU 数量无关，是任务的固有成本</div></div>
       </div>
 
       <div class="rev">
-        <div class="t">反过来问：要在这个时间内跑完，需要多少卡？（不足一台按 1 / 2 / 4 卡，其余取整机 8 卡的倍数；并已和 02 的显存下限取 max）</div>
+        <div class="t">反过来问：要在这个时间内跑完，需要多少个 GPU？（不足一台按 1 / 2 / 4 个 GPU 计算，其余取整机 8 个 GPU 的倍数，并已和 02 的显存下限取 max）</div>
         <div class="revgrid" id="revgrid"></div>
       </div>
 
@@ -531,14 +531,14 @@
     </div>
 
     <div class="punch blue" style="margin-top:24px">
-      <b>同一台 p5（8×H100）、同一个 7B、同样 30% MFU：</b>SFT 1 亿 token ≈ <b>30 分钟</b>；从头预训练 1 万亿 token ≈ <b>205 天</b>。差 4 个数量级。所以「训练 7B 要几张卡」这句话，在没说清是哪种训练之前，是没有答案的。
+      <b>同一台 p5（8×H100）、同一个 7B、同样 30% MFU：</b>SFT 1 亿 token ≈ <b>30 分钟</b>。从头预训练 1 万亿 token ≈ <b>205 天</b>。差 4 个数量级。所以「训练 7B 需要多少 GPU」这句话，在没说清是哪种训练之前，没有答案。
     </div>
   </div>
 </section>
 
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">05</span>校准：MFU 该取多少</h2>
+    <h2 class="h2"><span class="num">05</span>校准：MFU 的取值</h2>
     <p class="lead">MFU（Model FLOPs Utilization）是公式里最难预先确定的数，可以用<b>已公开的训练成本反推</b>。下面用 LLaMA-1 论文报告的 GPU-hours 验算 <span class="m">6ND</span>。</p>
 
     <div class="tblwrap">
@@ -558,11 +558,11 @@
 
     <div class="tblwrap" style="margin-top:22px">
       <table class="tbl">
-        <tr><th>你的情况</th><th>建议取值</th><th>依据</th></tr>
+        <tr><th>适用场景</th><th>建议取值</th><th>依据</th></tr>
         <tr><td>Megatron-LM + 序列并行 + 选择性重算</td><td class="n"><b>51–56%</b></td><td>已发表的最好水平：同为 A100，175B → 51.4%、530B → 56.0%、1T → 56.3%</td></tr>
         <tr><td>LLaMA-1 / PaLM 那一代的大规模预训练</td><td class="n"><b>40–48%</b></td><td>就是上面那张表反推出来的水平</td></tr>
         <tr class="hi"><td><b>第一次跑，不确定</b></td><td class="n"><b>25–30%</b></td><td>默认用这个。真跑出来比预期快是好事</td></tr>
-        <tr><td>长序列 / 小 batch / 跨机带宽不足 / 没开 FlashAttention</td><td class="n"><b>10–15%</b></td><td>通信和 attention 开销吃掉大半算力，很常见</td></tr>
+        <tr><td>长序列 / 小 batch / 跨机带宽不足 / 没开 FlashAttention</td><td class="n"><b>10–15%</b></td><td>通信和 attention 开销占用大半算力，这种情况很常见</td></tr>
       </table>
     </div>
   </div>
@@ -570,8 +570,8 @@
 
 <section>
   <div class="wrap">
-    <h2 class="h2"><span class="num">06</span>约束 C：互联 —— 为什么 TP 不能跨机</h2>
-    <p class="lead">四条都是<b>双向合计、折算到每张卡</b>，可以直接横向比。</p>
+    <h2 class="h2"><span class="num">06</span>约束 C：互联决定 TP 不能跨机</h2>
+    <p class="lead">四条都是<b>双向合计、折算到每个 GPU</b>，可以直接横向比。</p>
 
     <div class="stage" style="border-color:#D6C8E8">
       <div class="bw">
@@ -586,12 +586,12 @@
           <div class="v2">600 GB/s</div>
         </div>
         <div class="bwr out">
-          <div class="l">跨机 EFA（p5）<small>3200 Gbps 折算到每卡</small></div>
+          <div class="l">跨机 EFA（p5）<small>3200 Gbps 折算到每个 GPU</small></div>
           <div class="t2"><i style="width:11.1%"></i></div>
           <div class="v2">100 GB/s</div>
         </div>
         <div class="bwr out">
-          <div class="l">跨机 EFA（p4d）<small>400 Gbps 折算到每卡</small></div>
+          <div class="l">跨机 EFA（p4d）<small>400 Gbps 折算到每个 GPU</small></div>
           <div class="t2"><i style="width:1.4%"></i></div>
           <div class="v2">12.5 GB/s</div>
         </div>
@@ -607,7 +607,7 @@
     <div class="tblwrap" style="margin-top:22px">
       <table class="tbl">
         <tr><th>并行方式</th><th>每步通信什么</th><th>能不能跨机</th><th>规则</th></tr>
-        <tr class="hi"><td><b>TP</b> 张量并行</td><td>每层前向 + 反向 all-reduce <b>激活</b></td><td style="color:var(--bad);font-weight:900">绝不跨机</td><td class="n">degree ≤ 单机卡数（通常 ≤8），且必须有 NVLink；PCIe 机器上 TP&gt;2 基本白给</td></tr>
+        <tr class="hi"><td><b>TP</b> 张量并行</td><td>每层前向 + 反向 all-reduce <b>激活</b></td><td style="color:var(--bad);font-weight:900">绝不跨机</td><td class="n">degree ≤ 单机 GPU 数量（通常 ≤8），且必须有 NVLink。PCIe 机器上 TP&gt;2 没有收益</td></tr>
         <tr><td><b>PP</b> 流水线并行</td><td>只传 stage 边界的激活</td><td style="color:var(--ok);font-weight:900">可以</td><td class="n">跨机首选。需要足够多 micro-batch 填 bubble</td></tr>
         <tr><td><b>DP / ZeRO / FSDP</b></td><td>O(参数量)，可与计算 overlap</td><td style="color:var(--ok);font-weight:900">可以</td><td class="n">放最外层</td></tr>
         <tr><td><b>SP / CP</b> 序列 / 上下文并行</td><td>attention 的 K/V 或激活切片</td><td>看实现</td><td class="n">只在长上下文撑爆激活时才引入</td></tr>
@@ -627,10 +627,10 @@
 
     <div class="tblwrap">
       <table class="tbl">
-        <tr><th>EC2 实例族</th><th>加速器</th><th>单卡显存</th><th>bf16 dense 算力</th><th>典型定位</th></tr>
+        <tr><th>EC2 实例族</th><th>加速器</th><th>单个 GPU 显存</th><th>bf16 dense 算力</th><th>典型定位</th></tr>
         <tr><td class="n">g6</td><td>NVIDIA L4</td><td class="n">24 GB</td><td class="n">121 TFLOPS</td><td>小模型 QLoRA、推理</td></tr>
         <tr><td class="n">g6e</td><td>NVIDIA L40S</td><td class="n">48 GB</td><td class="n">362 TFLOPS</td><td>7B–13B LoRA / QLoRA 的主力</td></tr>
-        <tr><td class="n">g7e</td><td>RTX PRO 6000 Blackwell</td><td class="n">96 GB</td><td class="n" style="color:var(--muted)">未核实</td><td>单卡能塞下的最大一档</td></tr>
+        <tr><td class="n">g7e</td><td>RTX PRO 6000 Blackwell</td><td class="n">96 GB</td><td class="n" style="color:var(--muted)">未核实</td><td>单个 GPU 能容纳的最大规格</td></tr>
         <tr><td class="n">p4d / p4de</td><td>NVIDIA A100</td><td class="n">40 / 80 GB</td><td class="n">312 TFLOPS</td><td>中等规模；<b>跨机只有 400 Gbps</b></td></tr>
         <tr class="hi"><td class="n"><b>p5</b></td><td>NVIDIA H100</td><td class="n">80 GB</td><td class="n">989 TFLOPS</td><td>全参微调主力，3200 Gbps EFA</td></tr>
         <tr class="hi"><td class="n"><b>p5e / p5en</b></td><td>NVIDIA H200</td><td class="n">141 GB</td><td class="n">989 TFLOPS</td><td>长上下文、70B 全参</td></tr>
@@ -640,11 +640,11 @@
     </div>
 
     <div class="punch">
-      表里有<b>两对峰值算力相同、显存不同</b>的卡：H100 / H200 都是 989 TFLOPS，B200 / B300 都是 2250 TFLOPS。H200 还有更高的显存带宽，因此<b>内存受限的训练环节可能变快</b>；纯计算受限时，两者的理论峰值相同。缺算力、缺带宽和缺显存是三个不同的问题。
+      表里有<b>两对峰值算力相同、显存不同</b>的 GPU：H100 / H200 都是 989 TFLOPS，B200 / B300 都是 2250 TFLOPS。H200 还有更高的显存带宽，因此<b>内存受限的训练环节可能变快</b>。纯计算受限时，两者的理论峰值相同。缺算力、缺带宽和缺显存是三个不同的问题。
     </div>
 
     <div class="punch">
-      <b>实际估算顺序：</b>先用 02 算显存下限 → 向上取整到整机 8 卡 → 用 04 估算时长 → 超过 deadline 时沿 DP/ZeRO 方向加卡 → 仍然放不下时换更大显存的卡。最后一步不能靠增加小显存卡解决，因为<b>激活显存不会被 DP 卡数摊薄</b>。
+      <b>实际估算顺序：</b>先用 02 算显存下限 → 向上取整到整机 8 个 GPU → 用 04 估算时长 → 超过 deadline 时沿 DP/ZeRO 方向增加 GPU → 仍然放不下时更换显存更大的 GPU。最后一步不能靠增加小显存的 GPU 解决，因为<b>激活显存不会被 DP 的 GPU 数量分摊</b>。
     </div>
   </div>
 </section>
@@ -657,19 +657,19 @@
     <div class="qa">
       <span class="tag">最常见的错</span>
       <h3>「参数量 × 2 = 显存」只对推理成立</h3>
-      <p>推理只需要权重（bf16 = 2 B/参数）加 KV cache。<b>全参训练是 16 B/参数</b>——多出来的那 14 字节是梯度（2）和 Adam 的两个动量（8）加上 fp32 master 权重（4）。把推理的经验直接套到训练上，<b>会低估 8 倍</b>。</p>
+      <p>推理只需要权重（bf16 = 2 B/参数）加 KV cache。<b>全参训练是 16 B/参数</b>，多出来的那 14 字节是梯度（2）和 Adam 的两个动量（8）加上 fp32 master 权重（4）。把推理的经验直接套到训练上，<b>会低估 8 倍</b>。</p>
     </div>
 
     <div class="qa">
       <span class="tag">LoRA 的误解</span>
       <h3>LoRA 省显存，几乎不省算力</h3>
-      <p>反向传播的 4ND 拆成两半：「传给输入的梯度」2ND 和「权重的梯度」2ND。LoRA 只省掉冻结权重那一半，<code>6ND → ≈4ND</code>，<b>最好情况快 1.5 倍，不是 10 倍</b>。而且激活照样要算全网络的——梯度得穿过每一层才能到 adapter。QLoRA 更是因为每次用权重都要反量化，wall-clock 常常比 LoRA <b>更慢</b>。</p>
+      <p>反向传播的 4ND 拆成两半：「传给输入的梯度」2ND 和「权重的梯度」2ND。LoRA 只省掉冻结权重那一半，<code>6ND → ≈4ND</code>，<b>最好情况快 1.5 倍，不是 10 倍</b>。而且激活仍然要按全网络计算，因为梯度需要穿过每一层才能到达 adapter。QLoRA 还会因为每次使用权重都要反量化，wall-clock 常常比 LoRA <b>更慢</b>。</p>
     </div>
 
     <div class="qa">
-      <span class="tag">加卡的边界</span>
-      <h3>ZeRO-DP 不切激活，所以加卡有天花板</h3>
-      <p>状态显存能随 G 增大而继续分摊，激活显存不会随 DP 卡数变化。当激活单独超过卡容量时（70B / 4k 序列 / 不开重算 = 85 GB），继续增加 DP 卡仍然会 OOM。这时需要使用 gradient checkpointing、TP、SP，或者减小序列长度和 micro batch。ZeRO-R 的例外说明见第 03 节折叠区。</p>
+      <span class="tag">增加 GPU 的边界</span>
+      <h3>ZeRO-DP 不切分激活，所以增加 GPU 有上限</h3>
+      <p>状态显存能随 G 增大而继续分摊，激活显存不会随 DP 的 GPU 数量变化。当激活单独超过 GPU 容量时（70B / 4k 序列 / 不开重算 = 85 GB），继续增加 DP 的 GPU 数量仍然会 OOM。这时需要使用 gradient checkpointing、TP、SP，或者减小序列长度和 micro batch。ZeRO-R 的例外说明见第 03 节折叠区。</p>
     </div>
 
     <div class="qa">
@@ -680,14 +680,14 @@
 
     <div class="qa">
       <span class="tag">厂商 spec</span>
-      <h3>不要直接使用 sparsity TFLOPS，还要确认是单卡还是整机</h3>
-      <p>规格表通常同时给出「dense」和「with sparsity」两列。后者依赖 2:4 结构化稀疏，常规训练应使用 dense 列。还要确认数字是单卡还是整机：NVIDIA 的 HGX B300 把 FP16/BF16 写成 <code>36 PFLOPS</code>，这是<b>整机 8 卡</b>的<b>sparse</b> 值，脚注说明 dense 是 sparse 的一半。因此单卡 dense 峰值是 <code>36 ÷ 8 ÷ 2 = 2.25 PFLOPS</code>。<b>少除一次，时间预估会乐观 2 倍；少除两次，会乐观 16 倍。</b></p>
+      <h3>不要直接使用 sparsity TFLOPS，还要确认是单个 GPU 还是整机</h3>
+      <p>规格表通常同时给出「dense」和「with sparsity」两列。后者依赖 2:4 结构化稀疏，常规训练应使用 dense 列。还要确认数字是单个 GPU 还是整机：NVIDIA 的 HGX B300 把 FP16/BF16 写成 <code>36 PFLOPS</code>，这是<b>整机 8 个 GPU</b>的<b>sparse</b> 值，脚注说明 dense 是 sparse 的一半。因此单个 GPU 的 dense 峰值是 <code>36 ÷ 8 ÷ 2 = 2.25 PFLOPS</code>。<b>少除一次，时间预估会乐观 2 倍。少除两次，会乐观 16 倍。</b></p>
     </div>
 
     <div class="qa">
       <span class="tag">被忽略的瓶颈</span>
       <h3>GPU 打不满，先看 dataloader 和存储</h3>
-      <p>MFU 只有 15% 时，第一反应往往是「卡不够」，但真凶经常是数据加载跟不上、或者 checkpoint 写得太频繁。常见的 step 边界 checkpoint 会保存模型权重和 Adam 状态，<b>通常不保存梯度</b>；按本页的混合精度假设约为 14 B/参数，405B 模型约 <b>5.7 TB</b>。若要从梯度累积中间精确恢复，才需要额外保存梯度。具体大小还取决于框架、分片格式和是否另存 fp32 权重。</p>
+      <p>MFU 只有 15% 时，第一反应往往是「GPU 不够」，但真正的原因常常是数据加载跟不上、或者 checkpoint 写得太频繁。常见的 step 边界 checkpoint 会保存模型权重和 Adam 状态，<b>通常不保存梯度</b>。按本页的混合精度假设，梯度约为 14 B/参数，405B 模型约 <b>5.7 TB</b>。若要从梯度累积中间精确恢复，才需要额外保存梯度。具体大小还取决于框架、分片格式和是否另存 fp32 权重。</p>
     </div>
 
     <details class="assume">
@@ -698,35 +698,35 @@
           <li>全参 Adam 混合精度 = <code>16 B/参数</code>：fp16 权重 2 + fp16 梯度 2 + 优化器 12（fp32 master 权重 4 + 一阶动量 4 + 二阶动量 4）。出自 ZeRO 论文的 <code>2Ψ + 2Ψ + KΨ, K=12</code>。</li>
           <li>激活（单层，bf16）：<code>s·b·h·(34 + 5·a·s/h)</code>，出自 Korthikanti et al.《Reducing Activation Recomputation in Large Transformer Models》(arXiv:2205.05198) 式 (1)。系数 34 里<b>没有 fp32 项</b>（论文全程假设 16-bit，只有 dropout mask 是 1 字节），并且<b>假设没有张量并行</b>（有 TP 时变成 <code>s·b·h·(10 + 24/t + 5·a·s/(h·t))</code>）。</li>
           <li><b>34 这个系数是按 GPT-3 式的层推的</b>：4h 的 GeLU MLP、全量 dropout、普通 MHA。本页的五个预设是 Llama / Qwen 系（SwiGLU 约 3.5h、无 dropout、GQA），真实系数大约在 30–40 之间浮动。34 是个合理的量级替身，不是这几个模型的精确常数。</li>
-          <li><code>5·a·s/h</code> 里的 <code>a</code> 是 <b>query head 数，不是 KV head 数</b> —— GQA 不会削减这一项，因为每个 query head 仍各自产生一个完整的 s×s 打分矩阵。本页三个 GQA 预设填的都是 query head 数（1.5B 填 12 而非 2、70B 填 64 而非 8、405B 填 128 而非 8）。GQA 真正省的是 K/V 投影和 KV cache。</li>
-          <li>FlashAttention 消掉 <code>5·a·s/h</code> 这一项 —— 但严格说不是「消掉」，而是<b>在反向里重算</b> attention 打分而不存它，用 FLOPs 换显存。论文给同类的选择性重算报的额外算力开销是 1.6–2.7%，很小，但<b>本页的 6ND / 4ND 没有把它计进去</b>。</li>
-          <li>开 gradient checkpointing 后按「只存每层输入 + 正在被重算的那一层」估：<code>2·s·b·h·L + 单层完整激活</code>。注意<b>「单层完整激活」跟着 FlashAttention 开关变</b> —— 关掉 FlashAttention 时，被重算的那一层照样会把 s² 的 attention 矩阵铺出来，所以那一项是 <code>s·b·h·(34 + 5·a·s/h)</code> 而不是 <code>34·s·b·h</code>。</li>
+          <li><code>5·a·s/h</code> 里的 <code>a</code> 是 <b>query head 数，不是 KV head 数</b>。因此 GQA 不会削减这一项，因为每个 query head 仍各自产生一个完整的 s×s 打分矩阵。本页三个 GQA 预设填的都是 query head 数（1.5B 填 12 而非 2、70B 填 64 而非 8、405B 填 128 而非 8）。GQA 真正省的是 K/V 投影和 KV cache。</li>
+          <li>FlashAttention 消掉 <code>5·a·s/h</code> 这一项。但严格说不是「消掉」，而是<b>在反向里重算</b> attention 打分而不存它，用 FLOPs 换显存。论文给同类的选择性重算报的额外算力开销是 1.6–2.7%，很小，但<b>本页的 6ND / 4ND 没有把它计进去</b>。</li>
+          <li>开 gradient checkpointing 后按「只存每层输入 + 正在被重算的那一层」估：<code>2·s·b·h·L + 单层完整激活</code>。注意<b>「单层完整激活」会随 FlashAttention 的开关变化</b>：关闭 FlashAttention 时，被重算的那一层仍会把 s² 的 attention 矩阵展开，所以那一项是 <code>s·b·h·(34 + 5·a·s/h)</code> 而不是 <code>34·s·b·h</code>。</li>
           <li>QLoRA 的 base 权重按 <code>4.127 bit/参数</code>（NF4 的 4 bit + double quantization 的 8/64 + 32/(64·256) = 0.127 bit）= 0.516 B/参数。</li>
-          <li>LoRA / QLoRA 的可训练比例本页固定取 <b>0.5%</b>。这只是个代表值 —— rank 和作用在哪些层，能让它差好几倍。</li>
-          <li>LoRA / QLoRA 的<b>冻结 base 权重在 ZeRO-3 下也按分片算</b>（FSDP + QLoRA 那种做法）。很多简易实现是每卡各存一份完整 base，那样 stage 0–2 的下限会比本页显示的更高；stage 3 不受影响。</li>
-          <li>每卡可用显存 = 标称容量 − 3 GB（CUDA context、NCCL 通信 buffer、显存碎片）。GB 按 2³⁰ B 算。</li>
-          <li>ZeRO-3 还需要临时 all-gather 一层的完整权重，本页未计入 —— 大模型上这一项不小。</li>
+          <li>LoRA / QLoRA 的可训练比例本页固定取 <b>0.5%</b>。这只是一个代表值，rank 和作用在哪些层，可以让它相差好几倍。</li>
+          <li>LoRA / QLoRA 的<b>冻结 base 权重在 ZeRO-3 下也按分片计算</b>（FSDP + QLoRA 的做法）。很多简易实现是每个 GPU 各存一份完整 base，那样 stage 0–2 的下限会比本页显示的更高。stage 3 不受影响。</li>
+          <li>每个 GPU 可用显存 = 标称容量 − 3 GB（CUDA context、NCCL 通信 buffer、显存碎片）。GB 按 2³⁰ B 计算。</li>
+          <li>ZeRO-3 还需要临时 all-gather 一层的完整权重，本页未计入这一项。大模型上这一项占比不小。</li>
         </ul>
         <h5>算力</h5>
         <ul>
-          <li>总计算量 <code>C ≈ 6·N·D</code>（前向 2ND，反向 4ND）。一手来源是 <b>Kaplan et al. 2020</b>（arXiv:2001.08361）—— Chinchilla 只是引用它，不是原始出处。反向的 4ND 拆成「对输入求梯度 2ND + 对权重求梯度 2ND」，这个拆法在 Korthikanti et al. 附录 A 里有明文。</li>
-          <li>LoRA / QLoRA 跳过冻结权重的梯度，按 <code>≈4·N·D</code>，理论上限是快 <code>6/4 = 1.5</code> 倍。<b>实测远低于这个上限</b>：LoRA 原论文（arXiv:2106.09685）在 GPT-3 175B 上报的是约 25% 提速（1.33×）—— 因为梯度还是得穿过每一层才能到 adapter。</li>
+          <li>总计算量 <code>C ≈ 6·N·D</code>（前向 2ND，反向 4ND）。最初的来源是 <b>Kaplan et al. 2020</b>（arXiv:2001.08361），Chinchilla 只是引用它，不是原始出处。反向的 4ND 拆成「对输入求梯度 2ND + 对权重求梯度 2ND」，这个拆法在 Korthikanti et al. 附录 A 里有明确说明。</li>
+          <li>LoRA / QLoRA 跳过冻结权重的梯度，按 <code>≈4·N·D</code>，理论上限是快 <code>6/4 = 1.5</code> 倍。<b>实测远低于这个上限</b>：LoRA 原论文（arXiv:2106.09685）在 GPT-3 175B 上报告的是约 25% 提速（1.33×），原因是梯度仍然需要穿过每一层才能到达 adapter。</li>
           <li>开 gradient checkpointing 多一次前向，<code>+2·N·D</code>，理论上 +33%。<b>实测更高一些</b>：Korthikanti et al. 对全层重算量到 39%，Chen et al. 2016 的原始论文量到约 30%。本页用理论值 33%。</li>
-          <li>单卡 bf16 <b>dense</b> 峰值：A100 80GB SXM = 312 TFLOPS；H100 SXM ≈ 989 TFLOPS；H200 算力与 H100 相同（差别在 141 GB 显存和 4.8 TB/s HBM3e 带宽，对比 H100 的 3.35 TB/s）；B200 / B300 = 2250 TFLOPS。</li>
+          <li>单个 GPU 的 bf16 <b>dense</b> 峰值：A100 80GB SXM = 312 TFLOPS，H100 SXM ≈ 989 TFLOPS，H200 算力与 H100 相同（差别在 141 GB 显存和 4.8 TB/s HBM3e 带宽，对比 H100 的 3.35 TB/s），B200 / B300 = 2250 TFLOPS。</li>
           <li>只有 A100 的 312 是 NVIDIA 直接印出来的 dense 值。<b>H100 的 989 是推出来的</b>：NVIDIA 现在的 H100 页面只印 sparse 的 1979 TFLOPS，dense 那份 PDF 已经改成留资下载，所以 989 = 1979 ÷ 2，按 NVIDIA 自己在 A100 / L4 / L40S / B200 / B300 上都明写的「dense 是 sparse 的一半」换算。p5 用的是 H100 <b>SXM</b>（不是 PCIe，也不是 94 GB 的 H100 NVL），所以取 SXM 这一档是对的。</li>
-          <li>B300 那个数是<b>换算出来的</b>：NVIDIA 的 HGX B300 规格表把 FP16/BF16 写成 36 PFLOPS，但那是<b>整机 8 卡</b>的<b>sparse</b> 值，脚注写着「Dense is ½ sparse spec shown」——所以 36 ÷ 8 ÷ 2 = 2.25 PFLOPS/卡。B200 的 BF16 也是这个数，Blackwell Ultra 提升的是 FP4（整机 dense 72 → 108 PFLOPS），BF16 没动。</li>
-          <li>B300 单卡显存本页取 <b>268 GB</b>（AWS 对 <code>p6-b300</code> 的口径）。NVIDIA 的 HGX B300 规格表给的是整机 2.1 TB，除以 8 等于 262.5 GB —— 两个来源差约 2%，对量级估算没影响。</li>
+          <li>B300 那个数是<b>换算出来的</b>：NVIDIA 的 HGX B300 规格表把 FP16/BF16 写成 36 PFLOPS，但那是<b>整机 8 个 GPU</b>的<b>sparse</b> 值，脚注写着「Dense is ½ sparse spec shown」。因此 36 ÷ 8 ÷ 2 = 2.25 PFLOPS/GPU。B200 的 BF16 也是这个数，Blackwell Ultra 提升的是 FP4（整机 dense 72 → 108 PFLOPS），BF16 没有变化。</li>
+          <li>B300 单个 GPU 显存本页取 <b>268 GB</b>（AWS 对 <code>p6-b300</code> 的口径）。NVIDIA 的 HGX B300 规格表给的是整机 2.1 TB，除以 8 等于 262.5 GB。两个来源相差约 2%，对量级估算没有影响。</li>
           <li>MFU 校准数据：LLaMA-1 论文 Table 15 报的 A100-hours（7B / 1.0T = 82,432；65B / 1.4T = 1,022,362）反推得 45% 和 48%；PaLM 论文 Table 3 直接报 540B / 780B token 在 TPU v4 上 <b>MFU 46.2%</b>（同表还有 HFU 57.8%，那是把重算的 FLOPs 也算进去的另一个指标，别混）。</li>
-          <li><b>40–48% 不是天花板。</b>Korthikanti et al. Table 5 在同一代 A100 上报到 175B → 51.4%、530B → 56.0%、1T → <b>56.3% MFU</b>，靠的是序列并行 + 选择性重算。所以「调好的 Megatron 只能到 48%」是错的 —— Megatron-LM 恰恰是打破这个区间的那篇。本页把 40–48% 定位成 LLaMA-1 / PaLM 那一代的水平，51–56% 才是已发表的最好成绩。</li>
+          <li><b>40–48% 不是上限。</b>Korthikanti et al. Table 5 在同一代 A100 上报告 175B → 51.4%、530B → 56.0%、1T → <b>56.3% MFU</b>，靠的是序列并行 + 选择性重算。所以「调好的 Megatron 只能到 48%」是错误的说法，Megatron-LM 这篇论文本身就打破了这个区间。本页把 40–48% 定位成 LLaMA-1 / PaLM 那一代的水平，51–56% 才是已发表的最好成绩。</li>
         </ul>
         <h5>互联</h5>
         <ul>
           <li>NVLink：A100 SXM 600 GB/s、H100 SXM 900 GB/s。NVIDIA 标的这两个数<b>本身就是双向合计</b>（每方向各 300 / 450 GB/s）。</li>
-          <li>跨机：AWS 对实例网络带宽的定义是<b>每个方向</b>各这么多（EC2 文档原文：「if an instance specifies up to 10 Gbps of bandwidth, that means it has up to 10 Gbps for inbound traffic <b>and, simultaneously,</b> up to 10 Gbps for outbound traffic」）。所以为了和 NVLink 同口径，本页按 <code>标称 Gbps × 2 ÷ 8 ÷ 8 卡</code> 换算成每卡双向合计 GB/s：p5 = 3200 → <b>100 GB/s</b>；p4d = 400 → <b>12.5 GB/s</b>。</li>
-          <li><b>这个对比两侧都是标称峰值，不是可达吞吐</b>，只够做量级判断：(a) 把整机带宽平均分给 8 卡，假设了每卡都能拿到均匀的一份 NIC，真实 collective 在 rail-optimized 织构上并不严格保证；(b) NVLink 的 900 GB/s 是 GPU 到 NVSwitch 的<b>端口</b>带宽，不等于 8 卡同时打满时的 all-reduce 有效带宽；(c) 两条路径的实际持续吞吐都明显低于各自峰值。另外 p5 的 3200 Gbps 里最多只有 800 Gbps 能走 IP 流量（EFA 与 IP 共享底层资源，这条是 p5/p5e 的口径，p5en 和 p6 的拆分不同）。</li>
-          <li>延迟数字的来源和局限：EFA 的 15.5 µs 单向 MPI 延迟出自 AWS 2019 年 EFA 发布博客，<b>是首代 EFA 的数字，已经旧了</b>（第二代只公布了「端点延迟降低约 30%」的相对值，没给新的绝对值）。NVLink 的 1–4 µs 出自一篇同行评审 benchmark（arXiv:1903.04611，P100/V100 时代）—— <b>NVIDIA 官方从未公布过 NVLink 的延迟数字</b>，只说「低延迟」，所以本页不再声称它是「亚微秒级」（那个说法只对裸 SerDes 单跳成立，不是软件层可观测到的延迟）。</li>
-          <li>07 节表格的显存用<b>标称单卡容量</b>。<code>p4d</code> 是 A100 40GB、<code>p4de</code> 是 A100 80GB。注意 AWS 文档把 L4 记作 22 GiB、L40S 记作 44 GiB，看着像是扣了开销，其实更可能只是<b>十进制 GB 换成二进制 GiB</b>：24e9 ÷ 2³⁰ = 22.35、48e9 ÷ 2³⁰ = 44.7，两个数都正好落在 AWS 的写法上。AWS 没有任何文档说那是给驱动或 ECC 留的余量，所以本页不作那种因果解释。</li>
-          <li>07 节的 dense 算力：L40S = 362 TFLOPS（规格表写成 <code>362.05 | 733*</code>，前者就是 dense）；L4 = 121 TFLOPS（规格表只给 <code>242*</code>，脚注写「Specifications are one-half lower without sparsity」，所以要自己除 2）。<b>这两张表用了相反的写法</b>，是同一个坑的两种形态。g7e 的 RTX PRO 6000 Blackwell 没找到可靠的 bf16 dense 数，表里留空而不是填个估计值。</li>
+          <li>跨机：AWS 对实例网络带宽的定义是<b>每个方向</b>各这么多（EC2 文档原文：「if an instance specifies up to 10 Gbps of bandwidth, that means it has up to 10 Gbps for inbound traffic <b>and, simultaneously,</b> up to 10 Gbps for outbound traffic」）。为了和 NVLink 使用同一口径，本页按 <code>标称 Gbps × 2 ÷ 8 ÷ 8 个 GPU</code> 换算成每个 GPU 的双向合计 GB/s：p5 = 3200 → <b>100 GB/s</b>，p4d = 400 → <b>12.5 GB/s</b>。</li>
+          <li><b>这个对比两侧都是标称峰值，不是可达吞吐</b>，只够用于量级判断：(a) 把整机带宽平均分给 8 个 GPU，假设每个 GPU 都能拿到均匀的一份 NIC，真实 collective 在 rail-optimized 织构上并不严格保证这一点。(b) NVLink 的 900 GB/s 是 GPU 到 NVSwitch 的<b>端口</b>带宽，不等于 8 个 GPU 同时打满时的 all-reduce 有效带宽。(c) 两条路径的实际持续吞吐都明显低于各自峰值。另外 p5 的 3200 Gbps 里最多只有 800 Gbps 能走 IP 流量（EFA 与 IP 共享底层资源，这条是 p5/p5e 的口径，p5en 和 p6 的拆分不同）。</li>
+          <li>延迟数字的来源和局限：EFA 的 15.5 µs 单向 MPI 延迟出自 AWS 2019 年 EFA 发布博客，<b>是第一代 EFA 的数字，已经过时</b>（第二代只公布了「端点延迟降低约 30%」的相对值，没有给出新的绝对值）。NVLink 的 1–4 µs 出自一篇同行评审 benchmark（arXiv:1903.04611，P100/V100 时代），<b>NVIDIA 官方从未公布过 NVLink 的延迟数字</b>，只说「低延迟」，所以本页不再声称它是「亚微秒级」（那个说法只对裸 SerDes 单跳成立，不是软件层可观测到的延迟）。</li>
+          <li>07 节表格的显存用<b>标称单个 GPU 容量</b>。<code>p4d</code> 是 A100 40GB、<code>p4de</code> 是 A100 80GB。注意 AWS 文档把 L4 记作 22 GiB、L40S 记作 44 GiB，看着像是扣了开销，其实更可能只是<b>十进制 GB 换成二进制 GiB</b>：24e9 ÷ 2³⁰ = 22.35、48e9 ÷ 2³⁰ = 44.7，两个数都正好落在 AWS 的写法上。AWS 没有任何文档说那是给驱动或 ECC 留的余量，所以本页不作那种因果解释。</li>
+          <li>07 节的 dense 算力：L40S = 362 TFLOPS（规格表写成 <code>362.05 | 733*</code>，前者就是 dense）；L4 = 121 TFLOPS（规格表只给 <code>242*</code>，脚注写「Specifications are one-half lower without sparsity」，所以要自己除 2）。<b>这两张表用了相反的写法</b>，这是同一类问题的两种表现形式。g7e 的 RTX PRO 6000 Blackwell 没找到可靠的 bf16 dense 数，表里留空而不是填个估计值。</li>
         </ul>
         <h5>这个估算器不做什么</h5>
         <p>不建模 TP / PP 对显存和通信的影响，不算 KV cache（那是推理的事），不算 CPU offload，不算 checkpoint 的存储 IO，不考虑 MoE。它的用途是<b>在开会时 30 秒内给出正确的量级和正确的追问</b>，不是替代真机跑一次 profiling。</p>
@@ -737,8 +737,8 @@
 
 <footer>
   <div class="wrap">
-    对方只给了一句话时，最少追回这三个：<b>全参还是 LoRA？模型多大、序列多长？多少 token、什么时候要？</b><br>
-    有了这三个，你能给出的就不是一个数字，而是「最少 X 卡跑得起来，要 Y 天内跑完需要 Z 卡」—— 有用得多。
+    对方只给了一句话时，最少追问这三个问题：<b>全参还是 LoRA？模型多大、序列多长？多少 token、什么时候要？</b><br>
+    有了这三个答案，就能给出「最少 X 个 GPU 才能跑，要 Y 天内跑完需要 Z 个 GPU」，而不是一个单独的数字。这个答案更有用。
   </div>
 </footer>
 
@@ -839,7 +839,7 @@
     if(sec < 3.1e7)   return {v: (sec/86400).toFixed(sec/86400 < 10 ? 1 : 0), u:'天'};
     return {v: (sec/3.1536e7).toFixed(1), u:'年'};
   }
-  function nodes(g){ return g < 8 ? (g + ' 卡（不足一台）') : (g/8) + ' 台 × 8 卡'; }
+  function nodes(g){ return g < 8 ? (g + ' 个 GPU（不足一台）') : (g/8) + ' 台 × 8 个 GPU'; }
 
   /* ---------- 核心：显存 ---------- */
   function memParts(G, stage){
@@ -1016,11 +1016,11 @@
 
     $('v-gmin').innerHTML = need === null
       ? '<span style="font-size:.6em">塞不下</span>'
-      : need + '<span class="u">卡</span>';
+      : need + '<span class="u">个 GPU</span>';
     $('v-gmin-h').textContent = need === null
-      ? (actBound ? '激活就超了，加卡无效'
+      ? (actBound ? '激活就超了，增加 GPU 无效'
                   : (floorPer > u ? STAGES[S.stage].n + ' 有地板，换更高 stage'
-                                  : '超出本页扫描的卡数上限'))
+                                  : '超出本页扫描的 GPU 数量上限'))
       : (need >= 8 ? '= ' + nodes(need) : '单机内即可');
 
     $('v-per').innerHTML = fgb(per).replace(/ (GB|TB)$/, '<span class="u">$1</span>');
@@ -1057,7 +1057,7 @@
       bar.className = fits ? '' : 'over';
       rows[i].querySelector('.pg').textContent = fgb(pi.per);
       rows[i].querySelector('.pg').style.color = fits ? 'var(--ok)' : 'var(--bad)';
-      rows[i].querySelector('.gm').textContent = gi2 === null ? '塞不下' : '最少 ' + gi2 + ' 卡';
+      rows[i].querySelector('.gm').textContent = gi2 === null ? '塞不下' : '最少 ' + gi2 + ' 个 GPU';
     }
 
     /* 分片示意 */
@@ -1071,17 +1071,17 @@
         }
       });
     }
-    $('sl-w').innerHTML = st.w ? '每卡只存 <b>1/G</b>，前反向用到时临时 all-gather' : '<b>每卡一份完整副本</b>';
-    $('sl-g').innerHTML = st.g ? '每卡只留自己负责的 <b>1/G</b>（reduce-scatter 代替 all-reduce）' : '<b>每卡一份完整副本</b>';
-    $('sl-o').innerHTML = st.o ? '每卡只更新自己那 <b>1/G</b> 参数的 Adam 状态' : '<b>每卡一份完整副本</b>（最浪费的一份，12 B/参数）';
+    $('sl-w').innerHTML = st.w ? '每个 GPU 只存 <b>1/G</b>，前反向用到时临时 all-gather' : '<b>每个 GPU 各存一份完整副本</b>';
+    $('sl-g').innerHTML = st.g ? '每个 GPU 只留自己负责的 <b>1/G</b>（reduce-scatter 代替 all-reduce）' : '<b>每个 GPU 各存一份完整副本</b>';
+    $('sl-o').innerHTML = st.o ? '每个 GPU 只更新自己那 <b>1/G</b> 参数的 Adam 状态' : '<b>每个 GPU 各存一份完整副本</b>（最浪费的一份，12 B/参数）';
 
     /* narrate：显存 */
     var sm = $('say-mem'), html, warn = false;
     if(actBound){
       warn = true;
-      html = '<b>激活一项就要 ' + fgb(p.a) + '</b>，已经超过单卡可用的 ' + fgb(u) +
-             '。这种情况<b>加卡和换 ZeRO stage 都没用</b> —— stage 1/2/3 都不切激活。' +
-             '只能开梯度重算' + (S.flash ? '' : '、打开 FlashAttention') + '，或者砍序列长度 / micro batch。';
+      html = '<b>激活一项就要 ' + fgb(p.a) + '</b>，已经超过单个 GPU 可用的 ' + fgb(u) +
+             '。这种情况下，增加 GPU 和更换 ZeRO stage 都没有效果，因为 stage 1/2/3 都不切分激活。' +
+             '只能开启梯度重算' + (S.flash ? '' : '、打开 FlashAttention') + '，或者减小序列长度 / micro batch。';
     } else if(need === null && floorPer > u){
       warn = true;
       var ns = [];
@@ -1089,24 +1089,24 @@
       if(!STAGES[S.stage].g) ns.push('梯度');
       if(!STAGES[S.stage].o) ns.push('优化器状态');
       html = '激活只占 ' + fgb(p.a) + '，装得下。卡在<b>' + STAGES[S.stage].n + ' 不分片' + ns.join('和') +
-             '</b>：这些每卡都要存一份完整副本，于是每卡有个 <b>' + fgb(floorPer) + ' 的地板</b>，' +
-             '卡数加到多少都降不下来，而可用只有 ' + fgb(u) + '。' +
+             '</b>：这些每个 GPU 都要存一份完整副本，于是每个 GPU 有个 <b>' + fgb(floorPer) + ' 的地板</b>，' +
+             'GPU 数量加到多少都降不下来，而可用只有 ' + fgb(u) + '。' +
              (betterStage !== null
-               ? '换成 <b>' + STAGES[betterStage].n + '</b> 就能跑（最少 ' + gmin(betterStage) + ' 卡）。'
-               : '四个 stage 都不够，得上张量并行或换更大显存的卡。');
+               ? '换成 <b>' + STAGES[betterStage].n + '</b> 就能跑（最少 ' + gmin(betterStage) + ' 个 GPU）。'
+               : '四个 stage 都不够，得使用张量并行或更换显存更大的 GPU。');
     } else if(need === null){
       warn = true;
-      html = '每卡的地板（' + fgb(floorPer) + '）虽然装得下，但要达到它需要的卡数<b>超过了本页的扫描上限 2048 卡</b>。' +
-             '到这个规模，靠 DP / ZeRO 堆卡已经不是正确答案了 —— 该上张量并行 + 流水线并行。';
+      html = '每个 GPU 的地板（' + fgb(floorPer) + '）虽然装得下，但要达到它需要的 GPU 数量<b>超过了本页的扫描上限 2048 个 GPU</b>。' +
+             '到这个规模，靠 DP / ZeRO 增加 GPU 已经不是正确答案，应该使用张量并行 + 流水线并行。';
     } else if(per > u){
       warn = true;
-      html = '当前 <b>' + G + ' 卡</b>不够：每卡要 ' + fgb(per) + '，超了 ' + fgb(per - u) +
-             '。同样配置下 <b>' + STAGES[S.stage].n + ' 至少需要 ' + need + ' 卡</b>（' + nodes(need) + '）。';
+      html = '当前 <b>' + G + ' 个 GPU</b>不够：每个 GPU 要 ' + fgb(per) + '，超了 ' + fgb(per - u) +
+             '。同样配置下 <b>' + STAGES[S.stage].n + ' 至少需要 ' + need + ' 个 GPU</b>（' + nodes(need) + '）。';
     } else {
       html = M.k + ' · ' + mo.k + ' · 序列 ' + (SEQS[S.seq] >= 1024 ? SEQS[S.seq]/1024 + 'k' : SEQS[S.seq]) +
-             ' · ' + STAGES[S.stage].n + '：<b>最少 ' + need + ' 卡</b>能跑起来。' +
-             '当前 ' + G + ' 卡下每卡 ' + fgb(per) + '，其中激活占 <b>' + Math.round(p.a / per * 100) + '%</b>' +
-             (p.a / per > 0.5 ? ' —— 激活已是主项，别再往状态上省了。' : '。');
+             ' · ' + STAGES[S.stage].n + '：<b>最少 ' + need + ' 个 GPU</b>能跑起来。' +
+             '当前 ' + G + ' 个 GPU 下每个 GPU 占用 ' + fgb(per) + '，其中激活占 <b>' + Math.round(p.a / per * 100) + '%</b>' +
+             (p.a / per > 0.5 ? '，激活已是主要部分，不需要继续压缩状态显存。' : '。');
     }
     sm.className = 'narrate' + (warn ? ' warn' : '');
     sm.innerHTML = html;
@@ -1116,7 +1116,7 @@
     var t = Cf / clusterEff, ft = ftime(t);
 
     $('v-time').innerHTML = ft.v + '<span class="u">' + ft.u + '</span>';
-    $('v-time-h').textContent = G + ' 卡 · ' + C.k + ' · MFU ' + MFUS[S.mfu].k;
+    $('v-time-h').textContent = G + ' 个 GPU · ' + C.k + ' · MFU ' + MFUS[S.mfu].k;
     $('v-flops').innerHTML = sci(Cf).replace('e', '<span class="u">e</span>');
     $('v-flops-h').textContent = (mo.fb + (S.ckpt ? 2 : 0)) + '·N·D FLOPs' + (S.ckpt ? '（含重算的额外前向）' : '');
     $('v-eff').innerHTML = (clusterEff / 1e15).toFixed(clusterEff/1e15 < 10 ? 2 : 0) + '<span class="u">PFLOPS</span>';
@@ -1141,7 +1141,7 @@
         nEl.style.color = 'var(--bad)';
         sEl.textContent = '先解决 02 的显存';
       } else {
-        nEl.textContent = r.n + ' 卡';
+        nEl.textContent = r.n + ' 个 GPU';
         nEl.style.color = '';
         sEl.textContent = r.bound === 'mem'
           ? '受显存下限约束'
@@ -1153,12 +1153,12 @@
     var sc = $('say-comp');
     var r7 = gpusFor(7 * 86400);
     sc.className = 'narrate' + (r7.n === null ? ' warn' : '');
-    sc.innerHTML = '这个任务的固有成本是 <b>' + fnum(G*t/3600) + ' GPU-hours</b>，跟你用几张卡无关 —— ' +
-      '卡数只决定它被压缩成 <span class="cc">' + ft.v + ' ' + ft.u + '</span> 还是别的。' +
+    sc.innerHTML = '这个任务的固有成本是 <b>' + fnum(G*t/3600) + ' GPU-hours</b>，与使用多少 GPU 无关。' +
+      'GPU 数量只决定这个成本被压缩成 <span class="cc">' + ft.v + ' ' + ft.u + '</span> 还是别的时长。' +
       (r7.n === null
-        ? '不过<b>这个配置连显存都过不了</b>，再多卡也跑不起来 —— 时长只是个理论值，先回 02 解决显存。'
-        : '想一周内跑完需要 <b>' + r7.n + ' 卡</b>（' + nodes(r7.n) + '）' +
-          (r7.bound === 'mem' ? '，而且这个数是被<b>显存下限</b>顶上去的，不是算力要求。' : '。'));
+        ? '不过<b>这个配置连显存都放不下</b>，增加 GPU 也无法运行。时长只是一个理论值，需要先回到 02 解决显存问题。'
+        : '想在一周内跑完需要 <b>' + r7.n + ' 个 GPU</b>（' + nodes(r7.n) + '）' +
+          (r7.bound === 'mem' ? '，这个数字是被<b>显存下限</b>决定的，不是算力需求。' : '。'));
   }
 
   buildControls();

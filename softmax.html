@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Softmax · 一堆乱数 → 一组概率</title>
+<title>Softmax · 原始分数 → 一组概率</title>
 <style>
 :root{
   --bg:#FBF8F3; --ink:#16130F; --muted:#6E655B;
@@ -167,12 +167,12 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
 <!-- HERO -->
 <div class="hero">
   <span class="kicker">SOFTMAX</span>
-  <h1>一堆乱数<br><em>→ 一组概率</em></h1>
-  <p class="sub">模型算完只会吐出乱七八糟的分数。<br>softmax 唯一的工作，是把它们变成「能当概率用」的数字。</p>
+  <h1>原始分数<br><em>→ 一组概率</em></h1>
+  <p class="sub">模型计算后输出一组分数，这些分数不是概率。<br>softmax 把这些分数变成概率。</p>
 
   <div class="ba">
     <div class="box pre">
-      <div class="t">模型吐出来的原始分数（LOGITS）</div>
+      <div class="t">模型输出的原始分数（LOGITS）</div>
       <div class="nums"><span>2.0</span><span>1.0</span><span>0.1</span><span>−1.0</span></div>
       <div class="foot">✕ 有负数　✕ 加起来 = 2.1，不是 1</div>
     </div>
@@ -198,69 +198,69 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
       <div class="st s1">
         <div class="sn">STEP 1</div><h4>全变正数</h4>
         <div class="fx">e<sup>分数</sup></div>
-        <p>每个分数都放到 e 的头上。<br>负数也变正，<b>而且大的被拉得更大</b>。</p>
+        <p>每个分数作为 e 的指数。<br>负数的结果也是正数，<b>分数越大，结果增长越快</b>。</p>
       </div>
       <div class="st s2">
         <div class="sn">STEP 2</div><h4>加起来</h4>
         <div class="fx">Σ</div>
-        <p>把上一步的结果全部加总，<br>得到一个「总量」。</p>
+        <p>把上一步的结果全部加总，<br>得到一个总量。</p>
       </div>
       <div class="st s3">
         <div class="sn">STEP 3</div><h4>各自除以总量</h4>
         <div class="fx">÷ Σ</div>
-        <p>每个都变成「占总量的几分之几」。<br><b>加起来必然是 1。</b></p>
+        <p>每个结果都变成占总量的比例。<br><b>所有比例相加等于 1。</b></p>
       </div>
     </div>
 
-    <div class="pill" style="margin-top:26px">用刚才那四个数字走一遍</div>
+    <div class="pill" style="margin-top:26px">示例：这四个数字的计算过程</div>
     <div class="mtwrap" style="margin-top:14px">
       <table class="mt">
-        <thead><tr><th>候选词</th><th>① 原始分数</th><th>② 放到 e 头上</th><th>③ 除以总量</th></tr></thead>
+        <thead><tr><th>候选词</th><th>① 原始分数</th><th>② eˣ</th><th>③ 除以总量</th></tr></thead>
         <tbody>
           <tr><td class="w">好</td><td>2.0</td><td>7.39</td><td style="color:var(--ok)">64%</td></tr>
           <tr><td class="w">热</td><td>1.0</td><td>2.72</td><td>23%</td></tr>
           <tr><td class="w">冷</td><td>0.1</td><td>1.11</td><td>10%</td></tr>
           <tr><td class="w">香蕉</td><td class="dim">−1.0</td><td>0.37</td><td class="dim">3%</td></tr>
         </tbody>
-        <tfoot><tr><td class="w">总量</td><td class="dim">（加起来 2.1，没意义）</td><td>11.58</td><td>100%</td></tr></tfoot>
+        <tfoot><tr><td class="w">总量</td><td class="dim">（2.1，不是概率）</td><td>11.58</td><td>100%</td></tr></tfoot>
       </table>
     </div>
-    <p class="note">第三列除以 11.58，就是第四列。<b>就这样，结束了。</b></p>
+    <p class="note">第 3 列除以 11.58，得到第 4 列。<b>计算到此结束。</b></p>
   </div>
 </section>
 
 <!-- 2 · 为什么是 e -->
 <section class="reveal">
-  <div class="head"><span class="num">2</span><h2>为什么非得套个 e？</h2></div>
-  <p class="lede">直接「每个除以总和」不行吗？不行 —— 三个理由。</p>
+  <div class="head"><span class="num">2</span><h2>softmax 使用 e 的原因</h2></div>
+  <p class="lede">直接把每个分数除以总和，这种方法不可行。原因有三个。</p>
 
   <div class="grid3">
     <div class="card" style="margin-top:22px;background:#FDEDE7">
       <div class="pill" style="background:#fff">理由一</div>
-      <h4 style="font-size:21px;font-weight:900;margin-top:12px">负数会出事</h4>
-      <p class="note" style="font-size:15px">−1.0 直接除，得出「−48% 的概率」。<br><b>e 的头上永远是正数</b>，问题消失。</p>
+      <h4 style="font-size:21px;font-weight:900;margin-top:12px">负数导致错误的结果</h4>
+      <p class="note" style="font-size:15px">−1.0 直接除，结果是 −48% 的概率，这不是合法的概率。<br><b>e 的指数永远是正数</b>，这个问题不会出现。</p>
     </div>
     <div class="card" style="margin-top:22px;background:#FFF6DE">
       <div class="pill" style="background:#fff">理由二</div>
-      <h4 style="font-size:21px;font-weight:900;margin-top:12px">该拉开差距</h4>
+      <h4 style="font-size:21px;font-weight:900;margin-top:12px">放大分数之间的差距</h4>
       <p class="note" style="font-size:15px">指数会把分数差变成比例差。<br>高分项获得更大权重，低分项仍保持正值。</p>
     </div>
     <div class="card" style="margin-top:22px;background:#E8F1FA">
       <div class="pill" style="background:#fff">理由三 · 和训练目标配合</div>
-      <h4 style="font-size:21px;font-weight:900;margin-top:12px">求导特别好看</h4>
-      <p class="note" style="font-size:15px">和训练用的 loss 配在一起，梯度化简成一句话：<br><b class="mono" style="font-size:17px">预测 − 正确答案</b><br>训练时最省事的形式，就长这样。</p>
+      <h4 style="font-size:21px;font-weight:900;margin-top:12px">梯度公式简单</h4>
+      <p class="note" style="font-size:15px">与训练使用的 loss 结合后，梯度简化为：<br><b class="mono" style="font-size:17px">预测 − 正确答案</b><br>这是训练中最简单的梯度形式。</p>
     </div>
   </div>
 </section>
 
 <!-- 3 · soft vs hard -->
 <section class="reveal">
-  <div class="head"><span class="num">3</span><h2>名字里的「soft」是跟谁比</h2></div>
-  <p class="lede">跟「硬」的做法比 —— 只留最高分，赢家通吃。</p>
+  <div class="head"><span class="num">3</span><h2>「soft」与「hard」方法的比较</h2></div>
+  <p class="lede">本节比较软（soft）方法和硬（hard）方法。硬方法只保留分数最高的一项。</p>
 
   <div class="card grid2">
     <div class="hs" style="background:#F9F6F0">
-      <h4><span class="dot" style="background:var(--hot)"></span>硬办法：赢家通吃</h4>
+      <h4><span class="dot" style="background:var(--hot)"></span>硬方法：只保留最高分</h4>
       <div style="margin-top:14px">
         <div class="pb"><span class="k">好</span><div class="bar"><i style="width:100%;background:var(--hot)"></i></div><span class="v">100%</span></div>
         <div class="pb"><span class="k">热</span><div class="bar"><i style="width:0%"></i></div><span class="v">0%</span></div>
@@ -270,7 +270,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
       <div class="why">✕ argmax 不可导，不能直接用于标准反向传播</div>
     </div>
     <div class="hs" style="background:#E6F6EE">
-      <h4><span class="dot" style="background:var(--ok)"></span>软办法：softmax</h4>
+      <h4><span class="dot" style="background:var(--ok)"></span>软方法：softmax</h4>
       <div style="margin-top:14px">
         <div class="pb hit"><span class="k">好</span><div class="bar"><i style="width:64%"></i></div><span class="v">64%</span></div>
         <div class="pb hit"><span class="k">热</span><div class="bar"><i style="width:23%"></i></div><span class="v">23%</span></div>
@@ -281,14 +281,14 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
     </div>
   </div>
   <p class="note" style="margin-left:6px">softmax 给高分项更大权重，同时保留其他项的非零概率。输出连续可导，因此可以直接配合梯度法训练。<br>
-  <span style="font-size:14px">（冷知识：名字其实起偏了。它逼近的是 argmax「指出谁最大」，不是 max「最大值是多少」。）</span></p>
+  <span style="font-size:14px">（附注：softmax 这个名称容易引起误解。它近似的是 argmax（找出最大值所在位置），不是 max（计算最大值本身）。）</span></p>
 </section>
 
 <!-- 4 · 温度 -->
 <section class="reveal">
-  <div class="head"><span class="num">4</span><h2>温度：softmax 前的一个旋钮</h2></div>
-  <p class="lede">你在 API 里调的 <b class="mono">temperature</b>，就是在 softmax 之前<b>把所有分数除以 T</b>。拖一下试试。<br>
-  <span style="font-size:16px">公式允许任意正数；产品 API 是否开放这个范围，要看具体模型。</span></p>
+  <div class="head"><span class="num">4</span><h2>temperature：softmax 之前的缩放参数</h2></div>
+  <p class="lede"><b class="mono">temperature</b> 参数的作用：在 softmax 之前，把所有分数除以 T。拖动下面的滑块，查看结果。<br>
+  <span style="font-size:16px">公式允许任意正数。产品 API 是否开放这个范围，由具体模型决定。</span></p>
 
   <div class="card">
     <div class="treadout">
@@ -302,7 +302,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
         <span class="tick"></span>
       </div>
       <div class="slabs">
-        <span class="lo">0.1<br><i>冷 · 死板</i></span>
+        <span class="lo">0.1<br><i>冷 · 确定</i></span>
         <span class="mid">1.0<br><i>常见默认值</i></span>
         <span class="hi">2.0<br><i>部分 API 的上限</i></span>
       </div>
@@ -319,7 +319,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
     <div class="grid3" style="margin-top:24px">
       <div class="hs" style="background:#E8F1FA">
         <h4 style="font-size:18px">T 小 → 拉大差距</h4>
-        <p class="note" style="font-size:14.5px">强者更强，弱者归零。<br>越来越像「赢家通吃」。<br><b>最高分唯一时，T→0 会集中到第一名。</b></p>
+        <p class="note" style="font-size:14.5px">强者更强，弱者归零。<br>越来越接近只保留最高分的做法。<br><b>最高分唯一时，T→0 会集中到第一名。</b></p>
       </div>
       <div class="hs" style="background:#FFF6DE">
         <h4 style="font-size:18px">T = 1 → 不动</h4>
@@ -349,14 +349,14 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
               <td>许多生成模型接受 0–2，但部分推理模型不支持这个参数。调用时应以具体模型文档为准；还可以使用 <span class="mono">top_p</span> 等采样参数。</td>
             </tr>
             <tr>
-              <td>自己跑模型<br>（vLLM / transformers）</td>
+              <td>自行部署<br>（vLLM / transformers）</td>
               <td class="r">任意正数</td>
-              <td>源码里就是个 float，默认 1.0，<b>没有上限检查</b>。想试 T = 50 只能在这里试。</td>
+              <td>源码里就是个 float，默认 1.0，<b>没有上限检查</b>。T = 50 这类取值，只能在自行部署的模型上测试。</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="note">「T 可以无限大」是公式的性质，不代表每个 API 都开放相同范围。产品还可能提供 <span class="mono">top_p</span>、<span class="mono">top_k</span> 等采样参数。T = 0 也不保证每次结果完全一致；Anthropic 文档明确说明了这一点，浮点计算和批处理都可能影响最终结果。</p>
+      <p class="note">「T 可以无限大」是公式的性质，不代表每个 API 都开放相同范围。产品还可能提供 <span class="mono">top_p</span>、<span class="mono">top_k</span> 等采样参数。T = 0 也不保证每次结果完全一致，Anthropic 文档对此有明确说明：浮点计算和批处理都可能影响最终结果。</p>
     </details>
   </div>
 </section>
@@ -368,7 +368,7 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
 
   <div class="loc" style="border-left-color:var(--hot)">
     <h4>① 出口：挑下一个词</h4>
-    <p>模型对词表里<b>十几万个词</b>各给一个分数 → softmax → 变成概率 → 抽一个出来。这就是你调 temperature 影响的那个。</p>
+    <p>模型对词表里<b>十几万个词</b>各给一个分数 → softmax → 变成概率 → 抽一个出来。temperature 影响的正是这一步。</p>
     <div class="chain"><span>12万个分数</span><span>→</span><span class="me">SOFTMAX</span><span>→</span><span>12万个概率，和为1</span><span>→</span><span>采样出一个词</span></div>
   </div>
 
@@ -387,16 +387,16 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
     <div class="card" style="margin-top:24px">
       <div class="pill">工程</div>
       <h4 style="font-size:21px;font-weight:900;margin-top:12px">整体减一个数，结果不变</h4>
-      <p class="note" style="font-size:15.5px">e<sup>1000</sup> 会把计算机撑爆。<br>解决办法出乎意料地简单：<b>所有分数一起减去最大值</b>，再算 softmax。</p>
+      <p class="note" style="font-size:15.5px">e<sup>1000</sup> 会导致数值溢出。<br>解决方法很简单：<b>所有分数一起减去最大值</b>，再计算 softmax。</p>
       <div class="hs" style="background:#F9F6F0;margin-top:16px">
         <div class="mono" style="font-size:clamp(14px,2.2vw,17px);font-weight:900">
           [2.0, 1.0, 0.1, −1.0]<br>
           <span style="color:var(--muted)">↓ 全部 −2.0</span><br>
           [0, −1.0, −1.9, −3.0]
         </div>
-        <div class="why" style="margin-top:12px">→ 概率<b>一模一样</b>：64% / 23% / 10% / 3%</div>
+        <div class="why" style="margin-top:12px">→ 概率<b>相同</b>：64% / 23% / 10% / 3%</div>
       </div>
-      <p class="note">softmax 只在乎<b>分数之间差多少</b>，不在乎绝对值。所以每个真实实现里都有这一行。</p>
+      <p class="note">softmax 的结果只取决于<b>分数之间的差值</b>，与绝对值无关。因此每个实际实现中都包含这一行代码。</p>
     </div>
 
     <div class="card" style="margin-top:24px">
@@ -404,8 +404,8 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
       <h4 style="font-size:21px;font-weight:900;margin-top:12px">「99%」不等于「99% 是对的」</h4>
       <p class="note" style="font-size:15.5px">softmax 是把分数<b>规范化</b>，不是做民意调查。它保证「加起来等于 1」，<b>不保证</b>这个数字对应真实世界的可信度。</p>
       <div class="hs" style="background:#FDEDE7;margin-top:16px">
-        <div style="font-size:17px;font-weight:900">模型可以 99% 的把握，答一个错的。</div>
-        <p class="note" style="font-size:14.5px;margin-top:8px">因为分数是训练出来的，softmax 只是忠实地把它们摊成百分比。垃圾进，规范化的垃圾出。</p>
+        <div style="font-size:17px;font-weight:900">模型可以用 99% 的置信度，给出错误的答案。</div>
+        <p class="note" style="font-size:14.5px;margin-top:8px">因为分数是训练出来的，softmax 只是忠实地把它们转换成百分比。垃圾进，规范化的垃圾出。</p>
       </div>
       <p class="note">这件事有个专门名字叫<b>校准（calibration）</b>，是一个独立的研究问题。</p>
     </div>
@@ -414,10 +414,10 @@ h2{font-size:clamp(25px,4.2vw,40px); font-weight:900; letter-spacing:-.02em; lin
 
 <!-- PUNCH -->
 <div class="punch reveal">
-  <div class="big">记三句就够</div>
+  <div class="big">三句话总结</div>
   <p>
-    <b>1 ·</b> softmax = <b>套个 e，再各自除以总和</b>。目的只有一个：让一堆乱数变成加起来是 1 的概率。<br><br>
-    <b>2 ·</b> softmax 连续可导，可以直接配合梯度法训练；argmax 不能直接用于标准反向传播。<br><br>
+    <b>1 ·</b> softmax = <b>取 e 的指数，再各自除以总和</b>。目的只有一个：让一组原始分数变成加起来是 1 的概率。<br><br>
+    <b>2 ·</b> softmax 连续可导，可以直接配合梯度法训练。argmax 不能直接用于标准反向传播。<br><br>
     <b>3 ·</b> temperature 就是<b>进 softmax 前先除以 T</b>。它只改变第一名领先多少，不改变谁是第一名。
   </p>
 </div>
@@ -450,9 +450,9 @@ function render(){
   tv.textContent = T.toFixed(2);
 
   let label, msg;
-  if (T < 0.55)      { label = '冷 · 死板'; msg = '差距被放大，第一名快要吃掉全部 —— 越来越接近「永远选最高分」。输出稳定，但会重复、发死。'; }
+  if (T < 0.55)      { label = '冷 · 确定'; msg = '差距被放大，第一名的概率快要占满全部。输出稳定，但容易重复，缺乏变化。'; }
   else if (T <= 1.0) { label = T > 0.98 ? '原样 · 默认值' : '常用区间'; msg = '各家 API 都支持的区间。第一名明显领先，但其它选项仍留有机会。'; }
-  else               { label = '已超过 Claude 的上限'; msg = '差距被压平，「香蕉」也开始有机会 —— 更有新意，也更容易胡说。<b>这一段 Claude 不接受</b>（填 >1 直接报 400），只有 OpenAI（最高 2.0）和你自己跑的模型能调到这里。'; }
+  else               { label = '已超过 Claude 的上限'; msg = '差距被压平，「香蕉」也开始有机会，输出更有新意，但也更容易生成不准确的内容。<b>这一段 Claude 不接受</b>（填 >1 直接报 400），只有 OpenAI（最高 2.0）和自行部署的模型能调到这里。'; }
   td.textContent = label;
   tmsg.innerHTML = `T = ${T.toFixed(2)}：第一名占 <b>${(top*100).toFixed(1)}%</b>。${msg}`;
 }

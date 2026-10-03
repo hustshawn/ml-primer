@@ -213,13 +213,13 @@ ul.k li b{color:var(--ink)}
 <div class="hero">
   <span class="kicker">ACTIVATIONS · 激活值</span>
   <h1><span class="b">权重</span>是石头<br><em>激活值</em>是流过它的水</h1>
-  <p class="sub">激活值 = 数据往前走的时候，<b>每一层算出来的中间结果</b>。<br>
-  它不在 checkpoint 里，输入一换就要重算；训练时，它常常是最占显存的那一块。</p>
+  <p class="sub">激活值 = 数据向前传播时，<b>每一层产生的中间结果</b>。<br>
+  它不保存在 checkpoint 里，输入改变后必须重新计算。训练时，激活值通常占用最多显存。</p>
 
   <div class="herofig">
     <svg viewBox="0 0 820 300" role="img" aria-label="蓝色的权重固定在每一层里，橙色的激活值在层之间流动">
-      <text x="14" y="20" font-size="13" font-weight="900" fill="#2E6FB7">■ 权重：训练完就定死，checkpoint 里存的就是它</text>
-      <text x="806" y="20" font-size="13" font-weight="900" fill="#E4572E" text-anchor="end">■ 激活值：输入进来才有 ↓</text>
+      <text x="14" y="20" font-size="13" font-weight="900" fill="#2E6FB7">■ 权重：训练完成后固定，checkpoint 保存的就是它</text>
+      <text x="806" y="20" font-size="13" font-weight="900" fill="#E4572E" text-anchor="end">■ 激活值：输入到达后才产生 ↓</text>
 
       <!-- 层 + 层间激活值 -->
       <g>
@@ -274,20 +274,20 @@ ul.k li b{color:var(--ink)}
       <!-- 底部两句 -->
       <g>
         <rect x="14" y="210" width="382" height="66" rx="12" fill="#E8F1FA" stroke="#2E6FB7" stroke-width="3"/>
-        <text x="205" y="235" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">checkpoint 的大小 = 只数蓝色的</text>
+        <text x="205" y="235" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">checkpoint 大小：只计入蓝色部分</text>
         <text x="205" y="258" font-size="12" font-weight="700" fill="#2E6FB7" text-anchor="middle">7B 就是 70 亿个蓝色的数</text>
 
         <rect x="408" y="210" width="398" height="66" rx="12" fill="#FCEBE3" stroke="#E4572E" stroke-width="3"/>
-        <text x="607" y="235" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">训练时 OOM = 通常是橙色的爆了</text>
-        <text x="607" y="258" font-size="12" font-weight="700" fill="#E4572E" text-anchor="middle">因为只有橙色的会随 batch 和序列长度长大</text>
+        <text x="607" y="235" font-size="13.5" font-weight="900" fill="#16130F" text-anchor="middle">训练时 OOM：通常是橙色部分超出</text>
+        <text x="607" y="258" font-size="12" font-weight="700" fill="#E4572E" text-anchor="middle">因为只有橙色部分会随 batch 和序列长度增大</text>
       </g>
     </svg>
     <p class="small" style="text-align:center; max-width:790px; margin:18px auto 0">
-      图里那个 <span class="mono" style="color:var(--a); font-weight:800">[B, S, d]</span> 是张量的<b>形状</b>：三个维度，长度分别是 B、S、d ——<br>
-      <b>B</b> = batch，这一次同时喂进去几条序列 ·
-      <b>S</b> = 序列长度，每条有几个 token ·
+      图中的 <span class="mono" style="color:var(--a); font-weight:800">[B, S, d]</span> 是张量的<b>形状</b>，表示三个维度，长度分别是 B、S、d。<br>
+      <b>B</b> = batch，这一次同时输入几条序列 ·
+      <b>S</b> = 序列长度，每条序列有几个 token ·
       <b>d</b> = 隐藏维，每个 token 用几个数表示<br>
-      所以它一共装 B×S×d 个数。<b>后面出现的 H、f 等符号，第 2 节末尾有完整符号表。</b>
+      所以它一共包含 B×S×d 个数。<b>后面出现的 H、f 等符号，见第 2 节末尾的符号表。</b>
     </p>
   </div>
 
@@ -298,18 +298,18 @@ ul.k li b{color:var(--ink)}
     <div class="fact"><div class="n">0</div><div class="t">checkpoint 里存的激活值</div></div>
   </div>
   <p class="small" style="text-align:center; max-width:700px; margin:16px auto 0">
-    上面三个数是同一个配置下的同一件事：7B 模型、batch 1、序列长度 4096、bf16。<br>
-    差别只在于「你选择留多少」。全页统一 1 GB = 10⁹ 字节。
+    上面三个数对应同一个配置：7B 模型、batch 1、序列长度 4096、bf16。<br>
+    差别在于保留了多少激活值。全文统一 1 GB = 10⁹ 字节。
   </p>
 </div>
 
 <!-- ================= 1 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">1</span><h2>激活值就是「中间结果」</h2></div>
-  <p class="lede">神经网络前向传播就是一串函数套函数。<b>每经过一层，都会多出一个张量</b>，这个张量就叫激活值。</p>
+  <p class="lede">神经网络的前向传播是一系列函数的连续调用。<b>每经过一层，就产生一个新的张量</b>，这个张量称为激活值。</p>
 
   <div class="card">
-    <pre><i># 一个模型的前向，本质上就是这样一串赋值</i>
+    <pre><i># 模型的前向传播是一系列赋值</i>
 x0 = embedding[token_ids]        <s># ← 激活值</s>
 x1 = layer1(x0)                  <s># ← 激活值</s>
 x2 = layer2(x1)                  <s># ← 激活值</s>
@@ -317,14 +317,14 @@ x2 = layer2(x1)                  <s># ← 激活值</s>
 x32 = layer32(x31)               <s># ← 激活值</s>
 logits = lm_head(x32)            <s># ← 激活值</s>
 
-<i># 而 layer1 / layer2 里那些 W，是权重。它们从 checkpoint 加载进来，整个前向一动不动。</i></pre>
-    <p class="note">「激活值」是前向传播中所有中间变量的统称。上面每个 <span class="mono">x</span> 都是；每一层内部还有十几个更细的中间量（第 4 节会逐项列出），也都是。</p>
+<i># layer1 / layer2 中的 W 是权重。权重从 checkpoint 加载，前向传播中保持不变。</i></pre>
+    <p class="note">「激活值」是前向传播中所有中间变量的统称。上面的每个 <span class="mono">x</span> 都是激活值。每一层内部还有十几个更细的中间量（第 4 节会逐项列出），这些也是激活值。</p>
   </div>
 
   <div class="card dark">
     <div class="big">权重属于模型，激活值取决于这次输入。</div>
     <p><b>权重描述模型本身，激活值记录这次前向传播算到了什么。</b><br><br>
-    同一个模型处理两次不同的输入，权重一个比特都没变，激活值却会随输入变化。这个区别也解释了为什么激活值占用会受 batch size 影响，而权重占用不会。</p>
+    同一个模型处理两次不同的输入时，权重逐比特不变，激活值随输入变化。这个区别说明了为什么激活值占用受 batch size 影响，而权重占用不受影响。</p>
   </div>
 </section>
 
@@ -335,71 +335,71 @@ logits = lm_head(x32)            <s># ← 激活值</s>
 
   <div class="tbl">
     <div class="r hd"><div></div><div>权重（parameters / weights）</div><div>激活值（activations）</div></div>
-    <div class="r"><div class="k">哪来的</div><div class="wc">训练出来的，从 checkpoint 加载</div><div class="ac"><b>算出来的</b>，输入喂进去才存在</div></div>
-    <div class="r"><div class="k">形状里有什么</div><div class="wc"><span class="mono">[d_in, d_out]</span>（输入维 × 输出维）—— 只跟模型结构有关</div><div class="ac"><span class="mono">[B, S, d]</span> —— <b>带着 batch 和序列长度</b></div></div>
-    <div class="r"><div class="k">大小怎么变</div><div class="wc">模型定了就定了。7B 就是 7B</div><div class="ac"><b>∝ batch × 序列长度</b>，你随时能把它翻倍</div></div>
-    <div class="r"><div class="k">存在磁盘上吗</div><div class="wc">是。<span class="mono">.safetensors</span> 里全是它</div><div class="ac">不存。<b>一个字节都不存</b></div></div>
-    <div class="r"><div class="k">推理时活多久</div><div class="wc">整个进程生命周期</div><div class="ac">下一层算完就能扔（第 10 节）</div></div>
-    <div class="r"><div class="k">训练时活多久</div><div class="wc">整个进程生命周期</div><div class="ac"><b>从前向算出来，一直躺到反向来取</b>（第 5 节）</div></div>
-    <div class="r"><div class="k">有梯度吗</div><div class="wc">有，而且梯度是你要的东西</div><div class="ac">有，但只是<b>传下去的中转</b>，用完就扔</div></div>
-    <div class="r"><div class="k">量化时的代号</div><div class="wc">W（W8A8 里的 W）</div><div class="ac">A（W8A8 里的 A）—— 而且更难量化（第 12 节）</div></div>
+    <div class="r"><div class="k">来源</div><div class="wc">训练得到，从 checkpoint 加载</div><div class="ac"><b>计算得到</b>，输入传入后才存在</div></div>
+    <div class="r"><div class="k">形状包含什么</div><div class="wc"><span class="mono">[d_in, d_out]</span>（输入维 × 输出维），只由模型结构决定</div><div class="ac"><span class="mono">[B, S, d]</span>，<b>包含 batch 和序列长度</b></div></div>
+    <div class="r"><div class="k">大小如何变化</div><div class="wc">模型确定后不再变化。7B 始终是 7B</div><div class="ac"><b>∝ batch × 序列长度</b>，调整 batch 或序列长度即可改变</div></div>
+    <div class="r"><div class="k">是否存在磁盘上</div><div class="wc">是。<span class="mono">.safetensors</span> 保存的就是权重</div><div class="ac">不保存。<b>一个字节都不保存</b></div></div>
+    <div class="r"><div class="k">推理时保留多久</div><div class="wc">整个进程生命周期</div><div class="ac">下一层计算完成后释放（第 10 节）</div></div>
+    <div class="r"><div class="k">训练时保留多久</div><div class="wc">整个进程生命周期</div><div class="ac"><b>前向计算产生后，一直保留到反向传播读取</b>（第 5 节）</div></div>
+    <div class="r"><div class="k">是否有梯度</div><div class="wc">有。训练的目标就是计算这个梯度</div><div class="ac">有，但只用于<b>向前传递梯度</b>，使用后释放</div></div>
+    <div class="r"><div class="k">量化时的代号</div><div class="wc">W（W8A8 里的 W）</div><div class="ac">A（W8A8 里的 A），量化难度更高（第 12 节）</div></div>
   </div>
 
   <p class="note" style="max-width:820px; margin-left:64px; margin-top:24px">
-    第三行和显存最相关。<b>权重、梯度、优化器状态这三块，跟你的 batch size 和序列长度完全无关</b>；四块显存中，只有激活值会随它们增长。因此调小 batch 能降低激活值占用，但不会改变另外三块。
+    第三行与显存关系最大。<b>权重、梯度、优化器状态这三部分与 batch size 和序列长度无关</b>。在四块显存中，只有激活值会随它们增长。因此减小 batch 能降低激活值占用，但不会改变另外三部分。
   </p>
 
   <div class="card">
     <h4>本页使用的符号</h4>
-    <p class="note">形状写成 <span class="mono">[B, S, d]</span> 的意思是「这个张量有三个维度，长度分别是 B、S、d」，一共装 <span class="mono">B×S×d</span> 个数。<b>再乘上每个数占几个字节（bf16 = 2 字节），就是它占多少显存</b> —— 这一页所有的显存数字都是这么来的。</p>
+    <p class="note">形状写成 <span class="mono">[B, S, d]</span> 表示「这个张量有三个维度，长度分别是 B、S、d」，一共包含 <span class="mono">B×S×d</span> 个数。<b>再乘以每个数占的字节数（bf16 = 2 字节），就得到它占用的显存</b>。本页所有显存数字都按此方法计算。</p>
 
     <div class="syms">
-      <div class="sym a"><u>B</u><div>batch<i>这一次同时喂进去几条序列。你在配置文件里能随手改的那个数。</i></div></div>
-      <div class="sym a"><u>S</u><div>序列长度<i>每条序列有几个 token。训练时就是你设的 context 长度，比如 4096。</i></div></div>
+      <div class="sym a"><u>B</u><div>batch<i>一次同时输入几条序列，是配置文件里可以直接修改的参数。</i></div></div>
+      <div class="sym a"><u>S</u><div>序列长度<i>每条序列有几个 token。训练时等于设置的 context 长度，例如 4096。</i></div></div>
       <div class="sym"><u>d</u><div>隐藏维（hidden size）<i>每个 token 在模型内部用几个数表示。Llama-2 7B 是 4096。</i></div></div>
       <div class="sym"><u>L</u><div>层数<i>同样的 Transformer 层堆几遍。7B 是 32 层，70B 是 80 层。</i></div></div>
       <div class="sym"><u>H</u><div>注意力头数<i>把 d 维切成 H 份，各自独立算一遍 attention。7B 是 32 个头。</i></div></div>
-      <div class="sym"><u>d_h</u><div>每头维度 = d ÷ H<i>7B：4096 ÷ 32 = 128。现在的模型几乎都是 128 —— 第 6 节会用到这一点。</i></div></div>
-      <div class="sym p"><u>f</u><div>MLP 中间维<i>MLP 先把 d 升到 f 再降回 d。7B 的 f = 11008，比 d 胖 2.7 倍。</i></div></div>
+      <div class="sym"><u>d_h</u><div>每头维度 = d ÷ H<i>7B：4096 ÷ 32 = 128。目前的模型大多是 128，第 6 节会用到这一点。</i></div></div>
+      <div class="sym p"><u>f</u><div>MLP 中间维<i>MLP 先把 d 升到 f 再降回 d。7B 的 f = 11008，是 d 的 2.7 倍。</i></div></div>
       <div class="sym s"><u>d_kv</u><div>每个 token 的 K/V 维度<i>KV cache 的大小靠它算（第 11 节）。普通 MHA 下 = d，用了 GQA 就更小。</i></div></div>
     </div>
 
-    <p class="note">⚠️ 一个记法上的小陷阱：<b>第 6 节那个业界通用的显存公式沿用论文的小写记法</b> —— 那里的 <span class="mono">s</span> 就是这里的 <span class="mono">S</span>、<span class="mono">b</span> 就是 <span class="mono">B</span>、<span class="mono">h</span> 就是 <span class="mono">d</span>、<span class="mono">a</span> 就是 <span class="mono">H</span>。同一批东西，两套大小写，看论文时容易被绕进去。</p>
+    <p class="note">⚠️ 注意：第 6 节中的显存公式沿用论文的小写记法：<span class="mono">s</span> 对应这里的 <span class="mono">S</span>，<span class="mono">b</span> 对应 <span class="mono">B</span>，<span class="mono">h</span> 对应 <span class="mono">d</span>，<span class="mono">a</span> 对应 <span class="mono">H</span>。两套记法表示同一组变量，阅读论文时容易混淆。</p>
   </div>
 </section>
 
 <!-- ================= 3 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">3</span><h2>不要和激活函数混淆</h2></div>
+  <div class="head"><span class="num">3</span><h2>激活值与激活函数的区别</h2></div>
   <p class="lede">「激活值」这个名字来自早期「神经元被激发」的比喻，因此常被误解成激活函数的输出。实际上，它泛指前向传播中的中间张量。</p>
 
   <div class="grid3" style="margin-top:26px">
     <div class="panel" style="box-shadow:6px 6px 0 var(--pur)">
       <h4><span class="dot" style="background:var(--pur)"></span>激活函数</h4>
-      <p>ReLU / GELU / SiLU / SwiGLU 那个<b>非线性</b>。它是一个算子，是层里的一个零件。</p>
-      <p>英文 activation <b>function</b>。</p>
+      <p>ReLU / GELU / SiLU / SwiGLU 等<b>非线性函数</b>。它是一个算子，是层中的一个组件。</p>
+      <p>英文为 activation <b>function</b>。</p>
       <span class="cost">一层里只有一两个</span>
     </div>
     <div class="panel" style="box-shadow:6px 6px 0 var(--a)">
       <h4><span class="dot" style="background:var(--a)"></span>激活值</h4>
-      <p>前向路上<b>任何一个中间张量</b>。Q、K、V、注意力权重、LayerNorm 的输出、残差相加的结果 —— 全都是激活值，跟有没有过激活函数无关。</p>
-      <p>英文 activation<b>s</b>，或者更准确的 intermediate activations。</p>
+      <p>前向传播中<b>任何一个中间张量</b>。Q、K、V、注意力权重、LayerNorm 的输出、残差相加的结果都是激活值，与是否经过激活函数无关。</p>
+      <p>英文为 activation<b>s</b>，更准确的说法是 intermediate activations。</p>
       <span class="cost">一层里有十几个</span>
     </div>
     <div class="panel" style="box-shadow:6px 6px 0 var(--sq)">
       <h4><span class="dot" style="background:var(--sq)"></span>激活值显存</h4>
-      <p>那十几个里，<b>被前向特意留下来、等着反向传播回来取用</b>的那一部分。PyTorch 内部管它叫 saved tensors。</p>
-      <p>你在显存账本里看到的 activation memory，指的是这个。</p>
-      <span class="cost">这才是花钱的那个</span>
+      <p>在这十几个张量中，<b>前向传播特意保留、供反向传播读取</b>的那部分。PyTorch 内部称其为 saved tensors。</p>
+      <p>显存统计中的 activation memory 指的就是这部分。</p>
+      <span class="cost">这是实际消耗显存的部分</span>
     </div>
   </div>
 
   <div class="card tight" style="margin-top:26px">
     <p class="note"><b>下面这些工程术语里的 activation 都是「激活值」</b>，指的不是激活函数：<br><br>
     <span class="tag o">activation memory</span> 激活值占的显存 &nbsp;
-    <span class="tag o">activation checkpointing</span> 少存一些、反向时重算 &nbsp;
-    <span class="tag o">activation recomputation</span> 同上，同一件事的另一个叫法 &nbsp;
-    <span class="tag o">activation offloading</span> 把激活值临时搬到 CPU 内存 &nbsp;
+    <span class="tag o">activation checkpointing</span> 只保留部分激活值，反向时重算 &nbsp;
+    <span class="tag o">activation recomputation</span> 与上面相同，是另一种说法 &nbsp;
+    <span class="tag o">activation offloading</span> 把激活值临时移动到 CPU 内存 &nbsp;
     <span class="tag o">W8A8 的 A</span> 激活值也量化到 8 bit &nbsp;
     <span class="tag o">activation outlier</span> 激活值里的离群值</p>
   </div>
@@ -407,11 +407,11 @@ logits = lm_head(x32)            <s># ← 激活值</s>
 
 <!-- ================= 4 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">4</span><h2>怎么来的：跟着数据走完一层</h2></div>
-  <p class="lede">要看激活值怎么产生，可以把一层 Transformer 展开，<b>逐步查看每个算子产生的张量</b>。下面列出一层里的激活值及其实际尺寸。</p>
+  <div class="head"><span class="num">4</span><h2>激活值的产生过程：展开一层 Transformer</h2></div>
+  <p class="lede">下面展开一层 Transformer，<b>逐步列出每个算子产生的张量</b>，说明激活值的产生过程。下表列出这一层中的激活值及其实际大小。</p>
 
   <p class="note" style="max-width:820px; margin-left:64px">
-    参数取 Llama-2 7B 的一层（符号见第 2 节）：<span class="mono">d = 4096</span>（隐藏维）、<span class="mono">H = 32</span>（头数）、<span class="mono">d_h = 128</span>（每头维度，<span class="mono">= d ÷ H = 4096 ÷ 32</span>）、<span class="mono">f = 11008</span>（MLP 中间维）。输入一条长 4096 的序列 —— 也就是 <span class="mono">B = 1</span>（一条）、<span class="mono">S = 4096</span>（4096 个 token）。bf16 → 每个数 2 字节。
+    以 Llama-2 7B 的一层为例（符号见第 2 节）：<span class="mono">d = 4096</span>（隐藏维）、<span class="mono">H = 32</span>（头数）、<span class="mono">d_h = 128</span>（每头维度，<span class="mono">= d ÷ H = 4096 ÷ 32</span>）、<span class="mono">f = 11008</span>（MLP 中间维）。输入一条长度为 4096 的序列，即 <span class="mono">B = 1</span>（一条）、<span class="mono">S = 4096</span>（4096 个 token）。bf16 下每个数占 2 字节。
   </p>
 
   <div class="trace">
@@ -439,57 +439,57 @@ logits = lm_head(x32)            <s># ← 激活值</s>
     <div class="trr res"><div class="i">17</div><div class="op">残差相加 → <b>下一层的输入</b></div><div class="sh">[B, S, d]</div><div class="sz">33.6 MB</div><div class="bar"><i style="width:3.1%"></i></div></div>
 
     <div class="trf">
-      <div>一层的激活值合计 —— 而 7B 有 32 层</div>
+      <div>一层的激活值合计（7B 模型共 32 层）</div>
       <div style="color:var(--sq)">≈ 2.95 GB &nbsp;×&nbsp;32 &nbsp;=&nbsp; ≈ 94 GB</div>
     </div>
   </div>
 
   <div class="grid2" style="margin-top:26px">
     <div class="panel" style="box-shadow:6px 6px 0 var(--sq)">
-      <h4><span class="dot" style="background:var(--sq)"></span>注意到第 06、07 行了吗</h4>
-      <p>这两个张量的形状是 <span class="mono">[B, H, S, S]</span> —— <b>序列长度出现了两次</b>。因为它要装「每个 token 对每个 token 的关注程度」。</p>
-      <p>一个这样的张量 = <b>32 个隐藏状态张量</b>（1.07 GB vs 33.6 MB）。一层里两个这样的张量，就吃掉了这一层 2.95 GB 里的 2.15 GB。</p>
+      <h4><span class="dot" style="background:var(--sq)"></span>第 06、07 行占用最大</h4>
+      <p>这两个张量的形状是 <span class="mono">[B, H, S, S]</span>，<b>序列长度出现了两次</b>，因为需要表示「每个 token 对每个 token 的关注程度」。</p>
+      <p>一个这样的张量相当于 <b>32 个隐藏状态张量</b>（1.07 GB 对比 33.6 MB）。一层中的两个这样的张量，共占用这一层 2.95 GB 中的 2.15 GB。</p>
       <span class="cost">整层 73% 的激活值都在这两行</span>
     </div>
     <div class="panel" style="box-shadow:6px 6px 0 var(--pur)">
-      <h4><span class="dot" style="background:var(--pur)"></span>第 12–15 行也不小</h4>
-      <p>MLP 会先把维度从 4096 升到 11008 再降回来，中间那一段的每个张量都比隐藏状态胖 2.7 倍。SwiGLU 一路要经过<b>四个</b>这么胖的张量。</p>
-      <p>这是「MLP 参数量占大头，激活值也占大头」的原因 —— 而且它是纯线性项，序列翻倍就翻倍，不会平方。</p>
+      <h4><span class="dot" style="background:var(--pur)"></span>第 12–15 行占用也较大</h4>
+      <p>MLP 先把维度从 4096 升到 11008，再降回来。中间阶段的每个张量都比隐藏状态大 2.7 倍。SwiGLU 经过<b>四个</b>这么大的张量。</p>
+      <p>这是 MLP 参数量和激活值都占主要部分的原因。它是线性项：序列长度翻倍，这部分激活值也翻倍，不会按平方增长。</p>
       <span class="cost">整层 12%</span>
     </div>
   </div>
 
   <div class="card tight">
-    <p class="note">⚠️ <b>两个计算口径说明。</b><br><br>
-    ① 上表是「这一层依次产生了哪些张量」。框架并不会把 18 个全都保存到反向；autograd 只保存反向真正用得到的那些（比如某些逐元素运算可以从输出反推输入，就不用存输入）。所以真实占用会比 2.95 GB 略低，但仍在同一数量级。<br><br>
-    ② 第 6 节那个业界通用的公式，对同一配置算出来是 3.25 GB/层。它比手数的略高，因为它对应的是 GPT-3 式的层（额外有 dropout mask，MLP 中间维是 4d 而不是 2.7d）。两个数互相印证。</p>
+    <p class="note">⚠️ 注意：以下两点说明计算口径的差异。<br><br>
+    ① 上表列出这一层依次产生的张量。框架不会把全部 18 个张量都保存用于反向传播：autograd 只保存反向传播实际需要的张量（例如某些逐元素运算可以从输出反推输入，这时不需要保存输入）。因此实际占用比 2.95 GB 略低，但数量级相同。<br><br>
+    ② 第 6 节中的通用公式对同一配置计算出 3.25 GB/层，比上表的结果略高。原因是该公式对应 GPT-3 式的层（额外包含 dropout mask，MLP 中间维是 4d，而不是 2.7d）。两个结果互相印证。</p>
   </div>
 </section>
 
 <!-- ================= 5 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">5</span><h2>为什么训练时不能扔</h2></div>
-  <p class="lede">既然算完就该扔，为什么训练时它会堆成几十上百 GB？因为<b>反向传播要回来取它</b>。这一节是全页的因果核心。</p>
+  <div class="head"><span class="num">5</span><h2>训练时激活值必须保留</h2></div>
+  <p class="lede">训练时，激活值会累积到几十甚至上百 GB，因为<b>反向传播需要读取它</b>。本节说明这个原因。</p>
 
   <div class="card">
-    <h4>看一个最小的例子：一层线性变换</h4>
+    <h4>一个最小的例子：一层线性变换</h4>
     <pre><i># 前向</i>
 y = x @ W          <i>#  x 是这一层的输入（激活值），W 是权重</i>
 
-<i># 反向：我们要的是 dL/dW，好拿去更新 W</i>
+<i># 反向：计算 dL/dW，用于更新 W</i>
 dL/dW = <b>xᵀ</b> @ (dL/dy)
         ↑
-        <b>要用到前向时那个 x</b>
+        <b>需要前向传播时的 x</b>
 
-<i># 顺手也把梯度往前传</i>
-dL/dx = (dL/dy) @ Wᵀ      <i># 这个只要 W，不要 x</i></pre>
-    <p class="note">链式法则的形状就是这样：<b>算权重的梯度，必须知道当时喂给它的输入是什么</b>。逐元素的非线性也一样 —— <span class="mono">y = SiLU(x)</span> 的反向是 <span class="mono">dL/dx = dL/dy · SiLU′(x)</span>，那个 <span class="mono">SiLU′(x)</span> 还得知道 x。</p>
-    <p class="note">于是前向不能算完就扔，<b>得把 x 留着，一路留到反向走回这一层的那一刻</b>。而反向是从最后一层往前走的 —— 所以第 1 层的激活值，要从前向刚开始一直活到反向快结束。<b>整个网络的激活值几乎同时在显存里。</b></p>
+<i># 同时把梯度传给前一层</i>
+dL/dx = (dL/dy) @ Wᵀ      <i># 这一步只需要 W，不需要 x</i></pre>
+    <p class="note">链式法则决定了这个结构：<b>计算权重的梯度时，必须知道当时输入的是什么</b>。逐元素的非线性函数也是如此。<span class="mono">y = SiLU(x)</span> 的反向传播是 <span class="mono">dL/dx = dL/dy · SiLU′(x)</span>，其中 <span class="mono">SiLU′(x)</span> 同样需要知道 x。</p>
+    <p class="note">因此前向传播不能计算完就释放 x，<b>必须保留 x，直到反向传播回到这一层</b>。反向传播从最后一层开始，往前计算。因此第 1 层的激活值从前向传播开始就产生，一直保留到反向传播快结束时才释放。<b>这意味着整个网络的激活值几乎同时存在于显存中。</b></p>
   </div>
 
   <div class="card">
     <svg viewBox="0 0 820 260" role="img" aria-label="前向逐层产生激活值并全部留在显存里，反向从后往前逐个取用并释放">
-      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#E4572E">前向 →　每算一层，就往显存里压一个（谁都不能扔）</text>
+      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#E4572E">前向 →　每计算一层，就在显存中保留一个（都不能释放）</text>
 
       <!-- 前向阶梯 -->
       <g>
@@ -518,31 +518,31 @@ dL/dx = (dL/dy) @ Wᵀ      <i># 这个只要 W，不要 x</i></pre>
         <text x="124" y="216" font-size="11" font-weight="900" fill="#F2B705" text-anchor="middle">层1 最后才用上，最后才释放</text>
       </g>
       <text x="410" y="250" font-size="13" font-weight="800" fill="#6E655B" text-anchor="middle">
-        第 1 层的激活值，活得比第 32 层长得多 —— 它是最早生的，最晚死的。
+        第 1 层的激活值，保留时间比第 32 层长得多：它最早产生，最晚释放。
       </text>
     </svg>
   </div>
 
   <div class="card dark">
-    <div class="big">推理没有反向，所以激活值用完即扔。训练有反向，所以它们全都得排队等着。</div>
-    <p>这一句就是训练显存和推理显存差那么多倍的<b>其中一个</b>原因（另一个是优化器状态）。<br><br>
-    也是「激活值显存」这个词只在训练语境里被反复提的原因 —— 推理侧它几乎不构成问题（第 10 节）。</p>
+    <div class="big">推理没有反向传播，激活值用完即释放。训练有反向传播，激活值必须保留到使用完毕。</div>
+    <p>这是训练显存远大于推理显存的<b>其中一个</b>原因（另一个原因是优化器状态）。<br><br>
+    这也是「激活值显存」这个概念只在训练场景中被反复提及的原因。推理场景中它几乎不构成问题（第 10 节）。</p>
   </div>
 </section>
 
 <!-- ================= 6 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">6</span><h2>显存账：一个线性项 ＋ 一个平方项</h2></div>
-  <p class="lede">Megatron 团队那篇讲激活值重算的论文，给出了一个业界通用的估算公式。它的形状比它的系数更重要：<b>激活值显存由两项组成，一项随序列长度线性长，一项随序列长度平方长</b>。</p>
+  <p class="lede">Megatron 团队关于激活值重算的论文给出了一个常用的估算公式。公式的结构比系数更重要：<b>激活值显存由两项组成，一项随序列长度线性增长，一项随序列长度平方增长</b>。</p>
 
   <div class="card">
     <pre><i># 每层激活值（字节）· 不做任何优化 · 无并行切分</i>
 每层 = s·b·h·(34 + 5·a·s/h)  =  <b>34·s·b·h</b>  +  <s>5·a·s²·b</s>
                                    ↑ 线性项        ↑ 平方项
        s = 序列长度   b = batch   h = 隐藏维   a = 注意力头数
-<i>       ↑ 就是第 2 节那张符号表里的 S、B、d、H —— 论文用小写，这里跟着论文写</i>
+<i>       ↑ 对应第 2 节符号表中的 S、B、d、H。论文使用小写字母，这里沿用论文的写法</i>
 
-<i># 34 是这么凑出来的（论文 4.1 节的逐项拆解）</i>
+<i># 34 的计算过程如下（论文 4.1 节的详细推导）</i>
 注意力块      11·s·b·h  <s>+ 5·a·s²·b</s>   <i># 后者 = 两个 [B,H,S,S] 张量 + 一个 mask</i>
 MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的输入、dropout mask</i>
 两个 LayerNorm 4·s·b·h
@@ -552,26 +552,26 @@ MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的
   </div>
 
   <div class="card">
-    <h4>那个平方项什么时候开始压倒线性项？算一下就好</h4>
+    <h4>平方项超过线性项的临界点</h4>
     <pre>5·a·s²·b &gt; 34·s·b·h
    ⟺   s &gt; 34·h / (5·a)
    ⟺   s &gt; 6.8 × (h/a)
    ⟺   s &gt; 6.8 × <b>每头维度 d_h</b>
 
-<i># 现在的模型几乎都是 d_h = 128</i>
+<i># 目前的模型大多是 d_h = 128</i>
 临界序列长度 ≈ 6.8 × 128 ≈ <b>870 个 token</b></pre>
-    <p class="note">这个结论出奇地干净：<b>它只跟每头维度有关，跟模型多大无关</b>。7B（h=4096, a=32）和 70B（h=8192, a=64）算出来是同一个 870。<br><br>
-    也就是说 —— 只要你训练的序列超过大约 900 个 token（也就是<b>所有现代 LLM 训练</b>），激活值显存就由那个平方项主导。这解释了第 4 节那张表里为什么两行就吃掉 73%，也解释了为什么第 8 节那个技术是分水岭。</p>
+    <p class="note">这个结论很简洁：<b>它只与每头维度有关，与模型规模无关</b>。7B（h=4096, a=32）和 70B（h=8192, a=64）算出的结果都是 870。<br><br>
+    因此，只要训练序列超过大约 900 个 token（<b>覆盖所有现代 LLM 训练</b>），激活值显存就由平方项主导。这解释了第 4 节表格中两行占用 73% 的原因，也解释了第 8 节技术的重要性。</p>
   </div>
 </section>
 
 <!-- ================= 7 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">7</span><h2>自己拧一下：什么会动，什么不动</h2></div>
-  <p class="lede">下面两根条用同一个刻度。<b>拖动任何一个滑块，上面那根（模型状态）一动不动，下面那根（激活值）随手就能拉爆。</b>这就是第 2 节第三行的意思。</p>
+  <div class="head"><span class="num">7</span><h2>调整参数：哪些会变，哪些不会变</h2></div>
+  <p class="lede">下面两个显存条使用同一个刻度。<b>拖动任意滑块时，上面的显存条（模型状态）不变，下面的显存条（激活值）会显著增大。</b>这说明了第 2 节表格第三行的含义。</p>
 
   <div class="lab">
-    <div class="labtitle">可交互 · 激活值显存计算器（bf16 混合精度，Adam，单卡不切分）</div>
+    <div class="labtitle">可交互 · 激活值显存计算器（bf16 混合精度，Adam，单 GPU 不切分）</div>
 
     <div class="ctrl" style="margin-top:18px">
       <label>模型</label>
@@ -614,9 +614,9 @@ MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的
       <div class="memlab"><b>模型状态：权重 ＋ 梯度 ＋ 优化器状态</b><i id="o-ms">112 GB</i></div>
       <div class="memwrap">
         <div class="membar">
-          <span id="b-ms" style="width:50%; background:#2E6FB7">拧滑块它不动</span>
+          <span id="b-ms" style="width:50%; background:#2E6FB7">滑块移动时不变</span>
         </div>
-        <div class="hline" id="hl"><b>80 GB · 一张卡</b></div>
+        <div class="hline" id="hl"><b>80 GB · 单 GPU 显存上限</b></div>
       </div>
       <p class="ovf" style="color:var(--w)">= 16 字节/参数 × 参数量。跟 batch、序列长度<b>完全无关</b>。</p>
     </div>
@@ -639,28 +639,28 @@ MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的
     </div>
 
     <div class="readout" style="grid-template-columns:1fr 1fr">
-      <div class="ro"><div class="v b" id="o-base">104 GB</div><div class="k">什么都不优化时是多少（对照）</div></div>
-      <div class="ro"><div class="v" id="o-cards">3 张</div><div class="k">这一坨需要几张 80 GB 卡才装得下</div></div>
+      <div class="ro"><div class="v b" id="o-base">104 GB</div><div class="k">不做任何优化时的数值（对照）</div></div>
+      <div class="ro"><div class="v" id="o-cards">3 个</div><div class="k">所需 80 GB GPU 数量</div></div>
     </div>
 
     <p class="note" id="o-tip" style="margin-top:22px"></p>
   </div>
 
   <div class="card dark">
-    <div class="big">序列长度翻倍，模型状态不动，激活值涨 4 倍。</div>
-    <p>把序列从 4K 拉到 32K（8 倍），线性项涨 8 倍，平方项涨 <b>64 倍</b>。长上下文训练的显存压力主要来自激活值迅速增长，模型参数量并没有因此变化。<br><br>
-    这四个旋钮中，batch 和序列长度会影响激活值，对模型状态没有影响。第 13 节会据此给出一个诊断方法。</p>
+    <div class="big">序列长度翻倍，模型状态不变，激活值增大 4 倍。</div>
+    <p>把序列从 4K 增加到 32K（8 倍），线性项增大 8 倍，平方项增大 <b>64 倍</b>。长上下文训练的显存压力主要来自激活值快速增长，模型参数量不会因此变化。<br><br>
+    这四个参数中，batch 和序列长度会影响激活值，不影响模型状态。第 13 节会据此给出一个诊断方法。</p>
   </div>
 </section>
 
 <!-- ================= 8 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">8</span><h2>FlashAttention 解决的就是那个平方项</h2></div>
-  <p class="lede">平方项来自「把 S×S 矩阵完整写进显存」，最直接的解法就是：<b>不把它完整写下来。</b></p>
+  <div class="head"><span class="num">8</span><h2>FlashAttention 解决平方项显存问题</h2></div>
+  <p class="lede">平方项来自「把 S×S 矩阵完整写入显存」。最直接的解决方法是：<b>不把它完整写入显存。</b></p>
 
   <div class="card">
     <svg viewBox="0 0 820 250" role="img" aria-label="标准 attention 把 S×S 分数矩阵完整写入显存，FlashAttention 分块在片上算完直接输出">
-      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#B0453B">标准做法：把整个 S×S 矩阵写进显存，反向再读回来</text>
+      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#B0453B">标准做法：把整个 S×S 矩阵写入显存，反向传播时再读取</text>
       <g>
         <rect x="14" y="32" width="72" height="72" rx="9" fill="#fff" stroke="#16130F" stroke-width="3"/>
         <text x="50" y="74" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">Q,K</text>
@@ -678,20 +678,20 @@ MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的
 
         <rect x="596" y="32" width="210" height="72" rx="9" fill="#FDEDE7" stroke="#B0453B" stroke-width="3"/>
         <text x="701" y="58" font-size="12.5" font-weight="900" fill="#B0453B" text-anchor="middle">显存 ∝ S²</text>
-        <text x="701" y="80" font-size="11.5" font-weight="700" fill="#6E655B" text-anchor="middle">序列翻倍 → 这块涨 4 倍</text>
+        <text x="701" y="80" font-size="11.5" font-weight="700" fill="#6E655B" text-anchor="middle">序列翻倍 → 这部分增大 4 倍</text>
       </g>
       <defs><marker id="a8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
         <path d="M0 0 L10 5 L0 10 z" fill="#16130F"/></marker></defs>
 
       <line x1="14" y1="124" x2="806" y2="124" stroke="#D9D2C7" stroke-width="3" stroke-dasharray="6 5"/>
 
-      <text x="14" y="152" font-size="13.5" font-weight="900" fill="#1E9E62">FlashAttention：分块搬进片上 SRAM，算完直接吐输出，中间那两块从不落地</text>
+      <text x="14" y="152" font-size="13.5" font-weight="900" fill="#1E9E62">FlashAttention：分块加载到片上 SRAM，计算后直接输出，中间结果不写入显存</text>
       <g>
         <rect x="14" y="164" width="72" height="66" rx="9" fill="#fff" stroke="#16130F" stroke-width="3"/>
         <text x="50" y="203" font-size="12" font-weight="900" fill="#16130F" text-anchor="middle">Q,K,V</text>
         <path d="M92 197 L118 197" stroke="#1E9E62" stroke-width="3" marker-end="url(#a8g)"/>
         <rect x="124" y="164" width="338" height="66" rx="9" fill="#E6F6EE" stroke="#1E9E62" stroke-width="3" stroke-dasharray="8 5"/>
-        <text x="293" y="190" font-size="12.5" font-weight="900" fill="#16130F" text-anchor="middle">一块一块地算，只在片上存在</text>
+        <text x="293" y="190" font-size="12.5" font-weight="900" fill="#16130F" text-anchor="middle">按块计算，只存在于片上</text>
         <text x="293" y="212" font-size="11.5" font-weight="800" fill="#1E9E62" text-anchor="middle">显存里只留下 softmax 的统计量（每行两个数）</text>
         <path d="M468 197 L494 197" stroke="#1E9E62" stroke-width="3" marker-end="url(#a8g)"/>
         <rect x="500" y="164" width="72" height="66" rx="9" fill="#fff" stroke="#16130F" stroke-width="3"/>
@@ -704,7 +704,7 @@ MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的
       <defs><marker id="a8g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
         <path d="M0 0 L10 5 L0 10 z" fill="#1E9E62"/></marker></defs>
     </svg>
-    <p class="small">论文 Theorem 1 的说法是：除输入和输出之外，FlashAttention 只需要 <b>O(N) 的额外显存</b>（N 为序列长度）。反向时它不去显存里读那个矩阵，而是拿保存下来的输出和 softmax 统计量<b>在片上把它重算一遍</b>。速度上的报告是：BERT-large（512）端到端快 15%，GPT-2（1K）快 3×，Long-Range Arena（1K–4K）快 2.4×。（<i>FlashAttention</i>, arXiv:2205.14135）</p>
+    <p class="small">论文 Theorem 1 的结论是：除输入和输出外，FlashAttention 只需要 <b>O(N) 的额外显存</b>（N 为序列长度）。反向传播时，它不读取显存中的矩阵，而是用保存的输出和 softmax 统计量，<b>在片上重新计算一次</b>。速度方面的结果是：BERT-large（512）端到端提升 15%，GPT-2（1K）提升 3×，Long-Range Arena（1K–4K）提升 2.4×。（<i>FlashAttention</i>, arXiv:2205.14135）</p>
   </div>
 
   <div class="grid2" style="margin-top:24px">
@@ -716,20 +716,20 @@ MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的
     </div>
     <div class="panel" style="box-shadow:6px 6px 0 var(--w)">
       <h4><span class="dot" style="background:var(--w)"></span>GQA 解决的是另一块显存</h4>
-      <p>GQA / MQA 减少的是 <b>K、V 的头数</b>，它显著缩小 KV cache（第 11 节）。但分数矩阵的形状是 <span class="mono">[B, <b>查询头数</b>, S, S]</span> —— 查询头一个都没少。</p>
-      <p>所以 <b>GQA 对那个平方项几乎没有帮助</b>。FlashAttention 减少这部分激活值，GQA 则缩小 KV cache。</p>
+      <p>GQA / MQA 减少 <b>K、V 的头数</b>，显著缩小 KV cache（第 11 节）。但分数矩阵的形状是 <span class="mono">[B, <b>查询头数</b>, S, S]</span>，查询头的数量没有减少。</p>
+      <p>所以 <b>GQA 对平方项几乎没有帮助</b>。FlashAttention 减少这部分激活值，GQA 缩小 KV cache。</p>
     </div>
   </div>
 </section>
 
 <!-- ================= 9 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">9</span><h2>重计算：用算力把激活值买回来</h2></div>
-  <p class="lede">还有一条更暴力的路：<b>干脆不存，反向要用的时候现场再前向算一遍</b>。这是显存和算力之间一笔非常划算的交易。</p>
+  <div class="head"><span class="num">9</span><h2>用额外计算量换取显存：重计算</h2></div>
+  <p class="lede">还有一种方法：<b>不保存激活值，反向传播需要时重新执行一次前向计算</b>。这是显存和计算量之间的一种交换。</p>
 
   <div class="card">
     <svg viewBox="0 0 820 230" role="img" aria-label="重计算只保存每层入口的张量，反向到该层时重新前向一遍恢复中间值">
-      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#B0453B">不重算：一层里 18 个中间张量全留着</text>
+      <text x="14" y="20" font-size="13.5" font-weight="900" fill="#B0453B">不使用重计算：一层中的 18 个中间张量全部保留</text>
       <g>
         <rect x="14" y="30" width="792" height="34" rx="8" fill="#F1EDE6" stroke="#16130F" stroke-width="3"/>
         <g fill="#B0453B">
@@ -748,7 +748,7 @@ MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的
 
       <line x1="14" y1="104" x2="806" y2="104" stroke="#D9D2C7" stroke-width="3" stroke-dasharray="6 5"/>
 
-      <text x="14" y="132" font-size="13.5" font-weight="900" fill="#1E9E62">全量重算：只留每层入口那一个，其余 17 个反向时重新算</text>
+      <text x="14" y="132" font-size="13.5" font-weight="900" fill="#1E9E62">全量重计算：只保留每层入口张量，其余 17 个在反向传播时重新计算</text>
       <g>
         <rect x="14" y="142" width="792" height="34" rx="8" fill="#F1EDE6" stroke="#16130F" stroke-width="3"/>
         <rect x="20" y="148" width="40" height="22" rx="4" fill="#1E9E62"/>
@@ -763,53 +763,53 @@ MLP 块        19·s·b·h                 <i># 两个矩阵的输入、GeLU 的
           <rect x="680" y="148" width="40" height="22" rx="4"/><rect x="724" y="148" width="40" height="22" rx="4"/>
           <rect x="768" y="148" width="32" height="22" rx="4"/>
         </g>
-        <text x="430" y="164" font-size="11.5" font-weight="900" fill="#6E655B" text-anchor="middle">虚线 = 扔掉了，反向路过时重新前向一遍补出来</text>
+        <text x="430" y="164" font-size="11.5" font-weight="900" fill="#6E655B" text-anchor="middle">虚线 = 未保存，反向传播经过时重新计算得到</text>
       </g>
-      <text x="14" y="198" font-size="12.5" font-weight="900" fill="#1E9E62">≈ 0.034 GB / 层　（2·s·b·h）　—— 同配置下 32 层合计 1.07 GB</text>
+      <text x="14" y="198" font-size="12.5" font-weight="900" fill="#1E9E62">≈ 0.034 GB / 层　（2·s·b·h）。同配置下 32 层合计 1.07 GB</text>
       <text x="14" y="220" font-size="12" font-weight="700" fill="#6E655B">代价：反向时多做一遍前向。经典结果是约 30% 的额外运行时间。</text>
     </svg>
   </div>
 
   <div class="grid2" style="margin-top:24px">
     <div class="panel" style="box-shadow:6px 6px 0 var(--ok)">
-      <h4><span class="dot" style="background:var(--ok)"></span>为什么这笔交易划算</h4>
-      <p>它的祖师爷论文（<i>Training Deep Nets with Sublinear Memory Cost</i>, arXiv:1604.06174）给的结论是：<b>n 层网络可以只用 O(√n) 显存，代价是每个 mini-batch 多做一遍前向</b>。他们在 1000 层 ResNet 上把显存从 48 G 压到 7 G，多花了约 30% 的运行时间。</p>
-      <p>论文还提到极端情况下显存能压到 O(log n)，代价是 O(n log n) 的额外前向计算 —— 一般没人这么干。</p>
-      <span class="cost">显存 ÷ 一大截，时间 × 1.3</span>
+      <h4><span class="dot" style="background:var(--ok)"></span>重计算降低显存，增加少量时间</h4>
+      <p>最早提出这个方法的论文（<i>Training Deep Nets with Sublinear Memory Cost</i>, arXiv:1604.06174）的结论是：<b>n 层网络只需要 O(√n) 显存，代价是每个 mini-batch 多执行一次前向计算</b>。该论文在 1000 层 ResNet 上把显存从 48 G 降到 7 G，运行时间增加约 30%。</p>
+      <p>论文还提到，在极端情况下显存可以降到 O(log n)，代价是 O(n log n) 的额外前向计算。实际应用中很少使用这种极端方案。</p>
+      <span class="cost">显存大幅降低，时间 × 1.3</span>
     </div>
     <div class="panel" style="box-shadow:6px 6px 0 var(--yel)">
-      <h4><span class="dot" style="background:var(--yel)"></span>选择性重算：只重算划算的部分</h4>
-      <p>全量重算有点浪费 —— 有些张量很大但重算很便宜（比如那个 S×S 矩阵），有些张量不大但重算要走矩阵乘法。<b>那就只重算前一类。</b></p>
-      <p>这就是<b>选择性重算</b>（selective recomputation）。Megatron 那篇论文报告：激活值显存降到 <b>1/5</b>，而重算带来的运行时间开销比全量重算<b>减少了 90% 以上</b>。</p>
-      <span class="cost">现在框架里的默认推荐路线</span>
+      <h4><span class="dot" style="background:var(--yel)"></span>选择性重计算：只重新计算收益高的部分</h4>
+      <p>全量重计算存在浪费：有些张量体积大但重新计算的成本低（例如 S×S 矩阵），有些张量体积小但重新计算需要矩阵乘法。<b>选择性重计算只重新计算第一类张量。</b></p>
+      <p>这种方法称为<b>选择性重计算</b>（selective recomputation）。Megatron 的论文报告：激活值显存降到 <b>1/5</b>，运行时间开销比全量重计算<b>减少 90% 以上</b>。</p>
+      <span class="cost">目前框架推荐的默认方案</span>
     </div>
   </div>
 
   <div class="card">
-    <pre><i># PyTorch 里就是一行事</i>
+    <pre><i># 在 PyTorch 中，一行代码即可启用</i>
 model.gradient_checkpointing_enable()          <i># HF Transformers</i>
-<i># 或者手写</i>
+<i># 或者手动实现</i>
 from torch.utils.checkpoint import checkpoint
 h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保存</i></pre>
-    <p class="note">⚠️ 两个容易踩的地方：<br>
-    ① 上面那个 1.07 GB 是「存下来的量」，<b>不是显存峰值</b>。重算某一层的时候，那一层的 18 个中间张量还是要临时占一份 —— 峰值 ≈ 1.07 GB ＋ 一层的量。<br>
-    ② 重算会让那段前向<b>跑两次</b>。如果里面有 dropout 之类带随机性的算子，两次的随机数必须一致，否则梯度就错了。框架靠保存并重放 RNG 状态来处理这件事 —— 自己手写 checkpoint 时这是头号 bug 来源。</p>
+    <p class="note">⚠️ 注意：以下两点容易被忽略。<br>
+    ① 上面的 1.07 GB 是「保存的数据量」，<b>不是显存峰值</b>。重新计算某一层时，这一层的 18 个中间张量仍需要临时占用显存，峰值 ≈ 1.07 GB ＋ 一层的数据量。<br>
+    ② 重新计算会使这段前向传播<b>执行两次</b>。如果其中包含 dropout 等带随机性的算子，两次的随机数必须一致，否则梯度会出错。框架通过保存并重放 RNG 状态处理这个问题。自己实现 checkpoint 时，这是最常见的 bug 来源。</p>
   </div>
 
   <div class="card tight">
-    <p class="note"><b>还有一条路：序列并行。</b>Megatron 那篇论文的另一半贡献是把激活值<b>沿序列维切开</b>，分给张量并行组里的各张卡。LayerNorm、dropout 这些逐位置的算子不需要跨位置通信，因此每张卡不必保存整条序列的激活值。它和重计算可以同时使用。</p>
+    <p class="note"><b>另一种方法：序列并行。</b>Megatron 论文的另一项贡献是把激活值<b>沿序列维度切分</b>，分配给张量并行组中的各个 GPU。LayerNorm、dropout 等逐位置算子不需要跨位置通信，因此每个 GPU 不需要保存整条序列的激活值。序列并行可以与重计算同时使用。</p>
   </div>
 </section>
 
 <!-- ================= 10 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">10</span><h2>推理侧：用完即扔</h2></div>
-  <p class="lede">推理没有反向传播，所以<b>没有任何人会回来取它</b>。第 5 节那个「全网络激活值同时在显存里」的局面直接消失。</p>
+  <div class="head"><span class="num">10</span><h2>推理场景中激活值用完即释放</h2></div>
+  <p class="lede">推理没有反向传播，<b>没有任何步骤需要再次读取激活值</b>。第 5 节描述的「全网络激活值同时占用显存」的情况因此不会出现。</p>
 
   <div class="grid2" style="margin-top:26px">
     <div class="panel" style="box-shadow:6px 6px 0 var(--sq)">
       <h4><span class="dot" style="background:var(--sq)"></span>训练：O(层数)</h4>
-      <p>第 1 层的激活值要活到反向快结束。<b>32 层的激活值几乎同时在显存里。</b></p>
+      <p>第 1 层的激活值要保留到反向传播快结束。<b>32 层的激活值几乎同时占用显存。</b></p>
       <p class="mono" style="font-size:13px; background:#FDF1EE; padding:12px; border-radius:8px; border:2px solid #E3DCD1">
         激活值 ≈ 每层的量 × 层数<br>
         7B / 4K / b=1 → <b>18～104 GB</b>
@@ -817,7 +817,7 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
     </div>
     <div class="panel" style="box-shadow:6px 6px 0 var(--ok)">
       <h4><span class="dot" style="background:var(--ok)"></span>推理：O(1 层)</h4>
-      <p>算完第 2 层，第 1 层的中间值就再也没用了，立刻释放。<b>显存里同时只有一两层的量。</b></p>
+      <p>计算完第 2 层后，第 1 层的中间值不再需要，立刻释放。<b>显存中同时只保留一两层的数据量。</b></p>
       <p class="mono" style="font-size:13px; background:#E6F6EE; padding:12px; border-radius:8px; border:2px solid #E3DCD1">
         激活值 ≈ 每层的量 × 1～2<br>
         同配置 → <b>几十 MB ～ 几 GB</b>
@@ -826,16 +826,16 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
   </div>
 
   <div class="card dark">
-    <div class="big">这就是为什么推理显存账里几乎不提激活值。</div>
-    <p>推理侧那本账通常只有两项：<b>权重</b> ＋ <b>KV cache</b>。激活值那点量被四舍五入掉了 —— 除非你在做超大 batch 的 prefill，那时候一层的量本身就很可观（因为 prefill 阶段 S 是整个 prompt 长度）。<br><br>
-    但推理侧有一个特例，它是<b>被特意留下来的激活值</b>。下一节就是它。</p>
+    <div class="big">这是推理显存统计中通常不包含激活值的原因。</div>
+    <p>推理侧的显存通常只统计两项：<b>权重</b> ＋ <b>KV cache</b>。激活值的占用量很小，通常忽略不计，除非在超大 batch 的 prefill 场景中，这时一层的激活值本身就相当大（因为 prefill 阶段 S 等于整个 prompt 长度）。<br><br>
+    但推理侧有一个例外：<b>被特意保留下来的激活值</b>。下一节介绍这个例外。</p>
   </div>
 </section>
 
 <!-- ================= 11 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">11</span><h2>KV cache = 被特意留下来的激活值</h2></div>
-  <p class="lede">如果你已经知道 KV cache 是什么，这一节会让两个概念接上：<b>KV cache 里存的 K 和 V，本来就是第 4 节那张表里的第 03、04 行</b> —— 普普通通的激活值。它们只是被挑出来，不许扔。</p>
+  <p class="lede">本节连接两个概念：<b>KV cache 中保存的 K 和 V，就是第 4 节表格里的第 03、04 行</b>，是普通的激活值。它们只是被专门挑选出来，不释放。</p>
 
   <div class="card">
     <svg viewBox="0 0 820 240" role="img" aria-label="生成下一个 token 时历史 token 的 K 和 V 不会变，所以存下来复用">
@@ -870,7 +870,7 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
         <rect x="426" y="108" width="380" height="76" rx="12" fill="#E6F6EE" stroke="#1E9E62" stroke-width="3"/>
         <text x="616" y="132" font-size="13" font-weight="900" fill="#1E9E62" text-anchor="middle">缓存：把它们留在显存里</text>
         <text x="616" y="154" font-size="12" font-weight="700" fill="#16130F" text-anchor="middle">每步只算 1 个新 token 的 K/V，其余直接读</text>
-        <text x="616" y="174" font-size="12" font-weight="900" fill="#1E9E62" text-anchor="middle">用显存换掉那个 n²</text>
+        <text x="616" y="174" font-size="12" font-weight="900" fill="#1E9E62" text-anchor="middle">用显存换取更低的计算量</text>
       </g>
 
       <rect x="14" y="196" width="792" height="36" rx="10" fill="#16130F"/>
@@ -882,19 +882,19 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
 
   <div class="grid2" style="margin-top:24px">
     <div class="panel">
-      <h4>它有多大</h4>
+      <h4>KV cache 的大小</h4>
       <p class="mono" style="font-size:13px; background:#F3F0EA; padding:12px; border-radius:8px; border:2px solid #E3DCD1">
         2（K 和 V）× L × S × d_kv × 2 字节 × B
       </p>
-      <p><span class="mono">d_kv</span> = 每个 token 的 K / V 有多少维。<b>普通 MHA 下它就等于 d</b>；用了 GQA 就小一截。<span class="mono">L</span> = 层数，因为每一层都有自己的一份 K/V。</p>
+      <p><span class="mono">d_kv</span> 表示每个 token 的 K / V 维度。<b>标准 MHA 下它等于 d</b>，使用 GQA 时会更小。<span class="mono">L</span> 表示层数，因为每一层都有自己的 K/V。</p>
       <p>Llama-2 7B（L = 32，d_kv = 4096，MHA）、一条 4096 长的序列：<br>
       2 × 32 × 4096 × 4096 × 2 = <b>2.15 GB</b>。</p>
-      <p>注意它<b>只随序列长度线性长</b>，没有平方项 —— 因为它存的是 K、V，不是那个 S×S 矩阵。</p>
+      <p>注意它<b>只随序列长度线性增长</b>，没有平方项，因为它保存的是 K、V，不是 S×S 矩阵。</p>
     </div>
     <div class="panel">
       <h4>GQA 直接缩小 d<sub>kv</sub></h4>
-      <p>公式里可以直接缩小的是 <span class="mono">d_kv</span>。GQA 让多个查询头共享一组 K/V 头，直接把它除掉一个倍数。Llama-2 70B 用 64 个查询头配 8 个 KV 头，<b>KV cache 缩到 1/8</b>。</p>
-      <p>而第 8 节说过：这对训练时那个平方项<b>没有帮助</b>。两项优化对应不同的显存开销。</p>
+      <p>公式中可以直接缩小的是 <span class="mono">d_kv</span>。GQA 让多个查询头共享一组 K/V 头，从而把 d_kv 缩小一个倍数。Llama-2 70B 使用 64 个查询头和 8 个 KV 头，<b>KV cache 缩小到 1/8</b>。</p>
+      <p>而第 8 节说明：这对训练时的平方项<b>没有帮助</b>。两项优化针对不同的显存开销。</p>
       <span class="tag b">GQA → KV cache</span> <span class="tag o">FlashAttention → 激活值</span>
     </div>
   </div>
@@ -902,25 +902,25 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
 
 <!-- ================= 12 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">12</span><h2>W8A8 里的那个 A</h2></div>
-  <p class="lede">量化命名法 <span class="mono">W4A16</span> / <span class="mono">W8A8</span> 里，W 是权重、<b>A 就是激活值</b>。这里有一个很值得知道的不对称：<b>激活值比权重难量化得多</b>，而原因很具体。</p>
+  <div class="head"><span class="num">12</span><h2>W8A8 中的 A</h2></div>
+  <p class="lede">量化命名法 <span class="mono">W4A16</span> / <span class="mono">W8A8</span> 中，W 表示权重，<b>A 表示激活值</b>。两者的量化难度不同：<b>激活值比权重更难量化</b>，原因很具体。</p>
 
   <div class="grid2" style="margin-top:26px">
     <div class="panel" style="box-shadow:6px 6px 0 var(--w)">
-      <h4><span class="dot" style="background:var(--w)"></span>权重：可以慢慢挑</h4>
-      <p>训练完就定死了。你可以离线看遍每一个数、算出精确的分布、逐通道挑最优的缩放系数，试一百种方案挑最好的。<b>它不会变。</b></p>
+      <h4><span class="dot" style="background:var(--w)"></span>权重：可以离线优化</h4>
+      <p>权重在训练完成后固定不变。可以离线检查每一个数值、计算精确的分布、为每个通道选择最优的缩放系数，并测试多种方案以选出最好的结果。<b>权重不会再变化。</b></p>
       <span class="tag yes">静态 · 可穷举</span>
     </div>
     <div class="panel" style="box-shadow:6px 6px 0 var(--sq)">
       <h4><span class="dot" style="background:var(--sq)"></span>激活值：范围依赖输入</h4>
       <p>每次输入都不一样。通常只能用校准集估计数值范围，而线上输入仍可能<b>超出这个范围</b>。</p>
-      <p>出现范围外的值时，量化误差会明显增大；LLM 的激活值中确实存在这类离群值。</p>
+      <p>出现范围外的值时，量化误差会明显增大。LLM 的激活值中确实存在这类离群值。</p>
       <span class="tag no">动态 · 只能估</span>
     </div>
   </div>
 
   <div class="card">
-    <h4>那些超出范围的值有个名字：activation outlier</h4>
+    <h4>超出范围的值被称为 activation outlier</h4>
     <p class="note">LLM.int8() 论文对这类离群值做了量化分析：</p>
     <ul class="k">
       <li><b>出现并不平滑。</b>论文观察到，「跨越所有层的大幅值特征」出现在 <b>6B 到 6.7B 参数之间</b>。</li>
@@ -928,27 +928,27 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
       <li><b>幅度很高。</b>这些维度上的值可达其他维度的 <b>20 倍</b>。</li>
       <li><b>分布范围很广。</b>6.7B 规模上，<b>所有层、约 75% 的序列位置</b>都受影响。</li>
     </ul>
-    <p class="note">于是朴素的统一缩放 int8 量化会明显掉点：为了容纳那几个 20 倍大的值，缩放系数被拉得很大，大量正常值被压进很少的量化格子里。</p>
-    <p class="note">LLM.int8() 把离群维度单独用 16 bit 计算，其余超过 99.9% 的值走 8 bit。SmoothQuant 使用一个<b>数学上等价</b>的变换，把量化难度从激活值离线转移到权重上（权重更容易量化，见上面左侧），从而让 W8A8 可用；论文报告最高 1.56× 加速、2× 显存下降，并让 530B 模型在单节点内服务。</p>
+    <p class="note">于是，统一缩放的 int8 量化会导致精度明显下降：为了容纳这几个 20 倍大的值，缩放系数必须增大，导致大量正常值被压缩到很少的量化格子中。</p>
+    <p class="note">LLM.int8() 将离群维度单独用 16 bit 计算，其余超过 99.9% 的值使用 8 bit。SmoothQuant 使用一个<b>数学上等价</b>的变换，在离线阶段把量化难度从激活值转移到权重上（权重更容易量化，见左侧）。这使 W8A8 可用。论文报告最高 1.56× 加速、2× 显存下降，并支持 530B 模型在单节点内完成推理服务。</p>
     <p class="small">来源：<i>LLM.int8()</i>, arXiv:2208.07339，4.2 节；<i>SmoothQuant</i>, arXiv:2211.10438。</p>
   </div>
 
   <div class="card dark">
-    <div class="big">「权重量化到 4 bit 很常见，激活值量化到 8 bit 就要写论文」—— 差别就在这里。</div>
-    <p>你在社区里看到的绝大多数量化格式（GPTQ、AWQ、各种 GGUF 的 Q4）都是 <b>W4A16</b> 一类：<b>只量化权重，激活值老老实实用 16 bit</b>。<br><br>
-    因为权重量化省的是<b>显存和带宽</b>，代价小收益大；而激活值量化省的是<b>算力</b>（让矩阵乘法真的跑在 int8 单元上），还要处理输入相关的范围和论文观察到的少数离群维度。</p>
+    <div class="big">「权重量化到 4 bit 很常见，激活值量化到 8 bit 需要专门的论文」，原因就在这里。</div>
+    <p>社区中常见的量化格式（GPTQ、AWQ、各种 GGUF 的 Q4）大多属于 <b>W4A16</b> 一类：<b>只量化权重，激活值保持 16 bit</b>。<br><br>
+    权重量化节省<b>显存和带宽</b>，代价小、收益大。激活值量化节省<b>算力</b>（使矩阵乘法运行在 int8 单元上），但需要处理输入相关的数值范围，以及论文中观察到的离群维度。</p>
   </div>
 </section>
 
 <!-- ================= 13 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">13</span><h2>OOM 诊断：先调整哪个参数</h2></div>
-  <p class="lede">最直接的诊断动作是：<b>把 batch size 减半，再看一眼显存</b>。</p>
+  <div class="head"><span class="num">13</span><h2>OOM 诊断方法：减半 batch size 并观察显存</h2></div>
+  <p class="lede">最直接的诊断方法是：<b>把 batch size 减半，然后检查显存占用</b>。</p>
 
   <div class="card">
-    <svg viewBox="0 0 820 250" role="img" aria-label="把 batch 减半后显存是否明显下降，决定你 OOM 在激活值还是模型状态上">
+    <svg viewBox="0 0 820 250" role="img" aria-label="把 batch 减半后显存是否明显下降，决定 OOM 的原因是激活值还是模型状态">
       <rect x="240" y="14" width="340" height="42" rx="10" fill="#16130F"/>
-      <text x="410" y="41" font-size="14" font-weight="900" fill="#F2B705" text-anchor="middle">把 batch size 减半，跑一步看显存</text>
+      <text x="410" y="41" font-size="14" font-weight="900" fill="#F2B705" text-anchor="middle">把 batch size 减半，运行一步并查看显存</text>
 
       <path d="M340 60 L200 92 M480 60 L620 92" stroke="#16130F" stroke-width="3" fill="none" marker-end="url(#a13)"/>
       <defs><marker id="a13" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
@@ -956,24 +956,24 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
 
       <g>
         <rect x="14" y="96" width="380" height="140" rx="14" fill="#FCEBE3" stroke="#E4572E" stroke-width="3"/>
-        <text x="204" y="122" font-size="14" font-weight="900" fill="#E4572E" text-anchor="middle">显存明显掉了</text>
-        <text x="204" y="146" font-size="13" font-weight="900" fill="#16130F" text-anchor="middle">→ 你 OOM 在<tspan font-size="14">激活值</tspan>上</text>
+        <text x="204" y="122" font-size="14" font-weight="900" fill="#E4572E" text-anchor="middle">显存明显下降</text>
+        <text x="204" y="146" font-size="13" font-weight="900" fill="#16130F" text-anchor="middle">→ OOM 发生在<tspan font-size="14">激活值</tspan>上</text>
         <g font-size="12" font-weight="700" fill="#2E2823">
-          <text x="34" y="172">1. 开 FlashAttention（不牺牲精度）</text>
-          <text x="34" y="192">2. 开 gradient checkpointing</text>
-          <text x="34" y="212">3. 缩 micro-batch，用梯度累积补回 global batch</text>
-          <text x="34" y="230">4. 缩序列长度 / 上序列并行</text>
+          <text x="34" y="172">1. 启用 FlashAttention（不牺牲精度）</text>
+          <text x="34" y="192">2. 启用 gradient checkpointing</text>
+          <text x="34" y="212">3. 减小 micro-batch，用梯度累积补偿 global batch</text>
+          <text x="34" y="230">4. 减小序列长度 / 使用序列并行</text>
         </g>
       </g>
 
       <g>
         <rect x="426" y="96" width="380" height="140" rx="14" fill="#E8F1FA" stroke="#2E6FB7" stroke-width="3"/>
-        <text x="616" y="122" font-size="14" font-weight="900" fill="#2E6FB7" text-anchor="middle">显存几乎没动</text>
-        <text x="616" y="146" font-size="13" font-weight="900" fill="#16130F" text-anchor="middle">→ 你 OOM 在<tspan font-size="14">模型状态</tspan>上</text>
+        <text x="616" y="122" font-size="14" font-weight="900" fill="#2E6FB7" text-anchor="middle">显存几乎没有变化</text>
+        <text x="616" y="146" font-size="13" font-weight="900" fill="#16130F" text-anchor="middle">→ OOM 发生在<tspan font-size="14">模型状态</tspan>上</text>
         <g font-size="12" font-weight="700" fill="#2E2823">
-          <text x="446" y="172">1. ZeRO / FSDP（切优化器状态、梯度、权重）</text>
-          <text x="446" y="192">2. LoRA（不给底模留梯度和优化器状态）</text>
-          <text x="446" y="212">3. 换 8-bit 优化器 / 量化底模</text>
+          <text x="446" y="172">1. ZeRO / FSDP（切分优化器状态、梯度、权重）</text>
+          <text x="446" y="192">2. LoRA（不保留底模的梯度和优化器状态）</text>
+          <text x="446" y="212">3. 使用 8-bit 优化器 / 对底模量化</text>
           <text x="446" y="230">4. 张量并行 / 流水并行</text>
         </g>
       </g>
@@ -982,9 +982,9 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
   </div>
 
   <div class="card tight">
-    <p class="note">⚠️ <b>一个常见的期望落空：LoRA 不怎么省激活值。</b>LoRA 冻结底模，省掉的是<b>梯度和优化器状态</b>（那是模型状态那一块，往往是大头）。但前向照样要走完整个模型，反向照样要穿过每一层往前传梯度 —— 非线性、attention、SwiGLU 中间值该存的还得存。<br><br>
-    （被冻结的线性层确实能少存一点：不算它的权重梯度，就不必为此保留输入。但有 LoRA 旁路的层依然要留。）<br><br>
-    因此，<b>用 LoRA 压低模型状态后，显存瓶颈可能转到激活值</b>。这时应考虑 checkpointing 和 FlashAttention，而不是继续调整 LoRA 的 rank。</p>
+    <p class="note">⚠️ 注意：<b>LoRA 不能明显减少激活值显存，这是一个常见的误解。</b>LoRA 冻结底模，减少的是<b>梯度和优化器状态</b>（属于模型状态，通常占比最大）。但前向传播仍需要经过整个模型，反向传播仍需要逐层向前传递梯度。<b>非线性函数、attention、SwiGLU 的中间值仍然需要保存。</b><br><br>
+    （被冻结的线性层可以少保存一些：由于不计算其权重梯度，不需要为此保留输入。但带有 LoRA 旁路的层仍需要保留。）<br><br>
+    因此，<b>使用 LoRA 降低模型状态显存后，显存瓶颈可能转移到激活值上</b>。这种情况下应考虑 checkpointing 和 FlashAttention，而不是继续调整 LoRA 的 rank。</p>
   </div>
 </section>
 
@@ -993,19 +993,19 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
   <div class="head"><span class="num">14</span><h2>八点总结</h2></div>
   <p class="lede">下面汇总本页的关键概念。</p>
 
-  <div class="take"><span class="n2">01</span><p><b>激活值 = 前向路上的中间结果</b>，任何一个中间张量都算。不要和「激活函数」混淆：Q、K、V、注意力权重、LayerNorm 输出全都是激活值。</p></div>
-  <div class="take"><span class="n2">02</span><p><b>权重属于模型，激活值取决于这次输入。</b>权重保存在 checkpoint 里，激活值不会写入 checkpoint；换个输入就会重新计算。</p></div>
+  <div class="take"><span class="n2">01</span><p><b>激活值 = 前向传播中的中间结果</b>，包括任何一个中间张量。它与「激活函数」是不同的概念：Q、K、V、注意力权重、LayerNorm 输出都是激活值。</p></div>
+  <div class="take"><span class="n2">02</span><p><b>权重属于模型，激活值取决于这次输入。</b>权重保存在 checkpoint 里，激活值不会写入 checkpoint。输入改变后，激活值会重新计算。</p></div>
   <div class="take"><span class="n2">03</span><p><b>它的形状里带着 batch 和序列长度</b>（<span class="mono">[B, S, d]</span>）。这个区别决定了激活值会怎样随输入规模增长。</p></div>
-  <div class="take"><span class="n2">04</span><p><b>训练时不能扔，因为反向要用。</b><span class="mono">dL/dW = xᵀ·(dL/dy)</span> 里那个 x 就是前向时的激活值。反向从后往前走，所以第 1 层的激活值活得最久 —— 全网络的激活值几乎同时在显存里。</p></div>
+  <div class="take"><span class="n2">04</span><p><b>训练时必须保留激活值，因为反向传播需要使用它。</b><span class="mono">dL/dW = xᵀ·(dL/dy)</span> 中的 x 就是前向传播时的激活值。反向传播从后向前计算，因此第 1 层的激活值保留时间最长：全网络的激活值几乎同时占用显存。</p></div>
   <div class="take"><span class="n2">05</span><p><b>显存四大块里，它是唯一随 batch × 序列长度增长的那一块。</b>公式是一个线性项 ＋ 一个平方项：<span class="mono">34·s·b·h + 5·a·s²·b</span>（每层）。</p></div>
-  <div class="take"><span class="n2">06</span><p><b>那个平方项从大约 870 个 token 起就开始主导</b>（临界值 ≈ 6.8 × 每头维度，跟模型多大无关）。它来自 S×S 的注意力分数矩阵；FlashAttention 会避免把这个矩阵完整写入显存。</p></div>
-  <div class="take"><span class="n2">07</span><p><b>显存不足时可以使用重计算</b>（activation checkpointing）：只存每层入口，其余在反向时重算。经典代价约 30% 额外时间；选择性重算只处理「大而便宜」的部分，可将这项开销减少 90% 以上。</p></div>
-  <div class="take"><span class="n2">08</span><p><b>推理侧的激活值用完即可释放</b>，所以推理显存账通常只看权重和 KV cache。<b>KV cache 保存的是 K、V 两类激活值</b>。量化里 W8A8 的 A 也是激活值；它比权重难量化，因为范围随输入变化，而且 LLM.int8() 在其测试的大模型中观察到了幅度很高的离群维度。</p></div>
+  <div class="take"><span class="n2">06</span><p><b>平方项从大约 870 个 token 开始主导显存占用</b>（临界值 ≈ 6.8 × 每头维度，与模型规模无关）。它来自 S×S 的注意力分数矩阵。FlashAttention 避免把这个矩阵完整写入显存。</p></div>
+  <div class="take"><span class="n2">07</span><p><b>显存不足时可以使用重计算</b>（activation checkpointing）：只保存每层入口的张量，其余在反向传播时重新计算。典型代价是约 30% 的额外运行时间。选择性重计算只处理「体积大、重算成本低」的部分，可以把这项运行时间开销比全量重计算降低 90% 以上。</p></div>
+  <div class="take"><span class="n2">08</span><p><b>推理场景中激活值用完即可释放</b>，因此推理显存统计通常只包含权重和 KV cache。<b>KV cache 保存的是 K、V 两类激活值</b>。量化中 W8A8 的 A 也是激活值。它比权重更难量化，因为取值范围随输入变化。LLM.int8() 在其测试的大模型中观察到了幅度很高的离群维度。</p></div>
 
   <div class="card dark" style="margin-top:34px">
     <div class="big">核心概念</div>
     <p><b>激活值是数据流经模型时产生的中间结果。<br>
-    推理时用完即可释放；训练时要保留到反向传播使用，因此多层激活值会同时占用显存。</b><br><br>
+    推理时用完即可释放。训练时要保留到反向传播使用，因此多层激活值会同时占用显存。</b><br><br>
     训练显存优化中，很大一部分工作都在减少这部分占用。</p>
   </div>
 </section>
@@ -1072,14 +1072,14 @@ h = checkpoint(layer, h, use_reentrant=False)  <i># 这一段的中间值不保�
     $('o-ratio').textContent = (act/ms).toFixed(2)+'×';
     $('o-ratio').className   = 'v '+(act/ms>=1?'hot':'ok');
     $('o-base').textContent  = fmt(GB(base));
-    $('o-cards').textContent = Math.ceil(GB(act+ms)/80)+' 张';
+    $('o-cards').textContent = Math.ceil(GB(act+ms)/80)+' 个';
 
     const shareSq = base>0 ? (sq*m.L)/base*100 : 0;
     const tips = {
-      'std|off' :'未启用优化时，平方项占激活值的 <b>'+shareSq.toFixed(0)+'%</b>。序列越长，这个比例越高，也是早期长上下文训练的主要显存瓶颈。',
-      'flash|off':'FlashAttention 不把完整的 S×S 矩阵写入显存，剩下的是 O(S) 的线性项。<b>它是精确计算，输出和标准 attention 完全一致</b>，不会引入精度取舍。',
-      'std|full' :'全量重算让每层只保存入口张量。注意这个数字是「保存量」，<b>不是显存峰值</b>；重算某一层时，其中间值（包括 S×S 矩阵）还会临时占用显存。代价是约 30% 的额外运行时间。',
-      'flash|full':'两个开关可以<b>叠加</b>：FlashAttention 避免在前向中物化矩阵，重算则减少跨层保存。若还要继续降低占用，需要调整 batch、序列长度，或使用并行切分。'
+      'std|off' :'未启用优化时，平方项占激活值的 <b>'+shareSq.toFixed(0)+'%</b>。序列越长，这个比例越高，是早期长上下文训练的主要显存瓶颈。',
+      'flash|off':'FlashAttention 不把完整的 S×S 矩阵写入显存，剩下的是 O(S) 的线性项。<b>它是精确计算，输出和标准 attention 完全一致</b>，不引入精度损失。',
+      'std|full' :'全量重计算让每层只保存入口张量。这个数字是「保存量」，<b>不是显存峰值</b>。重新计算某一层时，这一层的中间值（包括 S×S 矩阵）会临时占用显存。代价是约 30% 的额外运行时间。',
+      'flash|full':'两个选项可以<b>同时启用</b>：FlashAttention 避免在前向中生成完整矩阵，重计算则减少跨层保存。如果需要进一步降低占用，可以调整 batch、序列长度，或使用并行切分。'
     };
     $('o-tip').innerHTML = tips[attn+'|'+rc];
   }

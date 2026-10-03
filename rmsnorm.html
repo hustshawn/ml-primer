@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RMSNorm · 扔掉长度，留下方向</title>
+<title>RMSNorm · 去掉长度，保留方向</title>
 <style>
   :root{
     --display:-apple-system,"SF Pro SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
@@ -231,8 +231,8 @@
 <!-- ============ HERO ============ -->
 <section class="hero">
   <div class="step">RMSNorm · Root Mean Square Normalization</div>
-  <h1><span>把音量</span><span>调回标准</span></h1>
-  <p class="sub">大模型的每一层，在干活之前都会先做这一件小事。<br>它叫 <b>RMSNorm</b>。</p>
+  <h1><span>统一幅度</span><span>保留方向</span></h1>
+  <p class="sub">大模型的每一层，在计算之前都会先做这一件小事。<br>它叫 <b>RMSNorm</b>。</p>
   <div class="formula">y = x ÷ RMS(x) × g</div>
   <div class="scrollhint"><span>↓ 往下滑</span></div>
 </section>
@@ -241,7 +241,7 @@
 <section class="reveal">
   <div class="step">01 · 问题</div>
   <h2>数字会失控</h2>
-  <p>神经网络就是一层一层地<b>乘</b>。走过 80 层、100 层之后，数字要么涨成天文数字，要么缩成 0。</p>
+  <p>神经网络按层连续相<b>乘</b>。经过 80 层、100 层后，数字可能变得极大，也可能缩小到 0。</p>
 
   <div class="towers">
     <div class="tower">
@@ -255,7 +255,7 @@
       <div class="boom">💥 loss = NaN</div>
     </div>
     <div class="tower">
-      <h3>✅ 每层门口调一次音量</h3>
+      <h3>✅ 每层开始前做一次归一化</h3>
       <div class="floor good"><span class="lbl">第 1 层</span><span class="val">1.0</span></div>
       <span class="normchip">RMSNorm</span>
       <div class="floor good"><span class="lbl">第 2 层</span><span class="val">1.0</span></div>
@@ -263,16 +263,16 @@
       <div class="floor good"><span class="lbl">第 3 层</span><span class="val">1.0</span></div>
       <span class="normchip">RMSNorm</span>
       <div class="floor good"><span class="lbl">第 4 层</span><span class="val">1.0</span></div>
-      <div class="boom">🟢 训得下去</div>
+      <div class="boom">🟢 可以训练</div>
     </div>
   </div>
-  <p class="mute">数字坏掉，梯度就跟着坏掉。训练直接死。</p>
+  <p class="mute">数值失控后，梯度也会失控，训练无法继续。</p>
 </section>
 
 <!-- ============ 2. RMS 是什么 ============ -->
 <section class="reveal">
   <div class="step">02 · RMS 是什么</div>
-  <h2>三步算出<br>“平均有多大”</h2>
+  <h2>三步算出<br>“整体幅度”</h2>
   <p>一层的输出是一串数字。比如这四个 👇</p>
   <div class="vec" style="font-size:clamp(26px,5vw,46px);margin:18px 0 6px">[ −3, &nbsp;4, &nbsp;0, &nbsp;5 ]</div>
 
@@ -293,7 +293,7 @@
       <div class="num">③</div>
       <h4>开根号</h4>
       <div class="vec">√12.5 = <b>3.54</b></div>
-      <p class="mute" style="font-size:16px;margin-top:10px">Root — 这就是 RMS</p>
+      <p class="mute" style="font-size:16px;margin-top:10px">Root，也就是 RMS</p>
     </div>
   </div>
 
@@ -302,14 +302,14 @@
     <div class="cap">RMSNORM 的输出</div>
     <div class="vec">[ −0.85, &nbsp;1.13, &nbsp;0, &nbsp;1.41 ]</div>
   </div>
-  <p style="margin-top:26px">Root Mean Square 三个词，就是<b>倒着念这三步</b>：开根号、求平均、平方。</p>
+  <p style="margin-top:26px">Root Mean Square 这三个词，对应这三个步骤的逆序：<b>开根号、求平均、平方</b>。</p>
 </section>
 
 <!-- ============ 3. 交互 ============ -->
 <section class="reveal">
-  <div class="step">03 · 亲手试试</div>
+  <div class="step">03 · 可交互</div>
   <h2>×100 也没关系</h2>
-  <p>拖动滑杆，把这四个数一起放大或缩小。<br>左边疯了，右边<b>一动不动</b>。</p>
+  <p>拖动滑块，把这四个数一起放大或缩小。<br>左边的数值会大幅变化，右边<b>保持不变</b>。</p>
 
   <div class="demo">
     <div class="knob">
@@ -332,14 +332,14 @@
     </div>
     <div class="verdict" id="verdict"></div>
   </div>
-  <p class="mute" style="margin-top:22px">这个性质叫<b>尺度不变</b>。上一层输出多响，下一层完全感觉不到——它只看到形状。</p>
+  <p class="mute" style="margin-top:22px">这个性质叫<b>尺度不变</b>。上一层输出的幅度无论多大，下一层得到的结果都相同，因为它只保留数值的相对形状。</p>
 </section>
 
 <!-- ============ 4. 球面 ============ -->
 <section class="reveal">
-  <div class="step">04 · 换个看法</div>
-  <h2>扔掉长度<br>留下方向</h2>
-  <p>把一串数字当成一支箭。除以 RMS，就是把所有箭<b>拉到同一个圈上</b>。</p>
+  <div class="step">04 · 向量视角</div>
+  <h2>去掉长度<br>保留方向</h2>
+  <p>把一串数字看作一个向量。除以 RMS，就是把所有向量<b>缩放到同一个圆上</b>。</p>
 
   <svg viewBox="0 0 620 340" width="620" role="img" aria-label="不同长度的向量被归一化到同一个圆上">
     <circle cx="310" cy="170" r="118" fill="none" stroke="#E3D8C7" stroke-width="3"/>
@@ -365,12 +365,12 @@
     </g>
     <g font-family="-apple-system, PingFang SC, system-ui, sans-serif" font-weight="800" font-size="19">
       <text x="466" y="86" fill="#8A8175">虚线 = 原来的长度</text>
-      <text x="466" y="112" fill="#8A8175">（被扔掉）</text>
+      <text x="466" y="112" fill="#8A8175">（已去掉）</text>
       <text x="18" y="130" fill="#1F9C8B">实线 = 归一化后</text>
       <text x="18" y="156" fill="#1F9C8B">长度全都一样</text>
     </g>
   </svg>
-  <p class="cap">信息全在“指哪儿”，不在“多长”。</p>
+  <p class="cap">信息由方向决定，与长度无关。</p>
 </section>
 
 <!-- ============ 5. vs LayerNorm ============ -->
@@ -380,10 +380,10 @@
 
   <div class="vs">
     <div class="card">
-      <h4>LayerNorm（老办法）</h4>
+      <h4>LayerNorm（早期方法）</h4>
       <ul class="ops">
-        <li><span class="k">①</span><span>算<b>均值</b>，每个数减掉它 → 重心挪到 0</span></li>
-        <li><span class="k">②</span><span>算标准差，每个数除掉它 → 缩放</span></li>
+        <li><span class="k">①</span><span>算<b>均值</b>，每个数减去它 → 使平均值变为 0</span></li>
+        <li><span class="k">②</span><span>算标准差，每个数除以它 → 缩放</span></li>
         <li><span class="k">③</span><span>可学习的 <b>g</b> 和 <b>b</b>（缩放 + 偏移）</span></li>
       </ul>
       <p class="mute" style="font-size:16px;margin-top:16px">参数量：<b>2d</b></p>
@@ -392,7 +392,7 @@
       <div class="badge">现在的主流</div>
       <h4>RMSNorm</h4>
       <ul class="ops">
-        <li><span class="k">①</span><span class="strike">减均值 —— 不做了</span></li>
+        <li><span class="k">①</span><span class="strike">不计算均值</span></li>
         <li><span class="k">②</span><span>除以 <b>RMS</b> → 缩放</span></li>
         <li><span class="k">③</span><span>可学习的 <b>g</b>（只有缩放）</span></li>
       </ul>
@@ -401,16 +401,16 @@
   </div>
 
   <p style="margin-top:34px">2019 年的 RMSNorm 论文提出：<b>很多任务并不依赖减均值带来的 re-centering invariance</b>，只保留缩放也能得到相近效果。</p>
-  <p>于是 RMSNorm 删掉减均值和 bias，只按均方根缩放。它计算更少；是否与 LayerNorm 持平，仍取决于模型和任务。</p>
+  <p>于是 RMSNorm 删掉减均值和 bias，只按均方根缩放。它的计算量更少。是否与 LayerNorm 效果相同，仍取决于模型和任务。</p>
 </section>
 
 <!-- ============ 6. g ============ -->
 <section class="reveal">
-  <div class="step">06 · 那个小旋钮</div>
-  <h2>压平之后<br>再给模型调音台</h2>
-  <p>归一化把所有维度按同一把尺子压平了。但有些维度本该更响。<br>所以每个维度配一个<b>可学习的增益 g</b>——模型自己训出来的调音台。</p>
+  <div class="step">06 · 可学习的缩放参数 g</div>
+  <h2>归一化之后<br>加入可学习的缩放</h2>
+  <p>归一化把所有维度缩放到相同的尺度。但有些维度本应保留更大的幅度。<br>因此每个维度配一个<b>可学习的增益 g</b>，由训练过程学习得到。</p>
 
-  <svg viewBox="0 0 620 250" width="620" role="img" aria-label="每个维度一个可学习增益，像调音台的推子">
+  <svg viewBox="0 0 620 250" width="620" role="img" aria-label="每个维度一个可学习增益，用竖直位置表示数值大小">
     <g stroke="#E3D8C7" stroke-width="6" stroke-linecap="round">
       <line x1="60"  y1="30" x2="60"  y2="200"/><line x1="140" y1="30" x2="140" y2="200"/>
       <line x1="220" y1="30" x2="220" y2="200"/><line x1="300" y1="30" x2="300" y2="200"/>
@@ -432,7 +432,7 @@
       <text x="540" y="228">g₇</text>
     </g>
   </svg>
-  <p class="cap">推子的位置不是人调的，是训练学出来的。</p>
+  <p class="cap">标记的位置不是人工设置的，是训练学习得到的。</p>
 </section>
 
 <!-- ============ 7. 为什么 LLM 在意 ============ -->
@@ -443,35 +443,35 @@
   <div class="grid4">
     <div class="card">
       <div class="icon">🧱</div>
-      <h4>不炸</h4>
-      <p>几十上百层堆起来还能训下去。这是能不能开始训的前提。</p>
+      <h4>数值稳定</h4>
+      <p>堆叠几十到上百层后仍能正常训练。这是能否开始训练的前提。</p>
     </div>
     <div class="card">
       <div class="icon">🚀</div>
-      <h4>敢用大学习率</h4>
-      <p>数值稳了，学习率就能开大，收敛更快，省出来的是真金白银的 GPU 小时。</p>
+      <h4>可以使用更大的学习率</h4>
+      <p>数值稳定后，学习率可以调大，收敛更快，从而节省 GPU 小时，直接降低训练成本。</p>
     </div>
     <div class="card">
       <div class="icon">🪶</div>
-      <h4>够便宜</h4>
+      <h4>计算成本低</h4>
       <p>只需要平方和：不用算均值、不用减、没有 bias。</p>
     </div>
     <div class="card">
       <div class="icon">🔁</div>
-      <h4>用得极多</h4>
-      <p>每个 Transformer block 用 <b>2 次</b>，乘上上百层。省一点点，乘几百次。</p>
+      <h4>使用频率高</h4>
+      <p>每个 Transformer block 调用 <b>2 次</b>，总层数可达上百层。单次节省的计算量很小，累积上百层后节省效果明显。</p>
     </div>
   </div>
 
   <div class="aside">
-    <p><b>顺便说</b>：现代 LLM 把它放在每个子层<b>之前</b>（pre-norm），让残差主路保持一条干净的直通道——这也是深层能训起来的关键之一。</p>
+    <p>现代 LLM 把它放在每个子层<b>之前</b>（pre-norm），使残差主路不经过归一化处理。这是深层网络能够训练成功的关键之一。</p>
   </div>
 </section>
 
 <!-- ============ 8. 谁在用 ============ -->
 <section class="reveal">
-  <div class="step">08 · 谁在用</div>
-  <h2>翻开权重文件<br>你会看到它</h2>
+  <div class="step">08 · 使用情况</div>
+  <h2>权重文件中<br>可以看到它</h2>
 
   <p style="margin-top:26px"><b>RMSNorm</b></p>
   <div class="logos">
@@ -493,18 +493,18 @@
 
 <!-- ============ 9. 代码 + 收尾 ============ -->
 <section class="reveal">
-  <div class="step">09 · 全部内容</div>
-  <h2>五行写完</h2>
+  <div class="step">09 · 完整实现</div>
+  <h2>五行代码实现</h2>
 
 <pre><span class="c"># x: [..., d]   g: [d] 可学习</span>
 <span class="k">def</span> rmsnorm(x, g, eps=<span class="s">1e-6</span>):
     ms  = x.pow(<span class="s">2</span>).mean(-<span class="s">1</span>, keepdim=<span class="k">True</span>)   <span class="c"># ② 平方求平均</span>
-    <span class="k">return</span> x / (ms + eps).sqrt() * g          <span class="c"># ③ 开根号，除掉，再乘旋钮</span>
+    <span class="k">return</span> x / (ms + eps).sqrt() * g          <span class="c"># ③ 开根号，相除，再乘以增益 g</span>
 </pre>
-  <p class="mute" style="margin-top:18px"><code>eps</code> 是防止全零向量除以 0 的小保险。</p>
+  <p class="mute" style="margin-top:18px"><code>eps</code> 用于防止全零向量除以 0。</p>
 
   <div style="margin-top:60px; padding-top:44px; border-top:4px solid var(--ink)">
-    <p class="kicker">一句话：<br><em>扔掉长度，留下方向，<br>再给模型一个旋钮调回来。</em></p>
+    <p class="kicker">一句话：<br><em>去掉长度，保留方向，<br>再用一个可学习的参数缩放回来。</em></p>
   </div>
 </section>
 
@@ -589,10 +589,10 @@ function render(){
 
   const tiny = Math.max(...raw.map(Math.abs)) < 0.5;
   verdict.innerHTML = clipped
-    ? '左边已经<b>冲出屏幕</b>了 —— 右边完全没变 🟢'
+    ? '左边已经<b>超出显示范围</b>了，右边保持不变 🟢'
     : tiny
-    ? '左边快<b>压成一条线</b>了 —— 右边完全没变 🟢'
-    : '左边跟着变 —— 右边<b>永远是这个形状</b> 🟢';
+    ? '左边已经<b>缩小到接近 0</b>了，右边保持不变 🟢'
+    : '左边随之变化，右边<b>保持相同的形状</b> 🟢';
 }
 slider.addEventListener('input', render);
 window.addEventListener('resize', render);

@@ -150,7 +150,7 @@ pre .g{color:var(--upd); font-weight:900}
 <div class="hero">
   <span class="kicker">残差连接 · RESIDUAL</span>
   <h1>保留主干，<br><em>逐层增加改动</em></h1>
-  <p class="sub">普通层会用新输出替换输入；残差连接保留输入主干，<br>让每一层只需要学习一个<b>增量</b>。</p>
+  <p class="sub">普通层会用新输出替换输入。残差连接保留输入主干，<br>让每一层只需要学习一个<b>增量</b>。</p>
 
   <div class="eqbox">
     <div class="eqrow">
@@ -171,7 +171,7 @@ pre .g{color:var(--upd); font-weight:900}
 <!-- ================= 1 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">1</span><h2>没有残差时，层层替换输入</h2></div>
-  <p class="lede">神经网络是一层传给下一层。层数一多，每层都想「改写」上一层的话，改到最后就是耳语传话——面目全非。</p>
+  <p class="lede">神经网络逐层传递信息。如果每一层都「改写」上一层的输出，经过多层改写后，原始内容会无法还原。这个过程类似耳语传话游戏。</p>
 
   <div class="card grid2">
     <div class="panel" style="border-color:var(--fwd)">
@@ -189,7 +189,7 @@ pre .g{color:var(--upd); font-weight:900}
         <div class="arrowdown">↓ 第 5 层重写</div>
         <div class="msg fade5">……？</div>
       </div>
-      <div class="cost" style="background:#FDEDE7">原话已经找不回来了</div>
+      <div class="cost" style="background:#FDEDE7">原始内容无法恢复</div>
     </div>
 
     <div class="panel" style="border-color:var(--upd)">
@@ -219,7 +219,7 @@ pre .g{color:var(--upd); font-weight:900}
 <!-- ================= 2 ================= -->
 <section class="reveal">
   <div class="head"><span class="num">2</span><h2>反向传播：连乘会让梯度衰减</h2></div>
-  <p class="lede">训练时，梯度从最后一层向前传播。每经过一层，梯度都会乘上该层的局部导数；连续相乘很多次后，数值可能变得很小。</p>
+  <p class="lede">训练时，梯度从最后一层向前传播。每经过一层，梯度都会乘上该层的局部导数。连续相乘很多次后，数值可能变得很小。</p>
 
   <div class="card">
     <div class="sliderrow">
@@ -248,8 +248,8 @@ pre .g{color:var(--upd); font-weight:900}
     <div class="panel">
       <h4><span class="dot" style="background:var(--bwd)"></span>没有残差</h4>
       <p style="font-size:17px" class="mono">0.8 × 0.8 × 0.8 × … （96 次）</p>
-      <p style="margin-top:10px">= <b class="mono">0.00000005%</b><br>信号到不了底层。底层的参数<b>几乎不更新</b>，等于白搭了 90 层。这叫<b>梯度消失</b>。</p>
-      <div class="cost">乘数稍大于 1 也一样糟：1.1<sup>96</sup> ≈ 8600，直接炸成 NaN</div>
+      <p style="margin-top:10px">= <b class="mono">0.00000005%</b><br>信号到不了底层。底层的参数<b>几乎不更新</b>，这 90 层相当于没有训练。这叫<b>梯度消失</b>。</p>
+      <div class="cost">乘数略大于 1 时问题相同：1.1<sup>96</sup> ≈ 8600，数值会变成 NaN</div>
     </div>
     <div class="panel">
       <h4><span class="dot" style="background:var(--upd)"></span>有残差</h4>
@@ -268,12 +268,12 @@ pre .g{color:var(--upd); font-weight:900}
   <div class="card grid2">
     <div class="panel" style="background:#FDEDE7">
       <h4>要一层「什么都别做」</h4>
-      <p style="font-size:16px">没有残差：它得<b>学会照抄</b>——把输入一字不差地复现出来。看着简单，对一堆随机初始化的矩阵来说非常难。</p>
+      <p style="font-size:16px">没有残差时，这一层必须<b>学会复制输入</b>，把输入原封不动地重现出来。这个任务看起来简单，但对随机初始化的矩阵来说很难实现。</p>
       <div class="cost">类比：让编辑「原文抄一遍，不许出错」</div>
     </div>
     <div class="panel" style="background:#E6F6EE">
       <h4>有残差：只要不写字</h4>
-      <p style="font-size:16px">out = x + f(x)，想不做事只需 <b class="mono">f(x) → 0</b>。把权重压到 0 是优化器最容易做到的事之一。</p>
+      <p style="font-size:16px">out = x + f(x)。如果希望这一层不产生影响，只需让 <b class="mono">f(x) → 0</b>。把权重压到 0 是优化器最容易实现的结果之一。</p>
       <div class="cost" style="background:#fff">类比：让编辑「这页不用改，空着」</div>
     </div>
   </div>
@@ -303,10 +303,10 @@ pre .g{color:var(--upd); font-weight:900}
   </div>
 
   <div class="card">
-    <div class="big" style="font-size:clamp(20px,3.2vw,30px)">而且「一层」里不止一个东西</div>
+    <div class="big" style="font-size:clamp(20px,3.2vw,30px)">「一层」实际包含两个子层</div>
     <p class="note" style="font-size:16px;margin-bottom:6px">口语里的「一层」= 一个 Transformer block = <b>两个子层，两个残差加号</b>：</p>
-<pre>x = <span class="k">x +</span> Attention(norm(x))   <span class="c">← 子层 1：去别人那儿看看</span>
-x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2：自己再想想</span>
+<pre>x = <span class="k">x +</span> Attention(norm(x))   <span class="c">← 子层 1：跨 token 看别人</span>
+x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2：每个 token 自己想</span>
 </pre>
     <p class="note" style="font-size:16px">所以 GPT-3 的「96 层」= 96 个 block = <b>192 个残差加号</b>。<br>
     Attention 只是这两个子层里的<b>一半</b>。</p>
@@ -348,8 +348,8 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
 
 <!-- ================= 5 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">5</span><h2>在 LLM 里长什么样</h2></div>
-  <p class="lede">把上面两行代码画出来，就是这张图。一个 block 里有<b>两条</b>残差：一条包住 Attention，一条包住 FFN。左侧黄色竖线表示主干，子层输出会作为增量加到上面。</p>
+  <div class="head"><span class="num">5</span><h2>Transformer block 中的两条残差连接</h2></div>
+  <p class="lede">这张图呈现上面两行代码。一个 block 中有<b>两条</b>残差：一条包住 Attention，一条包住 FFN。左侧黄色竖线表示主干，子层输出作为增量加到主干上。</p>
 
   <div class="svgbox">
     <svg viewBox="0 0 500 610" role="img" aria-label="Transformer block 的两条残差连接">
@@ -396,7 +396,7 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
       <text class="lbl sm" x="440" y="270">读副本</text>
     </svg>
     <p class="note" style="font-size:15.5px;margin-top:18px">
-      黄色主干 = 残差流。子层只<b>读一份副本</b>去算，算完把结果<b>加</b>回主干。主干本身永远没被谁改写过。
+      黄色主干 = 残差流。子层<b>读取一份副本</b>进行计算，计算完成后把结果<b>加</b>回主干。主干本身从未被改写。
     </p>
   </div>
 
@@ -418,16 +418,16 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
   <div class="card" style="background:#FFF6DE">
     <span class="pill">小历史</span>
     <p class="note" style="font-size:16px;margin-top:12px">
-      2017 年原版 Transformer 是 <b>Post-LN</b>：<span class="mono">x = Norm(x + f(x))</span> —— 归一化压在主干上，训练很挑，必须小心 warmup。<br>
-      GPT-2 之后大家都改成 <b>Pre-LN</b>：<span class="mono">x = x + f(Norm(x))</span> —— 归一化挪进支路，<b>主干保持干净</b>，那条「1」的直通电梯完全不被打扰。现在的 LLM 基本都是这个写法。
+      2017 年原版 Transformer 使用 <b>Post-LN</b>：<span class="mono">x = Norm(x + f(x))</span>。归一化作用在主干上，训练对超参数敏感，必须谨慎设置 warmup。<br>
+      GPT-2 之后，大多数模型改用 <b>Pre-LN</b>：<span class="mono">x = x + f(Norm(x))</span>。归一化移到支路内部，<b>主干保持干净</b>，「1」这条直通电梯不受干扰。现在的 LLM 大多采用这种结构。
     </p>
   </div>
 </section>
 
 <!-- ================= 6 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">6</span><h2>把残差流理解成一块公用白板</h2></div>
-  <p class="lede">可以把 residual stream 想成一块从第一层传到最后一层的<b>白板</b>：每层读取当前内容，写入一个增量，再传给下一层。</p>
+  <div class="head"><span class="num">6</span><h2>残差流是贯穿全模型的公用白板</h2></div>
+  <p class="lede">residual stream 类似一块从第一层传到最后一层的<b>白板</b>。每层读取当前内容，写入一个增量，再传给下一层。</p>
 
   <div class="svgbox">
     <svg viewBox="0 0 1000 300" role="img" aria-label="残差流像一块公用白板">
@@ -445,7 +445,7 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
 
       <!-- the whiteboard -->
       <rect x="30" y="42" width="900" height="52" rx="16" fill="#F2B705" stroke="#16130F" stroke-width="3"/>
-      <text class="lbl bold" x="480" y="75" text-anchor="middle">残 差 流 ── 同一块白板，从头到尾维度不变（d_model）</text>
+      <text class="lbl bold" x="480" y="75" text-anchor="middle">残 差 流 ： 同一块白板，维度始终保持 d_model</text>
       <path class="stroke" d="M 930 68 L 968 68" marker-end="url(#ah2)"/>
       <text class="lbl sm" x="905" y="118" text-anchor="middle">最后读白板 → 出 token</text>
       <text class="lbl sm" x="72" y="30">词嵌入写下第一笔</text>
@@ -468,7 +468,7 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
       <g>
         <rect class="boxf" x="430" y="180" width="140" height="58" rx="12"/>
         <text class="lbl bold" x="500" y="207" text-anchor="middle">第 3 层</text>
-        <text class="lbl sm" x="500" y="226" text-anchor="middle">整句在说啥</text>
+        <text class="lbl sm" x="500" y="226" text-anchor="middle">整句在说什么</text>
         <path d="M 470 180 L 470 100" stroke="#2E6FB7" stroke-width="3" fill="none" marker-end="url(#ahb)" transform="rotate(180 470 140)"/>
         <path d="M 530 180 L 530 100" stroke="#1E9E62" stroke-width="3" fill="none" marker-end="url(#ahg)"/>
       </g>
@@ -482,7 +482,7 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
       <g>
         <rect class="boxf" x="790" y="180" width="140" height="58" rx="12"/>
         <text class="lbl bold" x="860" y="207" text-anchor="middle">最后一层</text>
-        <text class="lbl sm" x="860" y="226" text-anchor="middle">下个词是啥</text>
+        <text class="lbl sm" x="860" y="226" text-anchor="middle">下个词是什么</text>
         <path d="M 830 180 L 830 100" stroke="#2E6FB7" stroke-width="3" fill="none" marker-end="url(#ahb)" transform="rotate(180 830 140)"/>
         <path d="M 890 180 L 890 100" stroke="#1E9E62" stroke-width="3" fill="none" marker-end="url(#ahg)"/>
       </g>
@@ -493,18 +493,18 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
       <text class="lbl sm" x="204" y="279">把增量加回白板</text>
     </svg>
     <p class="note" style="font-size:15.5px;margin-top:18px">
-      图里每个「第 N 层」方块，里面都是 <b>Attention + FFN 两个子层</b>（第 4 节）—— 也就是<b>读两次、写两次</b>白板。这里画成一个方块只是为了看清白板本身。
+      图中每个「第 N 层」方块，内部都是 <b>Attention + FFN 两个子层</b>（第 4 节），也就是<b>读两次、写两次</b>白板。这里画成一个方块，只是为了突出白板本身。
     </p>
   </div>
 
   <div class="card grid2">
     <div class="panel">
-      <h4>为什么这个视角有用</h4>
-      <p style="font-size:15.5px"><b>浅层信息可以沿主干直接传到深层</b>，不需要中间每层都重新编码一遍。</p>
+      <h4>浅层信息可以直接传到深层</h4>
+      <p style="font-size:15.5px"><b>浅层信息可以沿主干直接传到深层</b>，不需要每一层重新编码一次。</p>
     </div>
     <div class="panel">
-      <h4>可解释性也靠它</h4>
-      <p style="font-size:15.5px">研究者把残差流当模型的<b>工作内存</b>：某一层往里写了什么向量、后面哪一层读走了它，是可以逐层量出来的。这是「电路分析」类工作的基础。</p>
+      <h4>可解释性研究也依赖这个视角</h4>
+      <p style="font-size:15.5px">研究者把残差流看作模型的<b>工作内存</b>。某一层写入了什么向量，后面哪一层读取了它，这些都可以逐层测量。这是「电路分析」类研究的基础。</p>
     </div>
   </div>
 </section>
@@ -517,15 +517,15 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
   <div class="card grid3">
     <div class="panel" style="background:#FDEDE7">
       <h4>① 归一化</h4>
-      <p style="font-size:15px">每次读白板之前先 RMSNorm / LayerNorm 缩回合适量级，再交给子层算。<b>只归一化副本，不动主干。</b></p>
+      <p style="font-size:15px">每次读白板之前，先用 RMSNorm / LayerNorm 把数值缩放到合适范围，再传给子层计算。<b>只归一化副本，不改动主干。</b></p>
     </div>
     <div class="panel" style="background:#FFF6DE">
       <h4>② 收尾再归一化</h4>
-      <p style="font-size:15px">出模型前有一个 final norm，把攒了几十层的白板整理一次，才交给输出层。</p>
+      <p style="font-size:15px">输出前有一个 final norm，把经过几十层累积的白板内容整理一次，再传给输出层。</p>
     </div>
     <div class="panel" style="background:#E8F1FA">
-      <h4>③ 开局让 f(x)≈0</h4>
-      <p style="font-size:15px">初始化时把子层最后一层权重压得很小，整个网络开局近似「什么都不做」，从最稳的状态开始学。</p>
+      <h4>③ 初始时让 f(x)≈0</h4>
+      <p style="font-size:15px">初始化时，把子层最后一层的权重设置得很小。整个网络在初始时近似「什么都不做」，从稳定的状态开始训练。</p>
     </div>
   </div>
 
@@ -537,16 +537,16 @@ x = <span class="k">x +</span> FFN(norm(x))         <span class="c">← 子层 2
 
 <!-- ================= 8 ================= -->
 <section class="reveal">
-  <div class="head"><span class="num">8</span><h2>代码上就差一个 <span class="mono">x +</span></h2></div>
+  <div class="head"><span class="num">8</span><h2>代码实现只增加 <span class="mono">x +</span></h2></div>
 
   <div class="card">
-<pre><span class="c"># 没有残差：每层重写主干（深了就训不动）</span>
+<pre><span class="c"># 没有残差：每层重写主干（层数增多后难以训练）</span>
 x = attn(norm(x))
 x = ffn(norm(x))
 
 <span class="c"># 有残差：现代 LLM block 的基本结构</span>
-x = <span class="k">x +</span> attn(norm(x))   <span class="c"># ← 加号在这</span>
-x = <span class="k">x +</span> ffn(norm(x))    <span class="c"># ← 加号在这</span>
+x = <span class="k">x +</span> attn(norm(x))   <span class="c"># ← 加号在这里</span>
+x = <span class="k">x +</span> ffn(norm(x))    <span class="c"># ← 加号在这里</span>
 </pre>
     <p class="note" style="font-size:16.5px;font-weight:700;margin-top:20px">这两个加号为梯度提供了直接路径，使 100+ 层网络更容易训练。</p>
   </div>
@@ -559,15 +559,15 @@ x = <span class="k">x +</span> ffn(norm(x))    <span class="c"># ← 加号在�
 
   <div class="tblwrap">
     <table class="tbl">
-      <tr><th>你会看到的词</th><th>意思</th></tr>
-      <tr><td>残差连接 / Residual connection</td><td>本页主角。<span class="mono">out = x + f(x)</span></td></tr>
-      <tr><td>Skip connection / Shortcut</td><td>同一个东西的别名，强调「有条路绕过了子层」</td></tr>
+      <tr><th>术语</th><th>含义</th></tr>
+      <tr><td>残差连接 / Residual connection</td><td>本页的核心概念。<span class="mono">out = x + f(x)</span></td></tr>
+      <tr><td>Skip connection / Shortcut</td><td>同一个概念的别名，强调「有一条路径绕过了子层」</td></tr>
       <tr><td>恒等映射 / Identity mapping</td><td>指那条什么都不做的主干路径本身</td></tr>
       <tr><td>残差流 / Residual stream</td><td>把整条主干看成一块贯穿全模型的白板（第 6 节）</td></tr>
-      <tr><td>残差块 / Residual block</td><td>「子层 + 一个加号」打包成的最小单元</td></tr>
+      <tr><td>残差块 / Residual block</td><td>「子层 + 一个加号」组成的最小单元</td></tr>
       <tr><td>子层 / Sub-layer</td><td>被一个残差包住的那个算子本身。Transformer 里就两种：<b>Attention</b> 和 <b>FFN</b></td></tr>
       <tr><td>层 / Layer / Block</td><td>口语里的「一层」= 两个子层 + 两个加号。GPT-3 的 96 层 = 192 个加号（第 4 节）</td></tr>
-      <tr><td>Pre-LN / Post-LN</td><td>归一化放在支路里（现代）还是压在主干上（2017 原版）</td></tr>
+      <tr><td>Pre-LN / Post-LN</td><td>归一化放在支路里（现代）还是作用在主干上（2017 原版）</td></tr>
       <tr><td>ResNet</td><td>2015 年系统展示残差连接效果的图像模型，扩展到 152 层。Transformer 延续了这种结构</td></tr>
       <tr><td>Highway network</td><td>更早的近亲，用一个「闸门」控制放多少原话过去。残差是它的极简版：闸门恒开</td></tr>
       <tr><td>梯度消失 / 爆炸</td><td>深层网络中，反传信号连续相乘后变得过小或过大（第 2 节）</td></tr>
@@ -578,7 +578,7 @@ x = <span class="k">x +</span> ffn(norm(x))    <span class="c"># ← 加号在�
 <!-- ================= PUNCH ================= -->
 <div class="punch reveal">
   <div class="big">每一层都读取同一条<span style="color:var(--yel)">残差流</span>，<br>再把自己的增量写回去。</div>
-  <p>前向时，主干保留已有信息；<br>
+  <p>前向时，主干保留已有信息。<br>
   反向时，恒等路径让梯度可以直接向前传播。<br><br>
   这个加号不增加可训练参数，计算开销很小，<br>
   因此几乎所有 Transformer 都会使用残差连接。</p>
@@ -604,10 +604,10 @@ function render(){
   dv.textContent=n;
   b1.style.width=Math.max(0.4,(1+Math.log10(p)/12)*100)+'%';
   v1.textContent=fmt(p);
-  hint.textContent = n<=8  ? '浅网络：没残差也还能训，这就是 2012 年前后的世界。'
-                   : n<=25 ? '开始吃力：底层收到的信号已经不到千分之一。'
-                   : n<=60 ? '基本废了：底层参数几乎不动，加层等于白加。'
-                           : '完全断了：这个深度上，没有残差就没有现代 LLM。';
+  hint.textContent = n<=8  ? '浅层网络：没有残差也可以训练，这是 2012 年前后的情况。'
+                   : n<=25 ? '开始困难：底层收到的信号已经不到千分之一。'
+                   : n<=60 ? '基本失效：底层参数几乎不更新，增加层数没有效果。'
+                           : '完全中断：这个深度下，没有残差就没有现代 LLM。';
 }
 sl.addEventListener('input',render); render();
 </script>
